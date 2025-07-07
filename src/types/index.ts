@@ -64,7 +64,7 @@ export interface DiscordButtonComponents {
 
 export interface DiscordMessagePayload {
   content?: string;
-  embeds?: DiscordEmbed[] | Record<string, any>[];
+  embeds?: DiscordEmbed[];
   components?: {
     type: 1;
     components: DiscordButtonComponents[];
@@ -109,7 +109,7 @@ export interface DiscordPartialMessageResponse {
 
 export interface SendMessageOptions {
   content?: string;
-  embeds?: DiscordEmbed[] | Record<string, any>[];
+  embeds?: DiscordEmbed[];
   files?: {
     name: string;
     buffer: Buffer<ArrayBuffer>;
@@ -148,5 +148,5 @@ export interface DiscordPartialChannelResponse {
   type: number;
   categoryId: string | null;
   category: string | null;
-  channel: Record<string, any>;
+  channel: Record<string, unknown>;
 }

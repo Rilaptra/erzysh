@@ -124,7 +124,7 @@ export async function sendMessage(
     }
 
     return await response.json();
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Runtime Error] Error sending message to Discord:", error);
     throw error;
   }
@@ -161,15 +161,18 @@ export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
       return errorData.message;
     }
 
-    const channels = await response.json();
+    const channels = (await response.json()) as {
+      parent_id: string;
+      id: string;
+      name: string;
+      type: number;
+    }[];
 
     // Mapping channel biar lebih gampang dibaca
-    const formattedChannels = channels.map((channel: any) => {
+    const formattedChannels = channels.map((channel) => {
       let parentName = "No Category";
       if (channel.parent_id) {
-        const parentChannel = channels.find(
-          (c: any) => c.id === channel.parent_id
-        );
+        const parentChannel = channels.find((c) => c.id === channel.parent_id);
         if (parentChannel) {
           parentName = parentChannel.name;
         }
@@ -218,7 +221,7 @@ export async function getChannel(
     const channel = await response.json();
 
     // Untuk memastikan formatnya mirip dengan getChannels, kita tambahkan parentName jika ada
-    let formattedChannel = {
+    const formattedChannel = {
       id: channel.id,
       name: channel.name,
       isCategory: channel.type === 4,

@@ -55,7 +55,7 @@ export async function POST(
     const { data } = (await req.json()) as {
       data: {
         name: string;
-        content: string | number | [] | Object;
+        content: string | number | [] | object;
         size?: number;
       };
     };
@@ -173,7 +173,10 @@ ${JSON.stringify(message, null, 2)}
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: any }) {
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> }
+) {
   try {
     const { slug } = await params;
     const [categoryId, channelId, messageId] = slug;
@@ -253,14 +256,17 @@ export async function DELETE(_req: NextRequest, { params }: { params: any }) {
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: any }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> }
+) {
   try {
     const { slug } = await params;
     const [categoryId, channelId, messageId] = slug;
     const { data } = (await req.json()) as {
       data: {
         name: string;
-        content: string | number | [] | Object;
+        content: string | number | [] | object;
         size?: number;
       };
     };
