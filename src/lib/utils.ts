@@ -376,7 +376,7 @@ export function sanitizeMessage(data: DiscordPartialMessageResponse) {
       edited_timestamp: data.edited_timestamp,
       timestamp: data.timestamp,
     };
-  } catch (error) {
+  } catch {
     console.warn(
       chalk.yellow(
         "Warning: Failed to parse message content, returning as string."

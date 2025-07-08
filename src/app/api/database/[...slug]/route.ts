@@ -347,7 +347,7 @@ async function loadAttachmentsData(attachments: { url: string }[]) {
 
   try {
     return JSON.parse(combinedContent);
-  } catch (e) {
+  } catch {
     console.warn(
       chalk.yellow(
         "Warning: Attachment data is not valid JSON, returning as raw string."
