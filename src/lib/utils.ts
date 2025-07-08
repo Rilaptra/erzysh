@@ -306,11 +306,6 @@ export async function getChannel(
  */
 export async function getMessagesFromChannel(channelId: string): Promise<
   {
-    attachments: {
-      url: string;
-      filename: string;
-      size: number;
-    }[];
     id: string;
     content: any;
     edited_timestamp: string | null;
@@ -322,7 +317,7 @@ export async function getMessagesFromChannel(channelId: string): Promise<
       `/channels/${channelId}/messages`
     );
 
-    return messages.map((msg) => sanitizeMessage(msg));
+    return messages.map((msg) => sanitizeMessage(msg, true));
   } catch (error) {
     console.error("Error fetching messages:", error);
     throw error;
@@ -360,17 +355,22 @@ export function fileAttachmentsBuilder({
   return attachments;
 }
 
-export function sanitizeMessage(data: DiscordPartialMessageResponse) {
+export function sanitizeMessage(
+  data: DiscordPartialMessageResponse,
+  noAttachments?: boolean
+) {
   try {
     const parsedBody = JSON.parse(
       data.content.replace(/```(json)?/g, "").trim()
     );
     return {
-      attachments: data.attachments.map(({ url, filename, size }) => ({
-        url,
-        filename,
-        size,
-      })),
+      attachments: noAttachments
+        ? undefined
+        : data.attachments.map(({ url, filename, size }) => ({
+            url,
+            filename,
+            size,
+          })),
       id: data.id,
       content: parsedBody,
       edited_timestamp: data.edited_timestamp,

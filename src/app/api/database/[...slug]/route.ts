@@ -36,14 +36,15 @@ export async function GET(
       );
       const sanitized = sanitizeMessage(message);
       const data =
-        (await loadAttachmentsData(sanitized.attachments)) || sanitized.content;
+        (await loadAttachmentsData(sanitized.attachments!)) ||
+        sanitized.content;
       const parsedContent =
         typeof sanitized.content === "object"
           ? sanitized.content
           : {
               lastUpdate: sanitized.edited_timestamp,
               name:
-                sanitized.attachments[0]?.filename.match(
+                sanitized.attachments?.[0]?.filename.match(
                   /^(chunk_\d+_)([a-zA-Z0-9_-]+)(?:\.json|\.)?$/
                 )?.[2] || "untitled",
               size: JSON.stringify(data).length,
@@ -66,7 +67,9 @@ export async function GET(
   } catch (error) {
     console.error(chalk.red("Error in GET handler:"), error);
     return createApiResponse(
-      { message: "Data not found or internal error" },
+      {
+        error: (error as Error).message,
+      },
       404
     );
   }
