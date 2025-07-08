@@ -1,48 +1,75 @@
-import {
-  DISCORD_API_BASE,
-  GUILD_ID,
-  BOT_TOKEN,
-  SUPPORTED_TYPES,
-} from "@/lib/constants";
+// /api/database/[...slug]/route.ts
+import { GUILD_ID, SUPPORTED_TYPES } from "@/lib/constants";
 import {
   editMessage,
   fileAttachmentsBuilder,
-  getChannels,
   getMessagesFromChannel,
   sendMessage,
+  discord,
+  sanitizeMessage,
+  getChannelsFromParentId,
 } from "@/lib/utils";
+import { DiscordPartialMessageResponse, RequestData } from "@/types";
+import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  createApiResponse,
+  handleDiscordApiCall,
+  loadBodyRequest,
+  slugify,
+  updateActivityLog,
+  CHANNEL_TYPE,
+} from "../helpers";
+
+// --- Main HTTP Handlers ---
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> }
 ): Promise<NextResponse> {
-  const { slug } = await params;
-  const [categoryId, channelId] = slug;
-  // const query = req.nextUrl.searchParams;
-  if (!channelId) {
-    const channels = await getChannels();
-    const filteredChannelsID = channels
-      .filter((channel) => channel.categoryId === categoryId)
-      .map((channel) => channel.id);
-    const filteredChannels = new Map();
+  try {
+    const [categoryId, channelId, messageId] = (await params).slug;
 
-    for (const channelID of filteredChannelsID) {
-      const messages = await getMessagesFromChannel(channelID);
-      if (!messages) continue;
-      filteredChannels.set(channelID, messages);
+    if (messageId && channelId) {
+      const message = await discord.get<DiscordPartialMessageResponse>(
+        `/channels/${channelId}/messages/${messageId}`
+      );
+      const sanitized = sanitizeMessage(message);
+      const data =
+        (await loadAttachmentsData(sanitized.attachments)) || sanitized.content;
+      const parsedContent =
+        typeof sanitized.content === "object"
+          ? sanitized.content
+          : {
+              lastUpdate: sanitized.edited_timestamp,
+              name:
+                sanitized.attachments[0]?.filename.match(
+                  /^(chunk_\d+_)([a-zA-Z0-9_-]+)(?:\.json|\.)?$/
+                )?.[2] || "untitled",
+              size: JSON.stringify(data).length,
+            };
+
+      return createApiResponse({ ...parsedContent, data }, 200);
     }
 
-    const data = Object.fromEntries(filteredChannels);
-    return NextResponse.json({ data }, { status: 200 });
-  }
+    if (channelId) {
+      const data = await getMessagesFromChannel(channelId);
+      return createApiResponse({ data }, 200);
+    }
 
-  const messages = await getMessagesFromChannel(channelId);
-  if (!messages) {
-    return NextResponse.json({ message: "Channel not found" }, { status: 404 });
-  }
+    if (categoryId) {
+      const data = await getMessagesFromCategory(categoryId);
+      return createApiResponse({ data }, 200);
+    }
 
-  return NextResponse.json({ data: messages }, { status: 200 });
+    return createApiResponse({ message: "Invalid request" }, 400);
+  } catch (error) {
+    console.error(chalk.red("Error in GET handler:"), error);
+    return createApiResponse(
+      { message: "Data not found or internal error" },
+      404
+    );
+  }
 }
 
 export async function POST(
@@ -50,209 +77,27 @@ export async function POST(
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   try {
-    const { slug } = await params;
-    const [categoryId, channelId] = slug;
-    const { data } = (await req.json()) as {
-      data: {
-        name: string;
-        content: string | number | [] | object;
-        size?: number;
-      };
-    };
+    const [categoryId, channelId, messageId] = (await params).slug;
+    const data = await loadBodyRequest(req);
 
-    // Create new Channel
-    if (categoryId && !data.content) {
-      if (!data || !data.name) {
-        return NextResponse.json(
-          { message: "Invalid Request Body" },
-          { status: 405 }
-        );
-      }
+    if (!data)
+      return createApiResponse({ message: "Invalid request body" }, 400);
 
-      if (typeof data.name === "string" && data.name.length > 100) {
-        return NextResponse.json(
-          { message: "Channel name too long" },
-          { status: 405 }
-        );
-      }
-
-      const res = await fetch(
-        `${DISCORD_API_BASE}/guilds/${GUILD_ID}/channels`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bot ${BOT_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: data.name,
-            parent_id: categoryId,
-            type: 0,
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error(
-          `Discord API Error: ${res.status} - ${errorData.message}`
-        );
-        return NextResponse.json(
-          { message: errorData.message },
-          { status: res.status }
-        );
-      }
-
-      const channel = await res.json();
-
-      return NextResponse.json(
-        {
-          message: "Channel created successfully",
-          data: { name: channel.name, id: channel.id },
-        },
-        { status: 200 }
-      );
+    if (categoryId && !channelId) {
+      return handleCreateChannel(categoryId, data);
     }
 
-    if (!data || !data.content || !data.name) {
-      return NextResponse.json(
-        { message: "Invalid Request Body" },
-        { status: 404 }
-      );
+    if (channelId && !messageId) {
+      return handleSendMessage(categoryId, channelId, data);
     }
 
-    if (!SUPPORTED_TYPES.includes(typeof data.content)) {
-      return NextResponse.json(
-        { message: "Invalid Request Body" },
-        { status: 404 }
-      );
-    }
-
-    const dataContent =
-      typeof data.content === "string"
-        ? data.content
-        : JSON.stringify(data.content);
-
-    const generatedFiles = fileAttachmentsBuilder({
-      fileName: data.name,
-      data: dataContent,
-      size: data.size ?? dataContent.length,
-    });
-
-    const message = {
-      lastUpdate: new Date().toISOString(),
-      name: data.name,
-      size: data.size ?? dataContent.length,
-    };
-    const res = await sendMessage(channelId, {
-      content: `\`\`\`
-${JSON.stringify(message, null, 2)}
-\`\`\``,
-      files: generatedFiles,
-    });
-    if (!res) {
-      console.error("Failed to send message");
-      return NextResponse.json(
-        { message: "Failed to send message" },
-        { status: 500 }
-      );
-    }
-    return NextResponse.json(
-      {
-        message: "Message sent successfully",
-        data: { id: res.id, content: res.content },
-      },
-      { status: 200 }
+    return createApiResponse(
+      { message: "Invalid POST request or Message ID must not be provided" },
+      400
     );
   } catch (error) {
-    console.error("Error sending message:", error);
-    return NextResponse.json(
-      { error: "Error sending message" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> }
-) {
-  try {
-    const { slug } = await params;
-    const [categoryId, channelId, messageId] = slug;
-
-    if (!channelId) {
-      const res = await fetch(`${DISCORD_API_BASE}/channels/${categoryId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bot ${BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res) {
-        return NextResponse.json(
-          { message: "Category not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(
-        { message: "Category deleted successfully" },
-        { status: 200 }
-      );
-    }
-
-    if (!messageId) {
-      const res = await fetch(`${DISCORD_API_BASE}/channels/${channelId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bot ${BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!res) {
-        return NextResponse.json(
-          { message: "Channel not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(
-        { message: "Channel deleted successfully" },
-        { status: 200 }
-      );
-    }
-
-    const res = await fetch(
-      `${DISCORD_API_BASE}/channels/${channelId}/messages/${messageId}`,
-      {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bot ${BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!res) {
-      return NextResponse.json(
-        { message: "Message not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: "Message deleted successfully" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error deleting channel:", error);
-    return NextResponse.json(
-      { error: "Error deleting channel" },
-      { status: 500 }
-    );
+    console.error(chalk.red("Error in POST handler:"), error);
+    return createApiResponse({ error: "Internal Server Error" }, 500);
   }
 }
 
@@ -261,105 +106,253 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string[] }> }
 ) {
   try {
-    const { slug } = await params;
-    const [categoryId, channelId, messageId] = slug;
-    const { data } = (await req.json()) as {
-      data: {
-        name: string;
-        content: string | number | [] | object;
-        size?: number;
-      };
-    };
+    const [categoryId, channelId, messageId] = (await params).slug;
+    const data = await loadBodyRequest(req);
 
-    if (!channelId) {
-      // update category name
-      const res = await fetch(`${DISCORD_API_BASE}/channels/${categoryId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bot ${BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: data.name, type: 4 }),
-      });
-
-      if (!res) {
-        return NextResponse.json(
-          { message: "Category not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(
-        { message: "Category updated successfully" },
-        { status: 200 }
+    if (!data || !data.name) {
+      return createApiResponse(
+        { message: "Invalid request body, name is required" },
+        400
       );
     }
 
-    if (!messageId) {
-      // update channel name
+    const slugifiedName = slugify(data.name);
+
+    if (messageId && channelId) {
+      return handleUpdateMessage(categoryId, channelId, messageId, data);
+    }
+
+    if (channelId) {
       if (data.content) {
-        return NextResponse.json(
-          { message: "Message ID not found" },
-          { status: 404 }
+        return createApiResponse(
+          { message: "Cannot update content for a channel, only a message" },
+          400
         );
       }
-      const res = await fetch(`${DISCORD_API_BASE}/channels/${channelId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bot ${BOT_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: data.name }),
-      });
-
-      if (!res) {
-        return NextResponse.json(
-          { message: "Channel not found" },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json(
-        { message: "Channel updated successfully" },
-        { status: 200 }
+      return handleDiscordApiCall(
+        () =>
+          discord.patch(
+            `/channels/${channelId}`,
+            { name: slugifiedName },
+            true
+          ),
+        "Channel updated successfully"
       );
     }
 
-    if (!SUPPORTED_TYPES.includes(typeof data.content)) {
-      return NextResponse.json(
-        { message: "Invalid content type" },
-        { status: 400 }
+    if (categoryId) {
+      return handleDiscordApiCall(
+        () =>
+          discord.patch(
+            `/channels/${categoryId}`,
+            { name: slugifiedName, type: CHANNEL_TYPE.GUILD_CATEGORY },
+            true
+          ),
+        "Category updated successfully"
       );
     }
 
-    const dataContent =
-      typeof data.content === "string"
-        ? data.content
-        : JSON.stringify(data.content);
-    const res = await editMessage(channelId, messageId, {
-      files: fileAttachmentsBuilder({
-        fileName: data.name,
-        data: dataContent,
-        size: data.size ?? dataContent.length,
-      }),
-    });
-
-    if (!res) {
-      return NextResponse.json(
-        { message: "Message not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: "Message updated successfully" },
-      { status: 200 }
-    );
+    return createApiResponse({ message: "Invalid PATCH request" }, 400);
   } catch (error) {
-    console.error("Error updating message:", error);
-    return NextResponse.json(
-      { error: "Error updating message" },
-      { status: 500 }
+    console.error(chalk.red("Error in PATCH handler:"), error);
+    return createApiResponse({ error: "Internal Server Error" }, 500);
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> }
+) {
+  try {
+    const [categoryId, channelId, messageId] = (await params).slug;
+
+    if (messageId && channelId) {
+      return handleDiscordApiCall(
+        () => discord.delete(`/channels/${channelId}/messages/${messageId}`),
+        "Message deleted successfully"
+      );
+    }
+
+    if (channelId) {
+      return handleDiscordApiCall(
+        () => discord.delete(`/channels/${channelId}`),
+        "Channel deleted successfully"
+      );
+    }
+
+    if (categoryId) {
+      console.log(
+        chalk.yellow(`Deleting category ${categoryId} and its children...`)
+      );
+      const channelsToDelete = await getChannelsFromParentId(categoryId);
+      console.log(
+        chalk.blue(`Found ${channelsToDelete.length} channels to delete.`)
+      );
+
+      const deletePromises = channelsToDelete.map((ch) =>
+        discord.delete(`/channels/${ch.id}`)
+      );
+      deletePromises.push(discord.delete(`/channels/${categoryId}`));
+
+      await Promise.all(deletePromises);
+      return createApiResponse(
+        { message: "Category and all its channels deleted successfully" },
+        200
+      );
+    }
+
+    return createApiResponse({ message: "Invalid DELETE request" }, 400);
+  } catch (error) {
+    console.error(chalk.red("Error in DELETE handler:"), error);
+    return createApiResponse(
+      {
+        message: "Failed to delete resources.",
+        error: (error as Error).message,
+      },
+      500
     );
+  }
+}
+
+// --- Logic Handlers ---
+
+async function handleCreateChannel(categoryId: string, data: RequestData) {
+  if (!data.name || typeof data.name !== "string" || data.name.length > 100) {
+    return createApiResponse({ message: "Invalid channel name" }, 400);
+  }
+
+  return handleDiscordApiCall(
+    () =>
+      discord.post(
+        `/guilds/${GUILD_ID}/channels`,
+        {
+          name: slugify(data.name),
+          parent_id: categoryId,
+          type: CHANNEL_TYPE.GUILD_TEXT,
+        },
+        true
+      ),
+    "Channel created successfully",
+    201
+  );
+}
+
+async function handleSendMessage(
+  categoryId: string,
+  channelId: string,
+  data: RequestData
+) {
+  if (
+    !data.content ||
+    !data.name ||
+    !SUPPORTED_TYPES.includes(typeof data.content)
+  ) {
+    return createApiResponse({ message: "Invalid request body" }, 400);
+  }
+
+  const contentSize =
+    data.size ??
+    (typeof data.content === "string"
+      ? data.content.length
+      : JSON.stringify(data.content).length);
+  const key = {
+    lastUpdate: new Date().toISOString(),
+    name: data.name,
+    size: contentSize,
+  };
+
+  const messagePayload = {
+    content: `\`\`\`\n${JSON.stringify(key, null, 2)}\n\`\`\``,
+    files: fileAttachmentsBuilder({
+      fileName: data.name,
+      data: data.content,
+      size: contentSize,
+    }),
+  };
+
+  const response = await handleDiscordApiCall(
+    async () => {
+      const res = await sendMessage(channelId, messagePayload);
+      if (!res) throw new Error("Failed to send message");
+      return { id: res.id, content: res.content.replace(/`/g, "").trim() };
+    },
+    "Message sent successfully",
+    201
+  );
+
+  updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
+    (err) => {
+      console.error(chalk.yellow("Failed to update activity log:"), err);
+    }
+  );
+
+  return response;
+}
+
+async function handleUpdateMessage(
+  categoryId: string,
+  channelId: string,
+  messageId: string,
+  data: RequestData
+) {
+  if (!SUPPORTED_TYPES.includes(typeof data.content)) {
+    return createApiResponse({ message: "Invalid content type" }, 400);
+  }
+
+  const contentSize =
+    data.size ??
+    (typeof data.content === "string"
+      ? data.content.length
+      : JSON.stringify(data.content).length);
+  const files = fileAttachmentsBuilder({
+    fileName: data.name,
+    data: data.content,
+    size: contentSize,
+  });
+
+  const response = await handleDiscordApiCall(
+    () => editMessage(channelId, messageId, { files }),
+    "Message updated successfully"
+  );
+
+  updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
+    (err) => {
+      console.error(chalk.yellow("Failed to update activity log:"), err);
+    }
+  );
+
+  return response;
+}
+
+async function getMessagesFromCategory(categoryId: string) {
+  const channels = await getChannelsFromParentId(categoryId);
+  const channelPromises = channels.map(async (channel) => {
+    const messages = await getMessagesFromChannel(channel.id);
+    return messages ? [channel.id, messages] : null;
+  });
+
+  const settledChannels = await Promise.all(channelPromises);
+  const filteredChannels = new Map(
+    settledChannels.filter(Boolean) as [string, any][]
+  );
+  return Object.fromEntries(filteredChannels);
+}
+
+async function loadAttachmentsData(attachments: { url: string }[]) {
+  const fetchPromises = attachments.map((att) =>
+    fetch(att.url).then((res) => res.text())
+  );
+  const contents = await Promise.all(fetchPromises);
+  const combinedContent = contents.join("");
+
+  try {
+    return JSON.parse(combinedContent);
+  } catch (e) {
+    console.warn(
+      chalk.yellow(
+        "Warning: Attachment data is not valid JSON, returning as raw string."
+      )
+    );
+    return combinedContent;
   }
 }

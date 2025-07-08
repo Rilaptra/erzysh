@@ -1,3 +1,9 @@
+export interface RequestData {
+  name: string;
+  content: string;
+  size?: number;
+}
+
 export interface DiscordEmbed {
   title?: string;
   type?: string;
@@ -148,5 +154,5 @@ export interface DiscordPartialChannelResponse {
   type: number;
   categoryId: string | null;
   category: string | null;
-  channel: Record<string, unknown>;
+  // channel: Record<string, unknown>;
 }

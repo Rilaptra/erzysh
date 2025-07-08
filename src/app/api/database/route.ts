@@ -1,116 +1,95 @@
-import { BOT_TOKEN, DISCORD_API_BASE, GUILD_ID } from "@/lib/constants";
-import { getChannels, getMessagesFromChannel } from "@/lib/utils";
-import { DiscordPartialMessageResponse } from "@/types";
+// /api/database/route.ts
+import { discord, getChannels, getMessagesFromChannel } from "@/lib/utils";
+import { RequestData } from "@/types";
+import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  createApiResponse,
+  handleDiscordApiCall,
+  loadBodyRequest,
+  slugify,
+  CHANNEL_TYPE,
+} from "./helpers";
+import { GUILD_ID } from "@/lib/constants";
 
-interface CategoryData {
-  name: string;
-  id: string;
-  channels: {
-    name: string;
-    id: string;
-    messages: DiscordPartialMessageResponse[] | void[];
-  }[];
-}
+// --- Main HTTP Handlers ---
 
 export async function GET(): Promise<NextResponse> {
   try {
-    const channels = await getChannels();
-    const categories = new Map<string, CategoryData>();
-    for (const channel of channels) {
-      if (channel.isCategory)
-        categories.set(channel.id, {
-          name: channel.name,
-          id: channel.id,
-          channels: [],
-        });
-      else {
-        const category = categories.get(channel.categoryId!);
-        if (category)
-          category.channels.push({
-            name: channel.name,
-            id: channel.id,
-            messages: (await getMessagesFromChannel(channel.id)) || [],
-          });
-        else if (channel.name !== "lapyout")
-          categories.set(channel.categoryId!, {
-            name: channel.name,
-            id: channel.categoryId!,
-            channels: [
-              {
-                name: channel.name,
-                id: channel.id,
-                messages: (await getMessagesFromChannel(channel.id)) || [],
-              },
-            ],
-          });
-      }
-    }
-    const data = Object.fromEntries(categories);
-    return NextResponse.json({ data }, { status: 200 });
+    return await handleGetAllStructuredData();
   } catch (error) {
-    console.error("Error fetching Discord channels:", error);
-    return NextResponse.json(
-      { error: "Internal server error while fetching Discord channels." },
-      { status: 500 }
+    console.error(chalk.red("Error in GET handler:"), error);
+    return createApiResponse(
+      { message: "Data not found or internal error" },
+      500
     );
   }
 }
 
-// Create new category
-export async function POST(req: NextRequest): Promise<NextResponse> {
+export async function POST(req: NextRequest) {
   try {
-    const { data } = (await req.json()) as {
-      data: {
-        name: string;
-      };
-    };
-
-    if (!data || !data.name) {
-      return NextResponse.json(
-        { message: "Invalid Request Body" },
-        { status: 405 }
-      );
-    }
-
-    if (typeof data.name === "string" && data.name.length > 100) {
-      return NextResponse.json(
-        { message: "Category name too long" },
-        { status: 405 }
-      );
-    }
-
-    const res = await fetch(`${DISCORD_API_BASE}/guilds/${GUILD_ID}/channels`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bot ${BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: data.name.replace(/ /g, "-"),
-        type: 4,
-      }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error(`Discord API Error: ${res.status} - ${errorData.message}`);
-      return NextResponse.json({ error: errorData.message }, { status: 500 });
-    }
-    const resData = await res.json();
-
-    return NextResponse.json(
-      {
-        message: "New Category created!",
-        data: { name: resData.name, id: resData.id },
-      },
-      { status: 200 }
-    );
+    const data = await loadBodyRequest(req);
+    if (!data)
+      return createApiResponse({ message: "Invalid request body" }, 400);
+    return await handleCreateCategory(data);
   } catch (error) {
-    console.error("Error sending message:", error);
-    return NextResponse.json(
-      { error: "Error sending message" },
-      { status: 500 }
-    );
+    console.error(chalk.red("Error in POST handler:"), error);
+    return createApiResponse({ error: "Internal Server Error" }, 500);
   }
+}
+
+// --- Logic Handlers ---
+
+async function handleGetAllStructuredData() {
+  console.log(chalk.green("Fetching all structured data..."));
+  const allChannels = await getChannels();
+
+  const categories = new Map<string, any>();
+  const textChannels = [];
+
+  for (const channel of allChannels) {
+    if (channel.isCategory) {
+      categories.set(channel.id, { ...channel, channels: [] });
+    } else if (channel.categoryId) {
+      textChannels.push(channel);
+    }
+  }
+
+  const messagePromises = textChannels.map((ch) =>
+    getMessagesFromChannel(ch.id)
+  );
+  const allMessages = await Promise.all(messagePromises);
+
+  textChannels.forEach((channel, index) => {
+    const parentCategory = categories.get(channel.categoryId!);
+    if (parentCategory) {
+      parentCategory.channels.push({
+        ...channel,
+        messages: allMessages[index] || [],
+      });
+    }
+  });
+
+  const data = Object.fromEntries(categories);
+  return createApiResponse({ data }, 200);
+}
+
+async function handleCreateCategory(data: RequestData) {
+  if (!data.name || typeof data.name !== "string" || data.name.length > 100) {
+    return createApiResponse({ message: "Invalid category name" }, 400);
+  }
+
+  return handleDiscordApiCall(
+    () =>
+      discord.post(
+        `/guilds/${GUILD_ID}/channels`,
+        {
+          name: slugify(data.name),
+          type: CHANNEL_TYPE.GUILD_CATEGORY,
+        },
+        true
+      ),
+    "Category created successfully",
+    201
+  );
 }

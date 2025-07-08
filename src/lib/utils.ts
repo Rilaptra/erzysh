@@ -1,5 +1,4 @@
 // file: src/lib/utils.ts
-import crypto from "crypto";
 import {
   DiscordButtonComponents,
   DiscordMessagePayload,
@@ -15,38 +14,101 @@ import {
   FILE_SIZE_LIMIT,
   GUILD_ID,
 } from "./constants";
+import chalk from "chalk";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
+ * Fungsi untuk melakukan request ke Discord API.
+ * @param route Bagian endpoint API Discord (misal: "/channels/123/messages").
+ * @param method Metode HTTP (GET, POST, DELETE, PATCH).
+ * @param body Objek data yang akan dikirim (untuk POST/PATCH).
+ * @returns Promise yang resolve dengan data JSON dari respons API.
+ * @throws Error jika request gagal.
+ */
+export async function discordFetch<T>(
+  route: string,
+  method: "GET" | "POST" | "DELETE" | "PATCH" = "GET",
+  body?: Record<string, any>,
+  contentType = true
+): Promise<T> {
+  const headers: HeadersInit = {
+    Authorization: `Bot ${BOT_TOKEN}`,
+  };
+  if (body && (method === "POST" || method === "PATCH") && contentType) {
+    headers["Content-Type"] = "application/json";
+  }
+  const options: RequestInit = {
+    method,
+    headers,
+    body: !body
+      ? undefined
+      : contentType
+      ? JSON.stringify(body)
+      : (body as any),
+  };
+  const res = await fetch(`${DISCORD_API_BASE}${route}`, options);
+  if (!res.ok) {
+    const errorData = await res.json();
+    console.error(`💥 Discord API Error [${res.status}]: ${errorData.message}`);
+    throw new Error(`Error (${res.status}): ${errorData.message}`);
+  }
+  if (res.headers.get("content-type")?.includes("application/json"))
+    return await res.json();
+  return null as T;
+}
+
+export const discord = {
+  /**
+   * Melakukan request GET ke Discord API.
+   * @param route Bagian endpoint API Discord.
+   */
+  get: <T>(route: string) => discordFetch<T>(route, "GET"),
+
+  /**
+   * Melakukan request POST ke Discord API.
+   * @param route Bagian endpoint API Discord.
+   * @param data Objek data yang akan dikirim sebagai body.
+   */
+  post: <T>(route: string, data: Record<string, any>, contentType?: boolean) =>
+    discordFetch<T>(route, "POST", data, contentType),
+
+  /**
+   * Melakukan request DELETE ke Discord API.
+   * @param route Bagian endpoint API Discord.
+   */
+  delete: <T>(route: string) => discordFetch<T>(route, "DELETE"),
+
+  /**
+   * Melakukan request PATCH ke Discord API.
+   * @param route Bagian endpoint API Discord.
+   * @param data Objek data yang akan dikirim sebagai body.
+   */
+  patch: <T>(route: string, data: Record<string, any>, contentType?: boolean) =>
+    discordFetch<T>(route, "PATCH", data, contentType),
+};
+
+/**
  * Mengirim pesan ke channel Discord.
  * @param channelId ID channel tujuan.
  * @param options Opsi untuk pesan yang akan dikirim (konten, embed, file, dll.).
- * @returns Respons dari Discord API jika berhasil.
+ * @returns Promise yang resolve dengan data JSON dari respons API.
  * @throws Error jika gagal mengirim pesan.
  */
 export async function sendMessage(
   channelId: string,
-  options: SendMessageOptions & { edit?: boolean; messageID?: string }
+  options: SendMessageOptions & { edit?: boolean; messageId?: string }
 ): Promise<DiscordPartialMessageResponse> {
-  const url = `${DISCORD_API_BASE}/channels/${channelId}/messages${
-    options.edit ? `/${options.messageID}` : ""
+  const route = `/channels/${channelId}/messages${
+    options.edit ? `/${options.messageId}` : ""
   }`;
   const payload: DiscordMessagePayload = {};
   const formData = new FormData();
   let hasFiles = false;
 
-  // --- 1. Persiapan Payload JSON ---
-  // Kita bisa pakai destructuring dan spread operator biar lebih ringkas
-  const {
-    content,
-    embeds,
-    components,
-    files,
-    ...restOptions // Mengambil semua opsi lain yang ada di SendMessageOptions
-  } = options;
+  const { content, embeds, components, files, ...restOptions } = options;
 
   if (content) payload.content = content;
   if (embeds) payload.embeds = embeds;
@@ -60,15 +122,14 @@ export async function sendMessage(
   if (restOptions.sticker_ids !== undefined)
     payload.sticker_ids = restOptions.sticker_ids;
 
-  // Transformasi components agar sesuai format Discord API
   if (components && components.length > 0) {
     payload.components = [
       {
-        type: 1, // Action Row
+        type: 1,
         components: components.map(
           ({ label, url, disabled }: DiscordButtonComponents) => ({
-            type: 2, // Button
-            style: 5, // Link button style
+            type: 2,
+            style: 5,
             label,
             url,
             disabled,
@@ -78,95 +139,69 @@ export async function sendMessage(
     ];
   }
 
-  // --- 2. Penanganan File dan FormData ---
   if (files && files.length > 0) {
     hasFiles = true;
-    payload.attachments = []; // Inisialisasi attachments di payload
+    payload.attachments = [];
     files.forEach((file, index) => {
       const blob = new Blob([file.buffer], {
         type: "application/octet-stream",
       });
       formData.append(`files[${index}]`, blob, file.name);
-
       payload.attachments!.push({
         id: index.toString(),
         filename: file.name,
       });
     });
-    // Append payload JSON ke FormData hanya jika ada file
     formData.append("payload_json", JSON.stringify(payload));
   }
 
-  // --- 3. Konfigurasi Fetch Request ---
-  const fetchOptions: RequestInit = {
-    method: options.edit ? "PATCH" : "POST",
-    headers: {
-      Authorization: `Bot ${BOT_TOKEN}`,
-      // Content-Type tidak perlu diatur manual untuk FormData, fetch akan otomatis menambahkannya
-      // Tapi untuk JSON biasa, perlu diset
-      ...(hasFiles ? {} : { "Content-Type": "application/json" }),
-    },
-    body: hasFiles ? formData : JSON.stringify(payload),
-  };
-
-  // --- 4. Eksekusi dan Penanganan Error ---
   try {
-    const response = await fetch(url, fetchOptions);
+    const result = await (options.edit
+      ? hasFiles
+        ? discord.patch<DiscordPartialMessageResponse>(route, formData, false)
+        : discord.patch<DiscordPartialMessageResponse>(route, payload)
+      : hasFiles
+      ? discord.post<DiscordPartialMessageResponse>(route, formData, false) // `false` untuk contentType karena FormData otomatis
+      : discord.post<DiscordPartialMessageResponse>(route, payload));
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(
-        `[Discord API Error] Failed to send message: ${response.status} - ${errorData.message}`
-      );
-      throw new Error(
-        `Failed to send message to Discord: ${errorData.message}`
-      );
-    }
-
-    return await response.json();
+    return result;
   } catch (error) {
     console.error("[Runtime Error] Error sending message to Discord:", error);
     throw error;
   }
 }
 
+/**
+ * Mengedit pesan di channel Discord.
+ * @param channelId ID channel tujuan.
+ * @param messageId ID pesan yang akan diedit.
+ * @param options Opsi untuk pesan yang akan diedit.
+ * @returns Respons dari Discord API jika berhasil.
+ * @throws Error jika gagal mengedit pesan.
+ */
 export async function editMessage(
   channelId: string,
   messageId: string,
   options: SendMessageOptions
 ): Promise<DiscordPartialMessageResponse> {
+  // Langsung pakai fungsi sendMessage dengan opsi edit
   return await sendMessage(channelId, {
     ...options,
-    messageID: messageId,
+    messageId,
     edit: true,
   });
 }
 
+/**
+ * Mendapatkan daftar channel dari guild.
+ * @returns Array of DiscordPartialChannelResponse.
+ * @throws Error jika gagal mengambil channel.
+ */
 export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
-  const url = `${DISCORD_API_BASE}/guilds/${GUILD_ID}/channels`;
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bot ${BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(
-        `Discord API Error: ${response.status} - ${errorData.message}`
-      );
-      return errorData.message;
-    }
-
-    const channels = (await response.json()) as {
-      parent_id: string;
-      id: string;
-      name: string;
-      type: number;
-    }[];
+    const channels = await discord.get<
+      { parent_id: string; id: string; name: string; type: number }[]
+    >(`/guilds/${GUILD_ID}/channels`);
 
     // Mapping channel biar lebih gampang dibaca
     const formattedChannels = channels.map((channel) => {
@@ -181,179 +216,117 @@ export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
         id: channel.id,
         name: channel.name,
         isCategory: channel.type === 4,
-        type: channel.type, // 0: text, 2: voice, 4: category, etc.
+        type: channel.type,
         categoryId: channel.parent_id || null,
         category: parentName,
-        channel,
       };
     });
 
     return formattedChannels;
   } catch (error) {
     console.error("Error fetching channels:", error);
-    return [];
+    throw error; // Propagate error
   }
 }
 
+/**
+ * Mendapatkan semua channel yang berada di bawah satu kategori (parent).
+ * Fungsi ini memanfaatkan `getChannels()` untuk efisiensi agar tidak melakukan API call berulang.
+ * @param parentId ID dari channel kategori (parent).
+ * @returns Promise yang resolve dengan array channel yang difilter.
+ * @throws Error jika gagal mengambil data channel awal dari `getChannels()`.
+ */
+export async function getChannelsFromParentId(
+  parentId: string
+): Promise<DiscordPartialChannelResponse[]> {
+  try {
+    // 1. Panggil fungsi getChannels() yang sudah ada untuk mendapatkan semua channel di guild.
+    //    Ini lebih efisien daripada melakukan API call baru.
+    const allChannels = await getChannels();
+
+    // 2. Filter hasil dari getChannels() berdasarkan parentId yang diberikan.
+    //    Kita hanya ambil channel yang properti `categoryId`-nya cocok.
+    const filteredChannels = allChannels.filter(
+      (channel) => channel.categoryId === parentId && !channel.isCategory
+    );
+
+    // 3. Kembalikan array channel yang sudah difilter.
+    //    Jika tidak ada channel di bawah parentId itu, ini akan mengembalikan array kosong [].
+    return filteredChannels;
+  } catch (error) {
+    // Menangkap error yang mungkin dilempar oleh getChannels()
+    console.error(
+      chalk.red(
+        `[Runtime Error] Gagal mengambil channel untuk parent ID: ${parentId}`
+      ),
+      error
+    );
+    // Melempar kembali error agar bisa ditangani oleh pemanggil fungsi ini.
+    throw error;
+  }
+}
+
+/**
+ * Mendapatkan detail channel berdasarkan ID.
+ * @param channelId ID channel.
+ * @returns DiscordPartialChannelResponse atau undefined jika tidak ditemukan/error.
+ * @throws Error jika gagal mengambil channel.
+ */
 export async function getChannel(
   channelId: string
-): Promise<DiscordPartialChannelResponse | void> {
-  const url = `${DISCORD_API_BASE}/channels/${channelId}`;
+): Promise<DiscordPartialChannelResponse> {
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bot ${BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const { id, name, parent_id, type } = await discord.get<{
+      parent_id: string;
+      id: string;
+      name: string;
+      type: number;
+    }>(`/channels/${channelId}`);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(
-        `Discord API Error: ${response.status} - ${errorData.message}`
-      );
-      // Mengembalikan pesan error agar bisa ditangani di bagian pemanggil
-      console.error({ error: errorData.message, status: response.status });
-      return;
-    }
-
-    const channel = await response.json();
-
-    // Untuk memastikan formatnya mirip dengan getChannels, kita tambahkan parentName jika ada
     const formattedChannel = {
-      id: channel.id,
-      name: channel.name,
-      isCategory: channel.type === 4,
-      type: channel.type,
-      categoryId: channel.parent_id || null,
-      channel: channel, // Mengembalikan object channel asli juga
+      id,
+      name,
+      isCategory: type === 4,
+      type,
+      categoryId: parent_id || null,
     } as DiscordPartialChannelResponse;
 
     return formattedChannel;
   } catch (error) {
     console.error(`Error fetching channel ${channelId}:`, error);
-    return;
+    throw error;
   }
 }
 
-export async function getMessagesFromChannel(
-  channelId: string
-): Promise<DiscordPartialMessageResponse[] | null> {
-  const url = `${DISCORD_API_BASE}/channels/${channelId}/messages`;
+/**
+ * Mendapatkan pesan-pesan dari sebuah channel.
+ * @param channelId ID channel.
+ * @returns Array of DiscordPartialMessageResponse atau null jika error.
+ * @throws Error jika gagal mengambil pesan.
+ */
+export async function getMessagesFromChannel(channelId: string): Promise<
+  {
+    attachments: {
+      url: string;
+      filename: string;
+      size: number;
+    }[];
+    id: string;
+    content: any;
+    edited_timestamp: string | null;
+    timestamp: string;
+  }[]
+> {
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bot ${BOT_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error(
-        `Discord API Error: ${response.status} - ${errorData.message}`
-      );
-      return null;
-    }
-
-    const messages = (
-      (await response.json()) as DiscordPartialMessageResponse[]
-    ).map(
-      ({
-        author,
-        channel_id,
-        content,
-        embeds,
-        attachments,
-        timestamp,
-        edited_timestamp,
-        id,
-      }) => ({
-        author: {
-          username: author.username,
-          discriminator: author.discriminator,
-          id: author.id,
-          global_name: author.global_name,
-          bot: author.bot,
-          system: author.system,
-        },
-        channel_id,
-        content,
-        embeds,
-        attachments: attachments.map((attachment) => ({
-          id: attachment.id,
-          filename: attachment.filename,
-          size: attachment.size,
-          url: attachment.url,
-        })),
-        timestamp,
-        edited_timestamp,
-        id,
-      })
+    const messages = await discord.get<DiscordPartialMessageResponse[]>(
+      `/channels/${channelId}/messages`
     );
-    return messages;
-    // return await response.json();
+
+    return messages.map((msg) => sanitizeMessage(msg));
   } catch (error) {
     console.error("Error fetching messages:", error);
-    return null;
+    throw error;
   }
-}
-
-/**
- * Encrypts a string using AES-256-CBC.
- *
- * @param content The string to encrypt.
- * @param key The 32-character key used for encryption.
- * @returns The encrypted string, formatted as a concatenation of the initialization vector (hex) and the encrypted content (hex).
- * @throws Error if the key is invalid.
- */
-export function encData(content: string, key: string): string {
-  if (!key || key.length !== 32) {
-    throw new Error("Encryption key must be 32 characters for AES-256.");
-  }
-
-  const IV_LENGTH = 16; // For AES-256-CBC
-  const encryptionKey = Buffer.from(key, "utf8");
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", encryptionKey, iv);
-
-  let encrypted = cipher.update(content, "utf8", "hex");
-  encrypted += cipher.final("hex");
-
-  return iv.toString("hex") + ":" + encrypted;
-}
-
-/**
- * Decrypts a string that was previously encrypted by encData.
- *
- * @param encryptedContent The string to decrypt.
- * @param key The 32-character key used for encryption.
- * @returns The decrypted string.
- * @throws Error if the key is invalid or if the encrypted string is malformed.
- */
-
-export function decData(encryptedContent: string, key: string): string {
-  if (!key || key.length !== 32) {
-    throw new Error("Decryption key must be 32 characters for AES-256.");
-  }
-
-  const parts = encryptedContent.split(":");
-  if (parts.length !== 2) {
-    throw new Error("Invalid encrypted string format.");
-  }
-
-  const iv = Buffer.from(parts[0], "hex");
-  const encryptedText = parts[1];
-
-  const decryptionKey = Buffer.from(key, "utf8");
-  const decipher = crypto.createDecipheriv("aes-256-cbc", decryptionKey, iv);
-
-  let decrypted = decipher.update(encryptedText, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-
-  return decrypted;
 }
 
 export function fileAttachmentsBuilder({
@@ -380,10 +353,45 @@ export function fileAttachmentsBuilder({
         (isChunked ? `chunk_${i + 1}_${fileName}` : fileName) +
         (/\.\w+$/.test(fileName) ? "" : ".json"),
       buffer: Buffer.from(chunk),
-      // Tambahkan properti 'description' hanya jika file dipecah (isChunked)
       ...(isChunked && { description: `Chunk ${i + 1} of ${totalChunks}` }),
     });
   }
 
   return attachments;
+}
+
+export function sanitizeMessage(data: DiscordPartialMessageResponse) {
+  try {
+    const parsedBody = JSON.parse(
+      data.content.replace(/```(json)?/g, "").trim()
+    );
+    return {
+      attachments: data.attachments.map(({ url, filename, size }) => ({
+        url,
+        filename,
+        size,
+      })),
+      id: data.id,
+      content: parsedBody,
+      edited_timestamp: data.edited_timestamp,
+      timestamp: data.timestamp,
+    };
+  } catch (error) {
+    console.warn(
+      chalk.yellow(
+        "Warning: Failed to parse message content, returning as string."
+      )
+    );
+    return {
+      attachments: data.attachments.map(({ url, filename, size }) => ({
+        url,
+        filename,
+        size,
+      })),
+      id: data.id,
+      content: data.content,
+      edited_timestamp: data.edited_timestamp,
+      timestamp: data.timestamp,
+    };
+  }
 }
