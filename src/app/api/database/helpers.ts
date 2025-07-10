@@ -5,8 +5,11 @@ import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server"; // NextRequest is used by loadBodyRequest
 
 // --- Shared Constants ---
-// Assuming ACTIVITY_LOG_CHANNEL_ID is still from constants if not defined here
-import { ACTIVITY_LOG_CHANNEL_ID } from "@/lib/constants";
+// Import MESSAGE_LAYOUT which contains the channelID for activity log
+import { MESSAGE_LAYOUT } from "@/lib/constants";
+
+// Use MESSAGE_LAYOUT.channelID where ACTIVITY_LOG_CHANNEL_ID was used
+const ACTIVITY_LOG_CHANNEL_ID = MESSAGE_LAYOUT.channelID;
 
 export enum CHANNEL_TYPE {
   GUILD_TEXT = 0,

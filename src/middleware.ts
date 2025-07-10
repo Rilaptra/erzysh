@@ -1,7 +1,7 @@
 // src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyAuth } from './lib/authUtils'; // Ensure path is correct
+import { verifyAuth } from '@/lib/authUtils'; // Corrected path
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
