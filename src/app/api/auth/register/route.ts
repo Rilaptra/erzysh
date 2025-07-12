@@ -5,9 +5,9 @@ import { v4 as uuidv4 } from "uuid";
 import {
   getUsersData,
   addUserData,
-  UserData,
   updateUserData,
 } from "../../database/helpers";
+import { UserData } from "@/types";
 
 // Type guard for Node.js errors
 export async function POST(req: NextRequest) {
