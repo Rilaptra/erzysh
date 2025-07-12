@@ -1,12 +1,32 @@
 // /api/database/helpers.ts
-import { discord, editMessage } from "@/lib/utils"; // Added discord for direct use in activity log
-import { RequestData } from "@/types";
+import {
+  discord,
+  editMessage,
+  sanitizeMessage,
+  sendMessage,
+} from "@/lib/utils"; // Added discord for direct use in activity log
+import {
+  DiscordCategory,
+  DiscordChannel,
+  DiscordMessage,
+  DiscordPartialMessageResponse,
+  RequestData,
+  UserData,
+} from "@/types";
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server"; // NextRequest is used by loadBodyRequest
 
 // --- Shared Constants ---
 // Import MESSAGE_LAYOUT which contains the channelID for activity log
-import { MESSAGE_LAYOUT } from "@/lib/constants";
+import { MESSAGE_LAYOUT, USERS_DATA_CHANNEL_ID } from "@/lib/constants";
+import {
+  ApiDbErrorResponse,
+  ApiDbModifyMessageResponse,
+  GetApiDatabaseCategoryMessagesResponse,
+  GetApiDatabaseChannelMessagesResponse,
+  GetApiDatabaseMessageResponse,
+  GetApiDatabaseResponse,
+} from "@/types/api-db-response";
 
 // Use MESSAGE_LAYOUT.channelID where ACTIVITY_LOG_CHANNEL_ID was used
 const ACTIVITY_LOG_CHANNEL_ID = MESSAGE_LAYOUT.channelID;
@@ -26,54 +46,76 @@ export interface MessageMetadata {
   [key: string]: any; // Allow other properties if necessary
 }
 
-
 // --- Shared Helper Functions ---
 
-export function createApiResponse(data: object, status: number): NextResponse {
+export function createApiResponse<
+  T extends
+    | ApiDbErrorResponse
+    | GetApiDatabaseResponse
+    | GetApiDatabaseCategoryMessagesResponse
+    | GetApiDatabaseChannelMessagesResponse
+    | GetApiDatabaseMessageResponse,
+>(data: T, status: number): NextResponse<T> {
   return NextResponse.json(data, {
     status,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-export async function handleDiscordApiCall(
-  apiCall: () => Promise<any>,
+export async function handleDiscordApiCall<
+  T extends
+    | DiscordMessage
+    | DiscordChannel
+    | DiscordCategory
+    | DiscordPartialMessageResponse,
+>(
+  apiCall: () => Promise<T>,
   successMessage: string,
-  successStatus: number = 200
-): Promise<NextResponse> {
+  successStatus: number = 200,
+) {
   try {
     const result = await apiCall();
-    const responseBody = result && typeof result === 'object' ? result : { message: successMessage, details: result };
-    return createApiResponse(responseBody, successStatus);
+    const responseBody = result && {
+      message: successMessage,
+      details: {
+        id: result?.id,
+        name: "name" in result ? result.name : undefined,
+      },
+    };
+    return createApiResponse<ApiDbModifyMessageResponse>(
+      responseBody,
+      successStatus,
+    );
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || "Discord API Error";
+    const errorMessage =
+      error.response?.data?.message || error.message || "Discord API Error";
     const errorStatus = error.response?.status || 500;
     console.error(
       chalk.red(`Discord API Call Failed (Status: ${errorStatus}):`),
       errorMessage,
-      error.response?.data?.errors || error.response?.data || "" // Log more details
+      error.response?.data?.errors || error.response?.data || "", // Log more details
     );
-    return createApiResponse(
+    return createApiResponse<ApiDbErrorResponse | ApiDbModifyMessageResponse>(
       {
         message: "An error occurred while communicating with Discord.",
         error: errorMessage,
         details: error.response?.data?.errors || error.response?.data,
       },
-      errorStatus
+      errorStatus,
     );
   }
 }
 
 export async function loadBodyRequest(
-  req: NextRequest // Changed from Request to NextRequest for consistency if needed, or use global Request
+  req: NextRequest, // Changed from Request to NextRequest for consistency if needed, or use global Request
 ): Promise<RequestData | null> {
   try {
     const body = await req.json();
     // Assuming body.data is not the structure, but body itself is RequestData or contains it.
     // If RequestData is the whole body:
-    return body as RequestData;
+    // return body as RequestData;
     // If RequestData is under a 'data' property:
-    // return (body.data as RequestData) || null;
+    return (body.data as RequestData) || null;
   } catch (error) {
     console.error(chalk.yellow("Could not parse request body as JSON."), error);
     return null;
@@ -81,7 +123,7 @@ export async function loadBodyRequest(
 }
 
 export function slugify(text: string): string {
-  if (typeof text !== 'string') return '';
+  if (typeof text !== "string") return "";
   return text
     .toString() // Ensure it's a string
     .toLowerCase()
@@ -91,14 +133,13 @@ export function slugify(text: string): string {
     .replace(/--+/g, "-"); // Replace multiple - with single -
 }
 
-
 // Updated to use discord.post and include userID
 export async function updateActivityLog(
   name: string,
   size: number,
   categoryId: string,
   channelId: string,
-  userID?: string // userID is now optional
+  userID?: string, // userID is now optional
 ) {
   if (!ACTIVITY_LOG_CHANNEL_ID) {
     // console.warn(chalk.yellow("ACTIVITY_LOG_CHANNEL_ID not set. Skipping activity log."));
@@ -120,51 +161,142 @@ export async function updateActivityLog(
     // console.log(chalk.blue("Activity log updated with new entry."));
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message;
-    console.error(chalk.red("CRITICAL: Failed to post to activity log channel!"), errorMessage);
+    console.error(
+      chalk.red("CRITICAL: Failed to post to activity log channel!"),
+      errorMessage,
+    );
   }
 }
 
+// Example user data
+// {
+//     "userID": "7a9153a0-5a97-4671-a81b-9f25811516aa",
+//     "username": "erzysh",
+//     "password_hash": "$2b$10$f2Us6E.9X2GNecsle2j6xOgIrOWAkDLmG3zhHKWrgsKnGfPMj5Cnq",
+//     "is_admin": true,
+//     "databases": {"1393568988474376303": ["1393569017150836879"]},
+// }
 
-/**
- * Parses the string content of a Discord message to extract structured metadata.
- * Expects metadata to be in a JSON code block.
- * E.g., ```json
- * {
- *   "lastUpdate": "2023-10-27T10:00:00.000Z",
- *   "name": "my-data-file",
- *   "size": 1024,
- *   "userID": "user123"
- * }
- * ```
- * @param content The string content of the Discord message.
- * @returns The parsed metadata object, or null if parsing fails or no block is found.
- */
-export function parseMessageContent(content: string | undefined | null): MessageMetadata | null {
-  if (!content) {
-    return null;
+// Simple in-memory cache for user data
+export let userCache: Map<string, UserData> | null = null;
+export let updated = false;
+let lastFetchTime: number | null = null;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+
+export async function getUsersData(): Promise<Map<string, UserData>> {
+  const now = Date.now();
+
+  // Check if cache is valid
+  if (
+    userCache &&
+    lastFetchTime &&
+    now - lastFetchTime < CACHE_DURATION_MS &&
+    !updated
+  ) {
+    // console.log(chalk.blue("Returning cached user data."));
+    return userCache;
   }
 
-  const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/; // Regex to find JSON code blocks
-  const match = content.match(jsonBlockRegex);
+  // Cache is invalid or doesn't exist, fetch data
+  console.log(chalk.blue("Fetching user data from Discord..."));
+  const users = new Map<string, UserData>();
+  try {
+    const res = await discord.get<DiscordMessage[]>(
+      `/channels/${USERS_DATA_CHANNEL_ID}/messages`,
+    );
 
-  if (match && match[1]) {
-    try {
-      const parsed = JSON.parse(match[1].trim());
-      return parsed as MessageMetadata;
-    } catch (error) {
-      console.warn(chalk.yellow("Failed to parse JSON from message content:"), match[1], error);
-      return null;
+    if (!res) {
+      console.error(
+        chalk.red("Failed to fetch user data from Discord (empty response)."),
+      );
+      // Return empty map, do not cache on failure
+      return users;
     }
+
+    const messages = res.map((msg) => sanitizeMessage(msg, true));
+    const parsedContent = messages.map((msg) => msg.content as UserData);
+
+    parsedContent.forEach((user) => {
+      if (!user) return;
+      if (user.userID) users.set(user.userID, user);
+      if (user.username && !users.has(user.username))
+        users.set(user.username, user);
+    });
+
+    // Update cache and timestamp on successful fetch
+    userCache = users;
+    lastFetchTime = now;
+    updated = false;
+    // console.log(chalk.blue("User data fetched and cached."));
+
+    return users;
+  } catch (error: any) {
+    console.error(chalk.red("Error fetching user data:"), error.message);
+    // Return empty map on error, do not update cache
+    return new Map<string, UserData>();
   }
-  // Fallback for content that might be just the JSON string without backticks (less ideal)
-  // try {
-  //   const parsed = JSON.parse(content);
-  //   // Basic check if it looks like our metadata
-  //   if (parsed && (parsed.name || parsed.userID || parsed.lastUpdate)) {
-  //       return parsed as MessageMetadata;
-  //   }
-  // } catch (e) {
-  //   // Not a simple JSON string
-  // }
-  return null;
+}
+
+// save user data to Discord channel
+export async function addUserData(
+  user: UserData,
+): Promise<DiscordPartialMessageResponse | void> {
+  if (!USERS_DATA_CHANNEL_ID) {
+    console.error(
+      chalk.red("USERS_DATA_CHANNEL_ID not set. Cannot save user data."),
+    );
+    return;
+  }
+
+  try {
+    const content = JSON.stringify(user);
+    const message = await sendMessage(USERS_DATA_CHANNEL_ID, { content });
+    if (!message || !message.id) {
+      throw new Error("Failed to save user data: No message ID returned.");
+    }
+    updated = true;
+    return message;
+    // console.log(chalk.blue(`User data for ${user.username} saved successfully.`));
+  } catch (error: any) {
+    console.error(
+      chalk.red("Error saving user data to Discord:"),
+      error.message,
+    );
+  }
+}
+
+// update user data in Discord channel
+export async function updateUserData(
+  userID: string,
+  updates: Partial<UserData>,
+  messageId: DiscordMessage["id"],
+): Promise<void> {
+  if (!USERS_DATA_CHANNEL_ID) {
+    console.error(
+      chalk.red("USERS_DATA_CHANNEL_ID not set. Cannot update user data."),
+    );
+    return;
+  }
+
+  try {
+    const users = await getUsersData();
+    const user = users.get(userID);
+    if (!user) {
+      console.error(chalk.red(`User with ID ${userID} not found.`));
+      return;
+    }
+
+    // Update user properties
+    Object.assign(user, updates);
+    const content = JSON.stringify(user);
+    editMessage(USERS_DATA_CHANNEL_ID, messageId, {
+      content,
+    });
+
+    updated = true;
+
+    // console.log(chalk.blue(`User data for ${user.username} updated successfully.`));
+  } catch (error: any) {
+    console.error(chalk.red("Error updating user data:"), error.message);
+  }
 }

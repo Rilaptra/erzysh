@@ -1,89 +1,177 @@
+// src/app/register/page.tsx
 "use client";
 
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation'; // Updated import for App Router
+import { useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useGSAP } from "@gsap/react";
+import gsap from "gsap";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const container = useRef(null);
   const router = useRouter();
 
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setError(null);
-    setSuccessMessage(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    if (!username || !password) {
-      setError("Username and password are required.");
+  // Animasi
+  useGSAP(
+    () => {
+      gsap.from(".auth-card", {
+        opacity: 0,
+        y: 50,
+        duration: 0.8,
+        ease: "power3.out",
+      });
+      // Animasi background sama seperti di landing page
+      gsap.to(".gsap-blob-1", {
+        x: "random(-150, 150)",
+        y: "random(-100, 100)",
+        scale: 1.2,
+        duration: 8,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+      gsap.to(".gsap-blob-2", {
+        x: "random(-100, 100)",
+        y: "random(-150, 150)",
+        scale: 1.1,
+        duration: 10,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+    },
+    { scope: container },
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccessMessage(data.message || 'Registration successful! Redirecting to login...');
-        // Clear form
-        setUsername('');
-        setPassword('');
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
-      } else {
-        setError(data.message || 'Registration failed. Please try again.');
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create account.");
       }
+
+      // Jika berhasil, redirect ke halaman login untuk sign in
+      router.push("/login");
     } catch (err) {
-      console.error('Registration request failed:', err);
-      setError('An unexpected error occurred. Please try again.');
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h1>Register</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="username" style={{ display: 'block', marginBottom: '5px' }}>Username</label>
-          <input
-            type="text"
-            id="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-          />
-        </div>
-        <div style={{ marginBottom: '15px' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: '5px' }}>Password</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-          />
-        </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        {successMessage && <p style={{ color: 'green' }}>{successMessage}</p>}
-        <button type="submit" style={{ width: '100%', padding: '10px', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-          Register
-        </button>
-      </form>
-      <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        Already have an account? <a href="/login" style={{ color: '#0070f3' }}>Login here</a>
-      </p>
-    </div>
+    <main
+      ref={container}
+      className="bg-dark-shale relative flex min-h-screen items-center justify-center overflow-hidden p-4"
+    >
+      {/* Background Animasi */}
+      <div className="absolute inset-0 z-0">
+        <div className="gsap-blob-1 bg-teal-muted/20 absolute top-1/4 left-1/4 h-72 w-72 rounded-full blur-3xl filter"></div>
+        <div className="gsap-blob-2 bg-gunmetal/50 absolute top-1/2 right-1/4 h-56 w-56 rounded-full blur-3xl filter"></div>
+      </div>
+
+      <Card className="auth-card bg-gunmetal/50 border-gunmetal text-off-white z-10 w-full max-w-sm backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Create an Account</CardTitle>
+          <CardDescription className="text-off-white/70">
+            Enter your details to get started.
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="Choose a username"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bg-dark-shale border-teal-muted/30 focus:border-teal-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-dark-shale border-teal-muted/30 focus:border-teal-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-dark-shale border-teal-muted/30 focus:border-teal-muted"
+              />
+            </div>
+            {error && (
+              <p className="text-sm font-medium text-red-500">{error}</p>
+            )}
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button
+              type="submit"
+              className="bg-teal-muted text-dark-shale hover:bg-teal-muted/90 mt-4 w-full"
+              disabled={loading}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
+            </Button>
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="text-teal-muted hover:text-teal-muted/80 underline"
+              >
+                Sign In
+              </Link>
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
+    </main>
   );
 }

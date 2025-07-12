@@ -8,9 +8,16 @@ import {
   discord,
   sanitizeMessage,
   getChannelsFromParentId,
-  DiscordMessage, // Added for better type safety
+  processMessage,
 } from "@/lib/utils";
-import { DiscordPartialMessageResponse, RequestData } from "@/types"; // DiscordPartialMessageResponse might be less needed now
+import type {
+  RequestData,
+  DiscordMessage,
+  DiscordChannel,
+  UserData,
+  DiscordCategory,
+  DiscordPartialMessageResponse,
+} from "@/types";
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -20,104 +27,112 @@ import {
   slugify,
   updateActivityLog,
   CHANNEL_TYPE,
-  parseMessageContent, // Import this helper
+  updateUserData,
+  getUsersData,
 } from "../helpers";
+import {
+  ApiDbGetCategoryMessagesResponse,
+  GetApiDatabaseCategoryMessagesResponse,
+  GetApiDatabaseChannelMessagesResponse,
+  GetApiDatabaseMessageResponse,
+} from "@/types/api-db-response";
 
 // --- Helper to get user info from headers ---
 function getAuthInfo(req: NextRequest) {
-  const userID = req.headers.get("x-user-id");
-  const isAdmin = req.headers.get("x-user-is-admin") === "true";
-  // Middleware should ensure userID is present, but good to have a fallback check or rely on middleware's strictness
+  const userID = req.cookies.get("x-user-id")?.value;
   if (!userID) {
-    console.error(chalk.red("Auth Error: User ID not found in request headers."));
-    // This indicates a potential issue with middleware setup or request flow if reached.
-    // Depending on strictness, could throw error or return a specific response.
-    // For now, let API handlers proceed, they might have public access paths or specific error handling.
+    console.error(
+      chalk.red("Auth Error: User ID not found in request headers."),
+    );
+    throw new Error("Auth Error: User ID not found in request headers.");
   }
-  return { userID, isAdmin };
+  return { userID };
 }
-
 
 // --- Main HTTP Handlers ---
 
 export async function GET(
-  req: NextRequest, // Changed _req to req to access headers
-  { params }: { params: Promise<{ slug: string[] }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> },
 ): Promise<NextResponse> {
   try {
-    const { userID, isAdmin } = getAuthInfo(req); // Get user info, userID might be null if public access is allowed by middleware for GET
-    const slugParts = (await params).slug;
-    const categoryId = slugParts[0];
-    const channelId = slugParts[1];
-    const messageId = slugParts[2];
+    const { userID } = getAuthInfo(req);
+    const [categoryId, channelId, messageId] = (await params).slug;
+    const users = await getUsersData();
+    const user = users?.get(userID || "");
+    const isAdmin = user?.is_admin ?? false;
 
     if (messageId && channelId) {
-      const message = await discord.get<DiscordMessage>( // Use DiscordMessage for full structure
-        `/channels/${channelId}/messages/${messageId}`
+      const message = await discord.get<DiscordMessage>(
+        `/channels/${channelId}/messages/${messageId}`,
       );
-      const sanitized = sanitizeMessage(message); // sanitizeMessage should be checked if it handles full DiscordMessage appropriately
-      const messageMetadata = parseMessageContent(sanitized.content);
+      const sanitized = sanitizeMessage(message);
+      const processedMessages = processMessage(sanitized);
 
-      // Authorization: Check if the user owns the message or is an admin
-      if (!isAdmin && messageMetadata?.userID !== userID) {
-        return createApiResponse({ message: "Forbidden: You do not own this message or are not an admin." }, 403);
+      if (!isAdmin && processedMessages.userID !== userID) {
+        return createApiResponse(
+          {
+            message:
+              "Forbidden: You do not own this message or are not an admin.",
+          },
+          403,
+        );
       }
 
-      const attachmentData = (await loadAttachmentsData(sanitized.attachments)); // Pass sanitized.attachments
-      const dataToReturn = attachmentData || (messageMetadata ? "" : sanitized.content); // If no attachment, and no metadata, return raw content
-                                                                                       // if metadata exists, usually data is in attachment.
+      const attachmentData = await loadAttachmentsData(sanitized.attachments);
+      // const dataToReturn =
+      //   attachmentData || (sanitized.content ? "" : sanitized.content);
 
-      // Construct response, prioritize metadata
-      const responseData = {
-        ...(messageMetadata || {}), // Spread metadata like name, size, userID, lastUpdate
+      const responseData: GetApiDatabaseMessageResponse = {
+        ...((typeof sanitized.content === "object" && sanitized.content) || {}),
         id: sanitized.id,
-        channel_id: sanitized.channel_id,
         timestamp: sanitized.timestamp,
         edited_timestamp: sanitized.edited_timestamp,
-        // Only include 'data' if there's attachment data or if metadata implies content is elsewhere
         ...(attachmentData !== null && { data: attachmentData }),
       };
 
-      return createApiResponse(responseData, 200);
+      return createApiResponse<GetApiDatabaseMessageResponse>(
+        responseData,
+        200,
+      );
     }
 
-    if (channelId) { // Get all messages from a channel
-      let messages = await getMessagesFromChannel(channelId); // This likely returns an array of DiscordMessage
-      let processedMessages = messages.map(msg => {
-        const meta = parseMessageContent(msg.content);
-        return {
-            id: msg.id,
-            channel_id: msg.channel_id,
-            timestamp: msg.timestamp,
-            edited_timestamp: msg.edited_timestamp,
-            name: meta?.name || msg.attachments?.[0]?.filename.replace(/\.json$/, '').replace(/^(chunk_\d+_)/, '') || "untitled",
-            size: meta?.size,
-            userID: meta?.userID,
-            // attachments: msg.attachments // Decide if you want to return full attachment info
-        };
-      });
+    if (channelId) {
+      const messages = await getMessagesFromChannel(channelId);
+      const filteredMessages = isAdmin
+        ? messages
+        : messages.filter((msg) => msg.userID === userID);
 
-      if (!isAdmin) {
-        processedMessages = processedMessages.filter(msg => msg.userID === userID);
-      }
-      return createApiResponse({ data: processedMessages }, 200);
+      return createApiResponse<GetApiDatabaseChannelMessagesResponse>(
+        { data: filteredMessages },
+        200,
+      );
     }
 
-    if (categoryId) { // Get all messages from all channels in a category
-      const data = await getMessagesFromCategory(categoryId, userID, isAdmin); // Pass userID and isAdmin
-      return createApiResponse({ data }, 200);
+    if (categoryId) {
+      const data = await getMessagesFromCategory(categoryId, userID, isAdmin);
+
+      return createApiResponse<GetApiDatabaseCategoryMessagesResponse>(
+        data,
+        200,
+      );
     }
 
     return createApiResponse({ message: "Invalid request parameters" }, 400);
   } catch (error) {
     console.error(chalk.red("Error in GET handler:"), error);
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error or data not found";
-    // Check if error is due to Discord API 404 or auth issue
-    if (error instanceof Error && (error.message.includes("404") || (error as any).status === 404)) {
-        return createApiResponse({ error: "Resource not found." }, 404);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Internal Server Error or data not found";
+    if (
+      error instanceof Error &&
+      (error.message.includes("404") || (error as any).status === 404)
+    ) {
+      return createApiResponse({ error: "Resource not found." }, 404);
     }
     if (error instanceof Error && error.message.includes("User ID not found")) {
-        return createApiResponse({ error: "Authentication error." }, 401);
+      return createApiResponse({ error: "Authentication error." }, 401);
     }
     return createApiResponse({ error: errorMessage }, 500);
   }
@@ -125,26 +140,48 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> }
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
+    const { userID } = getAuthInfo(req);
+    console.log(getAuthInfo(req));
+    const users = await getUsersData();
 
     if (!data)
       return createApiResponse({ message: "Invalid request body" }, 400);
 
+    if (!userID) {
+      return createApiResponse({ message: "User ID not found" }, 401);
+    }
+
+    if (!users) {
+      return createApiResponse(
+        { message: "Data not found or internal error" },
+        500,
+      );
+    }
+
+    const user = users.get(userID);
+    if (!user) {
+      return createApiResponse(
+        { message: "Data not found or internal error" },
+        500,
+      );
+    }
+
     if (categoryId && !channelId) {
-      return handleCreateChannel(categoryId, data);
+      return handleCreateChannel(categoryId, data, user);
     }
 
     if (channelId && !messageId) {
-      return handleSendMessage(categoryId, channelId, data);
+      return handleSendMessage(categoryId, channelId, data, userID);
     }
 
     return createApiResponse(
       { message: "Invalid POST request or Message ID must not be provided" },
-      400
+      400,
     );
   } catch (error) {
     console.error(chalk.red("Error in POST handler:"), error);
@@ -154,7 +191,7 @@ export async function POST(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> }
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
@@ -163,7 +200,7 @@ export async function PATCH(
     if (!data || !data.name) {
       return createApiResponse(
         { message: "Invalid request body, name is required" },
-        400
+        400,
       );
     }
 
@@ -177,29 +214,29 @@ export async function PATCH(
       if (data.content) {
         return createApiResponse(
           { message: "Cannot update content for a channel, only a message" },
-          400
+          400,
         );
       }
-      return handleDiscordApiCall(
+      return handleDiscordApiCall<DiscordChannel>(
         () =>
-          discord.patch(
+          discord.patch<DiscordChannel>(
             `/channels/${channelId}`,
             { name: slugifiedName },
-            true
+            true,
           ),
-        "Channel updated successfully"
+        "Channel updated successfully",
       );
     }
 
     if (categoryId) {
-      return handleDiscordApiCall(
+      return handleDiscordApiCall<DiscordCategory>(
         () =>
-          discord.patch(
+          discord.patch<DiscordCategory>(
             `/channels/${categoryId}`,
             { name: slugifiedName, type: CHANNEL_TYPE.GUILD_CATEGORY },
-            true
+            true,
           ),
-        "Category updated successfully"
+        "Category updated successfully",
       );
     }
 
@@ -211,44 +248,78 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> }
+  req: NextRequest,
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
+    const { userID } = getAuthInfo(req);
+    const users = await getUsersData();
+
+    if (!userID) {
+      return createApiResponse({ message: "User ID not found" }, 401);
+    }
+
+    if (!users) {
+      return createApiResponse(
+        { message: "Data not found or internal error" },
+        500,
+      );
+    }
+
+    const user = users.get(userID);
+    if (!user) {
+      return createApiResponse(
+        { message: "Data not found or internal error" },
+        500,
+      );
+    }
 
     if (messageId && channelId) {
-      return handleDiscordApiCall(
-        () => discord.delete(`/channels/${channelId}/messages/${messageId}`),
-        "Message deleted successfully"
+      return handleDiscordApiCall<DiscordMessage>(
+        () =>
+          discord.delete<DiscordMessage>(
+            `/channels/${channelId}/messages/${messageId}`,
+          ),
+        "Message deleted successfully",
       );
     }
 
     if (channelId) {
-      return handleDiscordApiCall(
-        () => discord.delete(`/channels/${channelId}`),
-        "Channel deleted successfully"
-      );
+      return handleDiscordApiCall<DiscordChannel>(async () => {
+        const channel = await discord.delete<DiscordChannel>(
+          `/channels/${channelId}`,
+        );
+        user.databases[categoryId] = user.databases[categoryId].filter(
+          (channelID) => channelID !== channelId,
+        );
+
+        await updateUserData(userID, user, user.message_id);
+        return channel;
+      }, "Channel deleted successfully");
     }
 
     if (categoryId) {
       console.log(
-        chalk.yellow(`Deleting category ${categoryId} and its children...`)
+        chalk.yellow(`Deleting category ${categoryId} and its children...`),
       );
       const channelsToDelete = await getChannelsFromParentId(categoryId);
       console.log(
-        chalk.blue(`Found ${channelsToDelete.length} channels to delete.`)
+        chalk.blue(`Found ${channelsToDelete.length} channels to delete.`),
       );
 
       const deletePromises = channelsToDelete.map((ch) =>
-        discord.delete(`/channels/${ch.id}`)
+        discord.delete(`/channels/${ch.id}`),
       );
       deletePromises.push(discord.delete(`/channels/${categoryId}`));
 
       await Promise.all(deletePromises);
+      delete user.databases[categoryId];
+      await updateUserData(userID, user, user.message_id);
+
       return createApiResponse(
         { message: "Category and all its channels deleted successfully" },
-        200
+        200,
       );
     }
 
@@ -260,38 +331,47 @@ export async function DELETE(
         message: "Failed to delete resources.",
         error: (error as Error).message,
       },
-      500
+      500,
     );
   }
 }
 
 // --- Logic Handlers ---
 
-async function handleCreateChannel(categoryId: string, data: RequestData) {
+async function handleCreateChannel(
+  categoryId: string,
+  data: RequestData,
+  userData: UserData,
+) {
   if (!data.name || typeof data.name !== "string" || data.name.length > 100) {
     return createApiResponse({ message: "Invalid channel name" }, 400);
   }
 
-  return handleDiscordApiCall(
-    () =>
-      discord.post(
+  return handleDiscordApiCall<DiscordChannel>(
+    async () => {
+      const channel = await discord.post<DiscordChannel>(
         `/guilds/${GUILD_ID}/channels`,
         {
           name: slugify(data.name),
           parent_id: categoryId,
           type: CHANNEL_TYPE.GUILD_TEXT,
         },
-        true
-      ),
+        true,
+      );
+      userData.databases[categoryId].push(channel.id);
+      updateUserData(userData.userID, userData, userData.message_id);
+      return channel;
+    },
     "Channel created successfully",
-    201
+    201,
   );
 }
 
 async function handleSendMessage(
   categoryId: string,
   channelId: string,
-  data: RequestData
+  data: RequestData,
+  userID: string,
 ) {
   if (
     !data.content ||
@@ -310,10 +390,11 @@ async function handleSendMessage(
     lastUpdate: new Date().toISOString(),
     name: data.name,
     size: contentSize,
+    userID,
   };
 
   const messagePayload = {
-    content: `\`\`\`\n${JSON.stringify(key, null, 2)}\n\`\`\``,
+    content: `\`\`\`json\n${JSON.stringify(key, null, 2)}\n\`\`\``,
     files: fileAttachmentsBuilder({
       fileName: data.name,
       data: data.content,
@@ -321,20 +402,23 @@ async function handleSendMessage(
     }),
   };
 
-  const response = await handleDiscordApiCall(
+  const response = await handleDiscordApiCall<DiscordMessage>(
     async () => {
       const res = await sendMessage(channelId, messagePayload);
       if (!res) throw new Error("Failed to send message");
-      return { id: res.id, content: res.content.replace(/`/g, "").trim() };
+      return {
+        id: res.id,
+        content: res.content.replace(/`/g, "").trim(),
+      } as DiscordMessage;
     },
     "Message sent successfully",
-    201
+    201,
   );
 
   updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
     (err) => {
       console.error(chalk.yellow("Failed to update activity log:"), err);
-    }
+    },
   );
 
   return response;
@@ -344,9 +428,12 @@ async function handleUpdateMessage(
   categoryId: string,
   channelId: string,
   messageId: string,
-  data: RequestData
+  data: RequestData,
 ) {
-  if (!SUPPORTED_TYPES.includes(typeof data.content)) {
+  if (
+    typeof data.content !== "undefined" &&
+    !SUPPORTED_TYPES.includes(typeof data.content)
+  ) {
     return createApiResponse({ message: "Invalid content type" }, 400);
   }
 
@@ -357,42 +444,96 @@ async function handleUpdateMessage(
       : JSON.stringify(data.content).length);
   const files = fileAttachmentsBuilder({
     fileName: data.name,
-    data: data.content,
+    data: data.content as string,
     size: contentSize,
   });
 
-  const response = await handleDiscordApiCall(
-    () => editMessage(channelId, messageId, { files }),
-    "Message updated successfully"
+  const response = await handleDiscordApiCall<DiscordPartialMessageResponse>(
+    async () => {
+      const message = await editMessage(channelId, messageId, { files });
+      if (!message) throw new Error("Failed to update message");
+      return message;
+    },
+    "Message updated successfully",
   );
 
   updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
     (err) => {
       console.error(chalk.yellow("Failed to update activity log:"), err);
-    }
+    },
   );
 
   return response;
 }
 
-async function getMessagesFromCategory(categoryId: string) {
+/**
+ * Mendapatkan pesan-pesan dari semua channel di dalam kategori tertentu.
+ * Jika bukan admin, filter pesan berdasarkan userID.
+ * @param categoryId ID kategori yang ingin diambil pesannya.
+ * @param userID ID user yang ingin diambil pesannya jika bukan admin.
+ * @param isAdmin True jika pengguna yang mengakses adalah admin.
+ * @returns Objek yang berisi pesan-pesan dari setiap channel di dalam kategori.
+ *          Setiap key di dalam objek ini adalah ID channel, dan valuenya adalah
+ *          array pesan yang difilter berdasarkan userID.
+ */
+async function getMessagesFromCategory(
+  categoryId: string,
+  userID: string | null,
+  isAdmin: boolean,
+): Promise<ApiDbGetCategoryMessagesResponse> {
   const channels = await getChannelsFromParentId(categoryId);
-  const channelPromises = channels.map(async (channel) => {
+
+  const channelDataPromises = channels.map(async (channel) => {
     const messages = await getMessagesFromChannel(channel.id);
-    return messages ? [channel.id, messages] : null;
+
+    // Kalau tidak ada pesan, langsung return null.
+    // Ini membantu Promise.all nanti untuk filter.
+    if (!messages) {
+      return null;
+    }
+
+    // Filter pesan berdasarkan userID jika bukan admin
+    const filteredMessages = isAdmin
+      ? messages // Kalau admin, semua pesan diambil
+      : messages.filter((msg) => msg.userID === userID); // Kalau bukan admin, filter berdasarkan userID
+
+    // Jika ada pesan setelah difilter, kembalikan [channelId, pesan].
+    // Kalau tidak ada, kembalikan null untuk channel ini.
+    return filteredMessages.length > 0 ? [channel.id, filteredMessages] : null;
   });
 
-  const settledChannels = await Promise.all(channelPromises);
-  const filteredChannels = new Map(
-    settledChannels.filter(Boolean) as [string, any][]
+  // Tunggu semua Promise selesai dan saring hasil yang null
+  const validChannelData = (await Promise.all(channelDataPromises)).filter(
+    (item): item is [string, any] => item !== null, // Type guard biar TypeScript pinter
   );
-  return Object.fromEntries(filteredChannels);
+
+  // Ubah array hasil ke dalam Map untuk kemudahan akses
+  const resultMessagesMap = new Map(validChannelData);
+
+  // Kembalikan sebagai objek biasa
+  const data = Object.fromEntries(resultMessagesMap);
+  return { data };
 }
 
-async function loadAttachmentsData(attachments: { url: string }[]) {
+async function loadAttachmentsData(
+  attachments:
+    | {
+        url: string;
+        filename: string;
+        size: number;
+      }[]
+    | undefined,
+) {
+  if (!attachments || attachments.length === 0) return null;
+
   const fetchPromises = attachments.map((att) =>
-    fetch(att.url).then((res) => res.text())
+    fetch(att.url).then((res) => {
+      if (!res.ok)
+        throw new Error(`Failed to fetch attachment: ${res.statusText}`);
+      return res.text();
+    }),
   );
+
   const contents = await Promise.all(fetchPromises);
   const combinedContent = contents.join("");
 
@@ -401,8 +542,8 @@ async function loadAttachmentsData(attachments: { url: string }[]) {
   } catch {
     console.warn(
       chalk.yellow(
-        "Warning: Attachment data is not valid JSON, returning as raw string."
-      )
+        "Warning: Attachment data is not valid JSON, returning as raw string.",
+      ),
     );
     return combinedContent;
   }

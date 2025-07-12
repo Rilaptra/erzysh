@@ -1,174 +1,167 @@
+// src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-
-interface User {
-  userID: string;
-  username: string;
-  isAdmin: boolean;
-}
-
-interface MessageData {
-  id: string;
-  channel_id: string;
-  name: string;
-  size: number;
-  userID?: string;
-  lastUpdate: string;
-  // data?: any; // Sebaiknya tidak mengambil 'data' blob besar di list view umum
-}
-
-interface ChannelData {
-  id: string;
-  name: string;
-  messages: MessageData[];
-}
-
-interface CategoryData {
-  id: string;
-  name: string;
-  channels: ChannelData[];
-}
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
+import { DashboardHeader } from "@/components/Dashboard/Header";
+import { CategorySidebar } from "@/components/Dashboard/Sidebar";
+import { ChannelView } from "@/components/Dashboard/ChannelView";
+import { Loader2 } from "lucide-react";
+import type {
+  UserPayload,
+  ApiDbGetAllStructuredDataResponse,
+  ApiDbCategory,
+  ApiDbCategoryChannel,
+  DiscordCategory,
+} from "@/types";
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [databaseData, setDatabaseData] = useState<CategoryData[] | null>(null);
+  const router = useRouter();
+  const container = useRef(null);
+
+  // States
+  const [user, setUser] = useState<UserPayload | null>(null);
+  const [categories, setCategories] = useState<DiscordCategory[]>([]);
+  const [channels, setChannels] = useState<ApiDbCategoryChannel[]>([]); // Diubah untuk menyimpan data lengkap channel
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
-  useEffect(() => {
-    const fetchUserAndData = async () => {
-      setIsLoading(true);
-      setError(null);
+  // Animasi
+  useGSAP(
+    () => {
+      gsap.to(".gsap-blob-1", {
+        x: "random(-150, 150)",
+        y: "random(-100, 100)",
+        scale: 1.2,
+        duration: 8,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+      gsap.to(".gsap-blob-2", {
+        x: "random(-100, 100)",
+        y: "random(-150, 150)",
+        scale: 1.1,
+        duration: 10,
+        ease: "sine.inOut",
+        repeat: -1,
+        yoyo: true,
+      });
+    },
+    { scope: container },
+  );
 
-      // 1. Fetch user data (check authentication)
-      try {
-        const userResponse = await fetch('/api/auth/me');
-        if (!userResponse.ok) {
-          if (userResponse.status === 401) {
-            router.push('/login'); // Redirect to login if not authenticated
-            return;
-          }
-          throw new Error(`Failed to fetch user: ${userResponse.statusText}`);
-        }
-        const userData = await userResponse.json();
-        setUser(userData.user);
+  // Fungsi untuk fetch dan proses data
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // 1. Ambil data user
+      const userRes = await fetch("/api/auth/me");
+      if (!userRes.ok) throw new Error("Please log in again.");
+      const userData = await userRes.json();
+      setUser(userData);
 
-        // 2. If authenticated, fetch database data
-        if (userData.user) {
-          const dbResponse = await fetch('/api/database');
-          if (!dbResponse.ok) {
-            const dbErrorData = await dbResponse.json();
-            throw new Error(dbErrorData.message || `Failed to fetch database data: ${dbResponse.statusText}`);
-          }
-          const dbData = await dbResponse.json();
-          setDatabaseData(dbData.data); // Assuming data is under a 'data' key
+      // 2. Ambil data server dari /api/database
+      const serverDataRes = await fetch("/api/database");
+      if (!serverDataRes.ok) throw new Error("Failed to fetch server data.");
+      const serverData: ApiDbGetAllStructuredDataResponse =
+        await serverDataRes.json();
+
+      // 3. Proses data API menjadi struktur yang dibutuhkan frontend
+      const categoriesFromApi = Object.values(serverData.data);
+      const flattenedCategories: DiscordCategory[] = [];
+      const flattenedChannelsWithMessages: ApiDbCategoryChannel[] = [];
+
+      categoriesFromApi.forEach((category: ApiDbCategory) => {
+        flattenedCategories.push({
+          id: category.id,
+          name: category.name,
+          type: 4,
+          guild_id: "",
+          position: 0,
+        });
+
+        if (category.channels && Array.isArray(category.channels)) {
+          // Menyimpan seluruh objek channel, termasuk array 'messages' di dalamnya
+          flattenedChannelsWithMessages.push(...category.channels);
         }
-      } catch (err: any) {
-        console.error('Dashboard error:', err);
-        setError(err.message || 'An error occurred.');
-        if (err.message.toLowerCase().includes('authentication required')) {
-            router.push('/login');
-        }
-      } finally {
-        setIsLoading(false);
+      });
+
+      setCategories(flattenedCategories);
+      setChannels(flattenedChannelsWithMessages);
+    } catch (err) {
+      setError((err as Error).message);
+      if ((err as Error).message === "Please log in again.") {
+        router.push("/login");
       }
-    };
-
-    fetchUserAndData();
+    } finally {
+      setIsLoading(false);
+    }
   }, [router]);
 
-  const handleLogout = async () => {
-    try {
-        const response = await fetch('/api/auth/logout', { method: 'POST' });
-        if (response.ok) {
-            router.push('/login');
-        } else {
-            const data = await response.json();
-            setError(data.message || 'Logout failed.');
-        }
-    } catch (err) {
-        setError('Logout request failed.');
-    }
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSelectCategory = (id: string) => {
+    setActiveCategoryId(id);
   };
 
+  // Filter channels berdasarkan kategori aktif
+  const filteredChannels = channels.filter(
+    (ch) => ch.categoryId === activeCategoryId,
+  );
 
   if (isLoading) {
-    return <div style={{ padding: '20px' }}>Loading dashboard...</div>;
-  }
-
-  if (error && !user) { // If error and no user info (likely auth error), don't show dashboard structure
     return (
-      <div style={{ padding: '20px', color: 'red' }}>
-        <p>Error: {error}</p>
-        <p><a href="/login" style={{ color: '#0070f3' }}>Try logging in again</a></p>
+      <div className="bg-dark-shale text-off-white flex h-screen w-full items-center justify-center">
+        <Loader2 className="text-teal-muted h-8 w-8 animate-spin" />
+        <p className="ml-4">Loading Dashboard...</p>
       </div>
     );
   }
 
-  if (!user) { // Should be caught by redirect, but as a fallback
-      return <div style={{ padding: '20px' }}>Redirecting to login...</div>;
+  if (error) {
+    return (
+      <div className="bg-dark-shale flex h-screen w-full items-center justify-center text-red-500">
+        <p>Error: {error}</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1>Dashboard</h1>
-        <div>
-          <span>Welcome, {user.username}! {user.isAdmin && <b>(Admin)</b>}</span>
-          <button onClick={handleLogout} style={{ marginLeft: '15px', padding: '8px 12px' }}>Logout</button>
+    <div
+      ref={container}
+      className="bg-dark-shale text-off-white relative min-h-screen"
+    >
+      <div className="absolute inset-0 z-0">
+        <div className="gsap-blob-1 bg-teal-muted/10 absolute top-1/4 left-1/4 h-80 w-80 rounded-full blur-3xl filter"></div>
+        <div className="gsap-blob-2 bg-gunmetal/40 absolute top-1/2 right-1/4 h-72 w-72 rounded-full blur-3xl filter"></div>
+      </div>
+
+      <div className="relative z-10 flex h-screen flex-col">
+        <DashboardHeader user={user} />
+        <div className="flex flex-1 overflow-hidden">
+          <CategorySidebar
+            categories={categories}
+            activeCategoryId={activeCategoryId}
+            onSelectCategory={handleSelectCategory}
+            onCategoryCreated={fetchData}
+            onCategoryDeleted={fetchData}
+          />
+          <ChannelView
+            channels={filteredChannels}
+            activeCategoryId={activeCategoryId}
+            // Menggunakan callback yang sama untuk me-refresh semua data
+            onDataChanged={fetchData}
+            onChannelCreated={fetchData}
+            onChannelDeleted={fetchData}
+          />
         </div>
-      </header>
-
-      {error && <p style={{ color: 'red', marginBottom: '20px' }}>Error fetching data: {error}</p>}
-
-      <h2>Your Data:</h2>
-      {databaseData && databaseData.length > 0 ? (
-        databaseData.map((category) => (
-          <div key={category.id} style={{ marginBottom: '30px', padding: '15px', border: '1px solid #eee', borderRadius: '8px' }}>
-            <h3 style={{ marginTop: '0' }}>Category: {category.name} ({category.id})</h3>
-            {category.channels && category.channels.length > 0 ? (
-              category.channels.map((channel) => (
-                <div key={channel.id} style={{ marginLeft: '20px', marginBottom: '15px' }}>
-                  <h4>Channel: {channel.name} ({channel.id})</h4>
-                  {channel.messages && channel.messages.length > 0 ? (
-                    <ul style={{ listStyle: 'none', paddingLeft: '0' }}>
-                      {channel.messages.map((message) => (
-                        <li key={message.id} style={{ marginBottom: '8px', padding: '8px', background: '#f9f9f9', borderRadius: '4px' }}>
-                          <strong>{message.name}</strong> (ID: {message.id})
-                          <br />
-                          Size: {message.size} bytes, Last Update: {new Date(message.lastUpdate).toLocaleString()}
-                          {user.isAdmin && message.userID && <><br/>Owner UserID: {message.userID}</>}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>No messages in this channel.</p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p>No channels in this category.</p>
-            )}
-          </div>
-        ))
-      ) : (
-        <p>{!error ? 'No data found for your user.' : 'Could not load data.'}</p>
-      )}
-
-      {user.isAdmin && (
-        <div style={{ marginTop: '40px', padding: '20px', border: '2px dashed blue', borderRadius: '8px' }}>
-          <h2>Admin Panel</h2>
-          <p>As an admin, you can see all data. Additional admin functionalities can be added here.</p>
-          {/* Examples:
-              - Button to view all users
-              - Interface to create new categories/channels directly
-              - Interface to delete any data entry
-          */}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

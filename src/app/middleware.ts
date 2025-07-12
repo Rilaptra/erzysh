@@ -1,30 +1,33 @@
 // src/middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { verifyAuth } from '@/lib/authUtils'; // Corrected path
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { verifyAuth } from "@/lib/authUtils";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const publicApiPaths = ['/api/auth/login', '/api/auth/register'];
+  const publicApiPaths = ["/api/auth/login", "/api/auth/register"];
 
   // Allow requests to public API paths
-  if (publicApiPaths.some(path => pathname.startsWith(path))) {
+  if (publicApiPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
   // For all paths under /api/database, verify authentication
-  if (pathname.startsWith('/api/database')) {
+  if (pathname.startsWith("/api/database")) {
     const authenticatedUser = verifyAuth(request);
     if (!authenticatedUser) {
-      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+      return NextResponse.json(
+        { message: "Authentication required" },
+        { status: 401 }
+      );
     }
 
     // Add user information to request headers for API routes to access
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', authenticatedUser.userID);
-    requestHeaders.set('x-user-username', authenticatedUser.username);
-    requestHeaders.set('x-user-is-admin', String(authenticatedUser.isAdmin));
+    requestHeaders.set("x-user-id", authenticatedUser.userID);
+    requestHeaders.set("x-user-username", authenticatedUser.username);
+    requestHeaders.set("x-user-is-admin", String(authenticatedUser.isAdmin));
 
     return NextResponse.next({
       request: {
@@ -53,7 +56,7 @@ export const config = {
   // Middleware will run on these paths
   // Adjusted to primarily protect /api/database and allow auth endpoints
   matcher: [
-    '/api/database/:path*',
+    "/api/database/:path*",
     // '/dashboard/:path*', // Uncomment if you have frontend dashboard routes to protect
     // Ensure auth paths are NOT matched here if they are handled as public above
   ],

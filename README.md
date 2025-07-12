@@ -1,50 +1,79 @@
-# **API Documentation**
+# 📂 Database API Documentation
 
-This document provides a detailed specification for the API endpoints that interact with a Discord server as a backend database.
+Welcome to the API documentation for the Discord-based DBaaS. This API enables **CRUD** (Create, Read, Update, Delete) operations on a data structure comprising categories, channels, and messages.
+
+This document will guide you through the available endpoints. Let's roll!
 
 ---
 
-## `Route: /api/database`
+## 🏛️ Core Data Structures
 
-This base route handles operations related to the entire database, such as fetching all data or creating top-level categories.
+Before diving into the endpoints, it's essential to understand the core data objects frequently appearing in API responses.
 
-### **GET /**
+- `ApiDbProcessedMessage`: Represents a processed message.
+  - `id`: `string` - Unique message ID.
+  - `timestamp`: `string` - ISO-formatted timestamp when the message was created.
+  - `edited_timestamp`: `string | null` - ISO-formatted timestamp when the message was last edited.
+  - `name`: `string` - Name of the data/file.
+  - `size`: `number` (optional) - Size of the data/file.
+  - `userID`: `string` (optional) - ID of the user who sent the message.
 
-Fetches all categories, along with their associated channels and messages. This provides a complete snapshot of the database.
+- `ApiDbCategoryChannel`: Represents a channel within a category.
+  - `id`: `string` - Unique channel ID.
+  - `name`: `string` - Channel name.
+  - `type`: `number` - Discord channel type (e.g., `0` for text).
+  - `categoryId`: `string | null` - ID of the parent category.
+  - `messages`: `ApiDbProcessedMessage[]` - List of messages within the channel.
 
-- **Method:** `GET`
+- `ApiDbCategory`: Represents a category.
+  - `id`: `string` - Unique category ID.
+  - `name`: `string` - Category name.
+  - `isCategory`: `boolean` - Always `true`.
+  - `type`: `number` - Discord channel type (e.g., `4` for category).
+  - `channels`: `ApiDbCategoryChannel[]` - List of channels within the category.
 
-- **Endpoint:** `/api/database`
+- `ApiDbErrorResponse`: Standard response for errors.
+  - `message`: `string` (optional) - A more descriptive error message.
+  - `error`: `string` (optional) - A short error code or detail.
 
-- **URL Parameters:** None
+- `ApiDbSuccessMessageResponse`: Standard response for successful operations.
+  - `message`: `string` - Confirmation message for success.
 
-- **Request Body:** None
+---
 
-- **Success Response (200 OK):**
-  Returns a `data` object where each key is a category ID.
+## API Endpoints
 
+Below is a comprehensive list of available API endpoints.
+
+### 📖 **READ** Operations
+
+#### `GET /api/database`
+
+Retrieves the entire data structure of all categories and channels.
+
+- **✅ Success Response (200 OK)**
   ```json
   {
     "data": {
-      "119491...": {
-        "name": "my-first-category",
-        "id": "119491...",
+      "categoryId_1": {
+        "id": "categoryId_1",
+        "name": "Project Files",
+        "isCategory": true,
+        "type": 4,
         "channels": [
           {
-            "name": "general-data",
-            "id": "119492...",
+            "id": "channelId_1",
+            "name": "blueprints",
+            "type": 0,
+            "categoryId": "categoryId_1",
             "messages": [
               {
-                "id": "125584...",
-                "content": "Message content snippet...",
-                "attachments": [
-                  {
-                    "id": "125584...",
-                    "filename": "data.json",
-                    "size": 1234,
-                    "url": "https://cdn.discordapp.com/..."
-                  }
-                ]
+                "id": "messageId_1",
+                "timestamp": "2025-07-10T12:00:00.000Z",
+                "edited_timestamp": null,
+                "name": "gedung-a.dwg",
+                "size": 512000,
+                "userID": "user_123"
               }
             ]
           }
@@ -53,219 +82,335 @@ Fetches all categories, along with their associated channels and messages. This 
     }
   }
   ```
-
-- **Error Response (500 Internal Server Error):**
-  Returned if there's an issue fetching data from the Discord API.
-
+- **❌ Error Response (Example: 500 Internal Server Error)**
   ```json
   {
-    "error": "Internal server error while fetching Discord channels."
+    "error": "Failed to fetch structured data"
   }
   ```
 
-\<br\>
+#### `GET /api/database/{categoryId}`
 
-### **POST /**
+Retrieves all messages from all channels within a specific category.
 
-Creates a new category in the database.
-
-- **Method:** `POST`
-- **Endpoint:** `/api/database`
-- **URL Parameters:** None
-- **Request Body:**
-  Requires a `data` object containing the name for the new category. Spaces in the name will be replaced with hyphens.
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the category.
+- **✅ Success Response (200 OK)**
   ```json
   {
     "data": {
-      "name": "new project category"
+      "channelId_1": [
+        {
+          "id": "messageId_1",
+          "timestamp": "2025-07-10T12:00:00.000Z",
+          "edited_timestamp": null,
+          "name": "gedung-a.dwg"
+        }
+      ],
+      "channelId_2": null // If no messages are found after filtering
     }
   }
   ```
-- **Success Response (200 OK):**
-  Returns a success message and the data of the newly created category.
+- **❌ Error Response (Example: 404 Not Found)**
   ```json
   {
-    "message": "New Category created!",
-    "data": {
-      "name": "new-project-category",
-      "id": "125585..."
-    }
+    "error": "Category not found"
   }
   ```
-- **Error Responses:**
-  - **405 Method Not Allowed:** If `data.name` is missing or the name exceeds 100 characters.
-    ```json
-    { "message": "Invalid Request Body" }
-    ```
-  - **500 Internal Server Error:** If the Discord API fails to create the category.
-    ```json
-    { "error": "Discord API error message" }
-    ```
+
+#### `GET /api/database/{categoryId}/{channelId}`
+
+Retrieves all messages from a specific channel.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the channel.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "data": [
+      {
+        "id": "messageId_1",
+        "timestamp": "2025-07-10T12:00:00.000Z",
+        "edited_timestamp": null,
+        "name": "gedung-a.dwg",
+        "size": 512000,
+        "userID": "user_123"
+      }
+    ]
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Channel not found"
+  }
+  ```
+
+#### `GET /api/database/{categoryId}/{channelId}/{messageId}`
+
+Retrieves the details of a specific message.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the parent channel.
+  - `messageId`: `string` - The ID of the message.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "id": "messageId_1",
+    "timestamp": "2025-07-10T12:00:00.000Z",
+    "edited_timestamp": null,
+    "data": {
+      "notes": "Revisi pertama"
+    },
+    "lastUpdate": "2025-07-10T12:00:00.000Z",
+    "name": "gedung-a.dwg",
+    "size": 512000,
+    "userID": "user_123"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Message not found"
+  }
+  ```
 
 ---
 
-## `Route: /api/database/[...slug]`
+### ✍️ **CREATE** Operations
 
-This dynamic route handles operations on specific entities like categories, channels, and messages, identified by their Discord IDs in the URL slug. The slug can have one, two, or three parts: `/{categoryId}`, `/{categoryId}/{channelId}`, or `/{categoryId}/{channelId}/{messageId}`.
+#### `POST /api/database`
 
-### **GET /[...slug]**
+Creates a new category.
 
-Fetches data for a specific category or a specific channel.
-
-- **Method:** `GET`
-- **Endpoints:**
-  1.  `/api/database/{categoryId}`: Fetches all messages from all channels within the specified category.
-  2.  `/api/database/{categoryId}/{channelId}`: Fetches all messages from the specified channel.
-- **URL Parameters:**
-  - `categoryId` (string, required): The Discord ID of the category.
-  - `channelId` (string, optional): The Discord ID of the channel.
-- **Request Body:** None
-- **Success Response (200 OK):**
-  Returns a `data` object containing the fetched messages. The structure depends on the endpoint used.
-  - For `/api/database/{categoryId}`:
-    ```json
-    {
-      "data": {
-        "119492...": [
-          /* messages from channel 1 */
-        ],
-        "119493...": [
-          /* messages from channel 2 */
-        ]
-      }
-    }
-    ```
-  - For `/api/database/{categoryId}/{channelId}`:
-    ```json
-    {
-      "data": [
-        /* messages from the specific channel */
-      ]
-    }
-    ```
-- **Error Response (404 Not Found):**
-  Returned if the specified channel does not exist or has no messages.
+- **Request Body**
   ```json
-  { "message": "Channel not found" }
+  {
+    "name": "New Category Name"
+  }
+  ```
+- **✅ Success Response (201 Created)**
+  ```json
+  {
+    "message": "Category 'New Category Name' created successfully"
+  }
+  ```
+- **❌ Error Response (Example: 400 Bad Request)**
+  ```json
+  {
+    "error": "Category name is required"
+  }
   ```
 
-\<br\>
+#### `POST /api/database/{categoryId}`
 
-### **POST /[...slug]**
+Creates a new channel within an existing category.
 
-Creates a new channel within a category or sends a new message to a channel.
-
-- **Method:** `POST`
-- **Endpoints & Body:**
-  1.  **To create a new channel:**
-      - **Endpoint:** `/api/database/{categoryId}`
-      - **Body:**
-        ```json
-        {
-          "data": {
-            "name": "new-data-channel"
-          }
-        }
-        ```
-  2.  **To send a new message:**
-      - **Endpoint:** `/api/database/{categoryId}/{channelId}`
-      - **Body:** The `content` is sent as a file attachment.
-        ```json
-        {
-          "data": {
-            "name": "unique-data-key.json",
-            "content": { "key": "value", "nested": [1, 2] },
-            "size": 50
-          }
-        }
-        ```
-- **Success Responses (200 OK):**
-  - For channel creation:
-    ```json
-    {
-      "message": "Channel created successfully",
-      "data": {
-        "name": "new-data-channel",
-        "id": "125586..."
-      }
-    }
-    ```
-  - For sending a message:
-    ````json
-    {
-      "message": "Message sent successfully",
-      "data": {
-        "id": "125587...",
-        "content": "```\n{\n  \"lastUpdate\": \"...\",\n  \"name\": \"unique-data-key.json\",\n  \"size\": 50\n}\n```"
-      }
-    }
-    ````
-- **Error Responses:**
-  - **404 Not Found:** If the request body is invalid.
-  - **405 Method Not Allowed:** If the channel name is too long (\> 100 characters) or the body is invalid for channel creation.
-  - **500 Internal Server Error:** If the message fails to send or the Discord API returns an error.
-
-\<br\>
-
-### **PATCH /[...slug]**
-
-Updates the name of a category/channel or the content of a message.
-
-- **Method:** `PATCH`
-- **Endpoints & Body:**
-  1.  **To update a category name:**
-      - **Endpoint:** `/api/database/{categoryId}`
-      - **Body:**
-        ```json
-        { "data": { "name": "updated-category-name" } }
-        ```
-  2.  **To update a channel name:**
-      - **Endpoint:** `/api/database/{categoryId}/{channelId}`
-      - **Body:**
-        ```json
-        { "data": { "name": "updated-channel-name" } }
-        ```
-  3.  **To update a message's content:**
-      - **Endpoint:** `/api/database/{categoryId}/{channelId}/{messageId}`
-      - **Body:**
-        ```json
-        {
-          "data": {
-            "name": "data-key.json",
-            "content": { "updated_key": "new_value" }
-          }
-        }
-        ```
-- **Success Response (200 OK):**
-  A confirmation message is returned for the specific update operation.
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+- **Request Body**
   ```json
-  { "message": "Category/Channel/Message updated successfully" }
+  {
+    "name": "new-channel-name"
+  }
   ```
-- **Error Responses:**
-  - **400 Bad Request:** If the `content` type for a message update is invalid.
-  - **404 Not Found:** If the specified category, channel, or message doesn't exist.
-
-\<br\>
-
-### **DELETE /[...slug]**
-
-Deletes a category, channel, or a specific message.
-
-- **Method:** `DELETE`
-- **Endpoints:**
-  1.  `/api/database/{categoryId}`: Deletes the entire category.
-  2.  `/api/database/{categoryId}/{channelId}`: Deletes the channel.
-  3.  `/api/database/{categoryId}/{channelId}/{messageId}`: Deletes the message.
-- **URL Parameters:**
-  - `categoryId` (string, required): The ID of the target category.
-  - `channelId` (string, optional): The ID of the target channel.
-  - `messageId` (string, optional): The ID of the target message.
-- **Request Body:** None
-- **Success Response (200 OK):**
-  A confirmation message is returned.
+- **✅ Success Response (201 Created)**
   ```json
-  { "message": "Category/Channel/Message deleted successfully" }
+  {
+    "message": "Channel 'new-channel-name' created successfully"
+  }
   ```
-- **Error Responses:**
-  - **404 Not Found:** If the specified category, channel, or message doesn't exist.
-  - **500 Internal Server Error:** For any other exception during the deletion process.
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Category not found"
+  }
+  ```
+
+#### `POST /api/database/{categoryId}/{channelId}`
+
+Sends a new message to a specific channel.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the channel.
+- **Request Body**
+  ```json
+  {
+    "name": "data-structure.json",
+    "size": 1024,
+    "userID": "user_456",
+    "content": { "key": "value", "isValid": true }
+  }
+  ```
+
+  - `name`: `string` - The name of the data/file.
+  - `size`: `number` (optional) - The size of the data/file.
+  - `userID`: `string` (optional) - The ID of the user sending the message.
+  - `content`: `object` (optional) - Arbitrary JSON data to be stored with the message.
+- **✅ Success Response (201 Created)**
+  ```json
+  {
+    "id": "newMessageId_123",
+    "content": "{\"lastUpdate\":\"...\",\"name\":\"data-structure.json\",\"size\":1024,\"userID\":\"user_456\"}"
+  }
+  ```
+
+  - Note: The `content` field in the response is a JSON string representation of the message's metadata and content.
+- **❌ Error Response (Example: 400 Bad Request)**
+  ```json
+  {
+    "error": "Invalid request body"
+  }
+  ```
+
+---
+
+### 🔄 **UPDATE** Operations
+
+#### `PATCH /api/database/{categoryId}`
+
+Updates the name of a category.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the category to update.
+- **Request Body**
+  ```json
+  {
+    "name": "Updated Category Name"
+  }
+  ```
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Category updated successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Category not found"
+  }
+  ```
+
+#### `PATCH /api/database/{categoryId}/{channelId}`
+
+Updates the name of a channel.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the channel to update.
+- **Request Body**
+  ```json
+  {
+    "name": "updated-channel-name"
+  }
+  ```
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Channel updated successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Channel not found"
+  }
+  ```
+
+#### `PATCH /api/database/{categoryId}/{channelId}/{messageId}`
+
+Updates the content or metadata of a specific message.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the parent channel.
+  - `messageId`: `string` - The ID of the message to update.
+- **Request Body**
+  ```json
+  {
+    "name": "data-structure-rev1.json",
+    "content": { "key": "newValue", "isValid": false }
+  }
+  ```
+
+  - Fields sent in the body (e.g., `name`, `size`, `userID`, `content`) will be updated. `content` will be merged if it's an object.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Message updated successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Message not found"
+  }
+  ```
+
+---
+
+### 🗑️ **DELETE** Operations
+
+#### `DELETE /api/database/{categoryId}`
+
+Deletes a category along with all its channels and messages.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the category to delete.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Category and all its contents deleted successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Category not found"
+  }
+  ```
+
+#### `DELETE /api/database/{categoryId}/{channelId}`
+
+Deletes a channel along with all its messages.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the channel to delete.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Channel deleted successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Channel not found"
+  }
+  ```
+
+#### `DELETE /api/database/{categoryId}/{channelId}/{messageId}`
+
+Deletes a specific message.
+
+- **Path Parameters:**
+  - `categoryId`: `string` - The ID of the parent category.
+  - `channelId`: `string` - The ID of the parent channel.
+  - `messageId`: `string` - The ID of the message to delete.
+- **✅ Success Response (200 OK)**
+  ```json
+  {
+    "message": "Message deleted successfully"
+  }
+  ```
+- **❌ Error Response (Example: 404 Not Found)**
+  ```json
+  {
+    "error": "Message not found"
+  }
+  ```
