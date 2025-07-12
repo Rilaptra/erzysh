@@ -103,7 +103,7 @@ export function ChannelView({
     try {
       parsedContent = JSON.parse(newDataContent);
       setJsonError(null);
-    } catch (e) {
+    } catch {
       setJsonError("Invalid JSON format.");
       return;
     }
