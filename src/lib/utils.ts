@@ -1,13 +1,12 @@
 // file: src/lib/utils.ts
 import {
   DiscordButtonComponents,
+  DiscordMessage,
   DiscordMessagePayload,
   DiscordPartialChannelResponse,
   DiscordPartialMessageResponse,
   SendMessageOptions,
 } from "@/types";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import {
   BOT_TOKEN,
   DISCORD_API_BASE,
@@ -15,10 +14,8 @@ import {
   GUILD_ID,
 } from "./constants";
 import chalk from "chalk";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { MessageMetadata } from "@/app/api/database/helpers";
+import { ApiDbProcessedMessage } from "@/types/api-db-response";
 
 /**
  * Fungsi untuk melakukan request ke Discord API.
@@ -32,7 +29,7 @@ export async function discordFetch<T>(
   route: string,
   method: "GET" | "POST" | "DELETE" | "PATCH" = "GET",
   body?: Record<string, any>,
-  contentType = true
+  contentType = true,
 ): Promise<T> {
   const headers: HeadersInit = {
     Authorization: `Bot ${BOT_TOKEN}`,
@@ -46,8 +43,8 @@ export async function discordFetch<T>(
     body: !body
       ? undefined
       : contentType
-      ? JSON.stringify(body)
-      : (body as any),
+        ? JSON.stringify(body)
+        : (body as any),
   };
   const res = await fetch(`${DISCORD_API_BASE}${route}`, options);
   if (!res.ok) {
@@ -99,7 +96,7 @@ export const discord = {
  */
 export async function sendMessage(
   channelId: string,
-  options: SendMessageOptions & { edit?: boolean; messageId?: string }
+  options: SendMessageOptions & { edit?: boolean; messageId?: string },
 ): Promise<DiscordPartialMessageResponse> {
   const route = `/channels/${channelId}/messages${
     options.edit ? `/${options.messageId}` : ""
@@ -133,7 +130,7 @@ export async function sendMessage(
             label,
             url,
             disabled,
-          })
+          }),
         ),
       },
     ];
@@ -161,8 +158,8 @@ export async function sendMessage(
         ? discord.patch<DiscordPartialMessageResponse>(route, formData, false)
         : discord.patch<DiscordPartialMessageResponse>(route, payload)
       : hasFiles
-      ? discord.post<DiscordPartialMessageResponse>(route, formData, false) // `false` untuk contentType karena FormData otomatis
-      : discord.post<DiscordPartialMessageResponse>(route, payload));
+        ? discord.post<DiscordPartialMessageResponse>(route, formData, false) // `false` untuk contentType karena FormData otomatis
+        : discord.post<DiscordPartialMessageResponse>(route, payload));
 
     return result;
   } catch (error) {
@@ -182,7 +179,7 @@ export async function sendMessage(
 export async function editMessage(
   channelId: string,
   messageId: string,
-  options: SendMessageOptions
+  options: SendMessageOptions,
 ): Promise<DiscordPartialMessageResponse> {
   // Langsung pakai fungsi sendMessage dengan opsi edit
   return await sendMessage(channelId, {
@@ -237,7 +234,7 @@ export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
  * @throws Error jika gagal mengambil data channel awal dari `getChannels()`.
  */
 export async function getChannelsFromParentId(
-  parentId: string
+  parentId: string,
 ): Promise<DiscordPartialChannelResponse[]> {
   try {
     // 1. Panggil fungsi getChannels() yang sudah ada untuk mendapatkan semua channel di guild.
@@ -247,7 +244,7 @@ export async function getChannelsFromParentId(
     // 2. Filter hasil dari getChannels() berdasarkan parentId yang diberikan.
     //    Kita hanya ambil channel yang properti `categoryId`-nya cocok.
     const filteredChannels = allChannels.filter(
-      (channel) => channel.categoryId === parentId && !channel.isCategory
+      (channel) => channel.categoryId === parentId && !channel.isCategory,
     );
 
     // 3. Kembalikan array channel yang sudah difilter.
@@ -257,9 +254,9 @@ export async function getChannelsFromParentId(
     // Menangkap error yang mungkin dilempar oleh getChannels()
     console.error(
       chalk.red(
-        `[Runtime Error] Gagal mengambil channel untuk parent ID: ${parentId}`
+        `[Runtime Error] Gagal mengambil channel untuk parent ID: ${parentId}`,
       ),
-      error
+      error,
     );
     // Melempar kembali error agar bisa ditangani oleh pemanggil fungsi ini.
     throw error;
@@ -273,7 +270,7 @@ export async function getChannelsFromParentId(
  * @throws Error jika gagal mengambil channel.
  */
 export async function getChannel(
-  channelId: string
+  channelId: string,
 ): Promise<DiscordPartialChannelResponse> {
   try {
     const { id, name, parent_id, type } = await discord.get<{
@@ -304,24 +301,36 @@ export async function getChannel(
  * @returns Array of DiscordPartialMessageResponse atau null jika error.
  * @throws Error jika gagal mengambil pesan.
  */
-export async function getMessagesFromChannel(channelId: string): Promise<
-  {
-    id: string;
-    content: any;
-    edited_timestamp: string | null;
-    timestamp: string;
-  }[]
-> {
+export async function getMessagesFromChannel(
+  channelId: string,
+): Promise<ApiDbProcessedMessage[]> {
   try {
-    const messages = await discord.get<DiscordPartialMessageResponse[]>(
-      `/channels/${channelId}/messages`
+    const messages = await discord.get<DiscordMessage[]>(
+      `/channels/${channelId}/messages`,
     );
 
-    return messages.map((msg) => sanitizeMessage(msg, true));
+    const sanitizedMessages = messages.map((msg) => sanitizeMessage(msg, true));
+    const processedMessages = sanitizedMessages.map(processMessage);
+    return processedMessages;
   } catch (error) {
     console.error("Error fetching messages:", error);
     throw error;
   }
+}
+
+export function processMessage(
+  messages: SanitizedMessage,
+): ApiDbProcessedMessage {
+  if (typeof messages.content !== "object")
+    throw new Error("Invalid message content");
+  return {
+    id: messages.id,
+    timestamp: messages.timestamp,
+    edited_timestamp: messages.edited_timestamp,
+    name: messages.content.name!,
+    size: messages.content.size,
+    userID: messages.content.userID,
+  };
 }
 
 export function fileAttachmentsBuilder({
@@ -355,35 +364,48 @@ export function fileAttachmentsBuilder({
   return attachments;
 }
 
+export type SanitizedMessage = {
+  attachments:
+    | {
+        url: string;
+        filename: string;
+        size: number;
+      }[]
+    | undefined;
+  id: string;
+  content?: MessageMetadata | string;
+  edited_timestamp: string | null | undefined;
+  timestamp: string;
+};
 export function sanitizeMessage(
-  data: DiscordPartialMessageResponse,
-  noAttachments?: boolean
-) {
+  data: DiscordMessage,
+  noAttachments?: boolean,
+): SanitizedMessage {
   try {
     const parsedBody = JSON.parse(
-      data.content.replace(/```(json)?/g, "").trim()
+      data.content!.replace(/```(json)?/g, "").trim(),
     );
     return {
       attachments: noAttachments
         ? undefined
-        : data.attachments.map(({ url, filename, size }) => ({
+        : data.attachments!.map(({ url, filename, size }) => ({
             url,
             filename,
             size,
           })),
       id: data.id,
-      content: parsedBody,
+      content: parsedBody as MessageMetadata,
       edited_timestamp: data.edited_timestamp,
       timestamp: data.timestamp,
     };
   } catch {
     console.warn(
       chalk.yellow(
-        "Warning: Failed to parse message content, returning as string."
-      )
+        "Warning: Failed to parse message content, returning as string.",
+      ),
     );
     return {
-      attachments: data.attachments.map(({ url, filename, size }) => ({
+      attachments: data.attachments!.map(({ url, filename, size }) => ({
         url,
         filename,
         size,
