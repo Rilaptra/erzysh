@@ -9,12 +9,15 @@ import { DashboardHeader } from "@/components/Dashboard/Header";
 import { CategorySidebar } from "@/components/Dashboard/Sidebar";
 import { ChannelView } from "@/components/Dashboard/ChannelView";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type {
   UserPayload,
   ApiDbGetAllStructuredDataResponse,
   ApiDbCategory,
   ApiDbCategoryChannel,
   DiscordCategory,
+  UploadQueueItem,
+  ApiDbSendMessageRequest,
 } from "@/types";
 
 export default function DashboardPage() {
@@ -24,10 +27,13 @@ export default function DashboardPage() {
   // States
   const [user, setUser] = useState<UserPayload | null>(null);
   const [categories, setCategories] = useState<DiscordCategory[]>([]);
-  const [channels, setChannels] = useState<ApiDbCategoryChannel[]>([]); // Diubah untuk menyimpan data lengkap channel
+  const [channels, setChannels] = useState<ApiDbCategoryChannel[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // State baru untuk antrean unggahan
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
 
   // Animasi
   useGSAP(
@@ -54,27 +60,23 @@ export default function DashboardPage() {
     { scope: container },
   );
 
-  // Fungsi untuk fetch dan proses data
   const fetchData = useCallback(async () => {
-    setIsLoading(true);
     try {
-      // 1. Ambil data user
-      const userRes = await fetch("/api/auth/me");
+      const [userRes, serverDataRes] = await Promise.all([
+        fetch("/api/auth/me"),
+        fetch("/api/database"),
+      ]);
       if (!userRes.ok) throw new Error("Please log in again.");
-      const userData = await userRes.json();
-      setUser(userData);
-
-      // 2. Ambil data server dari /api/database
-      const serverDataRes = await fetch("/api/database");
       if (!serverDataRes.ok) throw new Error("Failed to fetch server data.");
+
+      const userData = await userRes.json();
       const serverData: ApiDbGetAllStructuredDataResponse =
         await serverDataRes.json();
 
-      // 3. Proses data API menjadi struktur yang dibutuhkan frontend
+      setUser(userData);
       const categoriesFromApi = Object.values(serverData.data);
       const flattenedCategories: DiscordCategory[] = [];
       const flattenedChannelsWithMessages: ApiDbCategoryChannel[] = [];
-
       categoriesFromApi.forEach((category: ApiDbCategory) => {
         flattenedCategories.push({
           id: category.id,
@@ -83,20 +85,16 @@ export default function DashboardPage() {
           guild_id: "",
           position: 0,
         });
-
         if (category.channels && Array.isArray(category.channels)) {
-          // Menyimpan seluruh objek channel, termasuk array 'messages' di dalamnya
           flattenedChannelsWithMessages.push(...category.channels);
         }
       });
-
       setCategories(flattenedCategories);
       setChannels(flattenedChannelsWithMessages);
     } catch (err) {
       setError((err as Error).message);
-      if ((err as Error).message === "Please log in again.") {
+      if ((err as Error).message === "Please log in again.")
         router.push("/login");
-      }
     } finally {
       setIsLoading(false);
     }
@@ -106,31 +104,96 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleSelectCategory = (id: string) => {
-    setActiveCategoryId(id);
+  // Fungsi untuk menangani proses unggahan
+  const handleAddToUploadQueue = (
+    files: File[],
+    categoryId: string,
+    channelId: string,
+    containerName: string,
+    boxName: string,
+  ) => {
+    const newQueueItems: UploadQueueItem[] = files.map((file) => ({
+      id: `${file.name}-${Date.now()}`,
+      file,
+      status: "uploading",
+      startTime: Date.now(),
+      categoryId,
+      channelId,
+      containerName,
+      boxName,
+    }));
+
+    setUploadQueue((prev) => [...prev, ...newQueueItems]);
+
+    // Proses setiap file secara asinkron
+    newQueueItems.forEach(async (item) => {
+      const promise = async () => {
+        const content = await item.file.text();
+        const payload: ApiDbSendMessageRequest = {
+          data: { name: item.file.name, content },
+        };
+        const res = await fetch(
+          `/api/database/${item.categoryId}/${item.channelId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Upload failed");
+        }
+        return res.json();
+      };
+
+      toast.promise(promise(), {
+        loading: `Uploading ${item.file.name}...`,
+        success: () => {
+          setUploadQueue((prev) =>
+            prev.map((q) =>
+              q.id === item.id ? { ...q, status: "success" } : q,
+            ),
+          );
+          handleDataChange(); // Refresh data di dashboard
+          return `${item.file.name} uploaded successfully!`;
+        },
+        error: (err) => {
+          setUploadQueue((prev) =>
+            prev.map((q) =>
+              q.id === item.id
+                ? { ...q, status: "error", error: err.message }
+                : q,
+            ),
+          );
+          return `Failed to upload ${item.file.name}: ${err.message}`;
+        },
+      });
+    });
   };
 
-  // Filter channels berdasarkan kategori aktif
+  const handleSelectCategory = (id: string) => setActiveCategoryId(id);
+  const handleDataChange = () => setTimeout(fetchData, 500);
+
   const filteredChannels = channels.filter(
     (ch) => ch.categoryId === activeCategoryId,
   );
+  const activeContainer = categories.find((cat) => cat.id === activeCategoryId);
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="bg-dark-shale text-off-white flex h-screen w-full items-center justify-center">
         <Loader2 className="text-teal-muted h-8 w-8 animate-spin" />
         <p className="ml-4">Loading Dashboard...</p>
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
       <div className="bg-dark-shale flex h-screen w-full items-center justify-center text-red-500">
         <p>Error: {error}</p>
       </div>
     );
-  }
 
   return (
     <div
@@ -141,24 +204,26 @@ export default function DashboardPage() {
         <div className="gsap-blob-1 bg-teal-muted/10 absolute top-1/4 left-1/4 h-80 w-80 rounded-full blur-3xl filter"></div>
         <div className="gsap-blob-2 bg-gunmetal/40 absolute top-1/2 right-1/4 h-72 w-72 rounded-full blur-3xl filter"></div>
       </div>
-
       <div className="relative z-10 flex h-screen flex-col">
-        <DashboardHeader user={user} />
+        <DashboardHeader user={user} uploadQueue={uploadQueue} />
         <div className="flex flex-1 overflow-hidden">
           <CategorySidebar
             categories={categories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={handleSelectCategory}
-            onCategoryCreated={fetchData}
-            onCategoryDeleted={fetchData}
+            onCategoryCreated={handleDataChange}
+            onCategoryDeleted={handleDataChange}
+            onCategoryUpdated={handleDataChange}
           />
           <ChannelView
             channels={filteredChannels}
             activeCategoryId={activeCategoryId}
-            // Menggunakan callback yang sama untuk me-refresh semua data
-            onDataChanged={fetchData}
-            onChannelCreated={fetchData}
-            onChannelDeleted={fetchData}
+            activeContainerName={activeContainer?.name || ""}
+            onDataChanged={handleDataChange}
+            onChannelCreated={handleDataChange}
+            onChannelDeleted={handleDataChange}
+            onChannelUpdated={handleDataChange}
+            onAddToQueue={handleAddToUploadQueue}
           />
         </div>
       </div>

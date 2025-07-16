@@ -1,14 +1,18 @@
+// src/components/Dashboard/Header/index.tsx
 "use client";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import type { UserPayload } from "@/types";
+import type { UserPayload, UploadQueueItem } from "@/types";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { UploadStatus } from "../UploadStatus"; // Impor UploadStatus
 
 interface DashboardHeaderProps {
   user: UserPayload | null;
+  uploadQueue: UploadQueueItem[]; // Tambahkan prop ini
 }
 
-export function DashboardHeader({ user }: DashboardHeaderProps) {
+export function DashboardHeader({ user, uploadQueue }: DashboardHeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -22,15 +26,19 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         Welcome,{" "}
         <span className="text-teal-muted">{user?.username || "User"}</span>
       </h1>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleLogout}
-        className="text-off-white/70 hover:bg-gunmetal hover:text-off-white"
-      >
-        <LogOut className="mr-2 size-4" />
-        Logout
-      </Button>
+      <div className="flex items-center gap-2">
+        <UploadStatus queue={uploadQueue} />
+        <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleLogout}
+          className="text-off-white/70 hover:bg-gunmetal hover:text-off-white"
+        >
+          <LogOut className="mr-2 size-4" />
+          Logout
+        </Button>
+      </div>
     </header>
   );
 }

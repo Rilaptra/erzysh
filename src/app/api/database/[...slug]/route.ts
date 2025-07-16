@@ -146,7 +146,6 @@ export async function POST(
     const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req);
-    console.log(getAuthInfo(req));
     const users = await getUsersData();
 
     if (!data)
@@ -381,25 +380,24 @@ async function handleSendMessage(
     return createApiResponse({ message: "Invalid request body" }, 400);
   }
 
-  const contentSize =
-    data.size ??
-    (typeof data.content === "string"
-      ? data.content.length
-      : JSON.stringify(data.content).length);
-  const key = {
+  const { attachments, dataSize } = fileAttachmentsBuilder({
+    fileName: data.name,
+    data: data.content,
+  }) || { attachments: [], dataSize: null };
+
+  const collectionMetadata = {
     lastUpdate: new Date().toISOString(),
     name: data.name,
-    size: contentSize,
+    size: dataSize,
     userID,
   };
 
+  if (!attachments)
+    return createApiResponse({ message: "Invalid attachments" }, 400);
+
   const messagePayload = {
-    content: `\`\`\`json\n${JSON.stringify(key, null, 2)}\n\`\`\``,
-    files: fileAttachmentsBuilder({
-      fileName: data.name,
-      data: data.content,
-      size: contentSize,
-    }),
+    content: `\`\`\`json\n${JSON.stringify(collectionMetadata, null, 2)}\n\`\`\``,
+    files: attachments,
   };
 
   const response = await handleDiscordApiCall<DiscordMessage>(
@@ -415,7 +413,7 @@ async function handleSendMessage(
     201,
   );
 
-  updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
+  updateActivityLog(data.name, dataSize || 0, categoryId, channelId).catch(
     (err) => {
       console.error(chalk.yellow("Failed to update activity log:"), err);
     },
@@ -437,27 +435,39 @@ async function handleUpdateMessage(
     return createApiResponse({ message: "Invalid content type" }, 400);
   }
 
-  const contentSize =
-    data.size ??
-    (typeof data.content === "string"
-      ? data.content.length
-      : JSON.stringify(data.content).length);
-  const files = fileAttachmentsBuilder({
+  const { attachments, dataSize } = fileAttachmentsBuilder({
     fileName: data.name,
-    data: data.content as string,
-    size: contentSize,
-  });
+    data: data.content,
+  }) || { attachments: [], dataSize: null };
+
+  if (!attachments)
+    return createApiResponse({ message: "Invalid attachments" }, 400);
+
+  const dataExtension = data.name.match(/.*\.([^.]+)$/)?.[1];
+  const dataName = dataExtension ? data.name : `${data.name}.json`;
+  const options = {
+    content: `\`\`\`json\n${JSON.stringify(
+      {
+        lastUpdate: new Date().toISOString(),
+        name: dataName,
+        size: dataSize,
+      },
+      null,
+      2,
+    )}\n\`\`\``,
+    files: attachments,
+  };
 
   const response = await handleDiscordApiCall<DiscordPartialMessageResponse>(
     async () => {
-      const message = await editMessage(channelId, messageId, { files });
+      const message = await editMessage(channelId, messageId, options);
       if (!message) throw new Error("Failed to update message");
       return message;
     },
     "Message updated successfully",
   );
 
-  updateActivityLog(data.name, contentSize, categoryId, channelId).catch(
+  updateActivityLog(data.name, dataSize || 0, categoryId, channelId).catch(
     (err) => {
       console.error(chalk.yellow("Failed to update activity log:"), err);
     },

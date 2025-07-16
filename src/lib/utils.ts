@@ -336,32 +336,44 @@ export function processMessage(
 export function fileAttachmentsBuilder({
   fileName,
   data,
-  size,
 }: {
   fileName: string;
   data: string;
-  size?: number;
-}): SendMessageOptions["files"] {
+}): {
+  attachments: SendMessageOptions["files"];
+  dataSize: number;
+} | null {
   const attachments: SendMessageOptions["files"] = [];
-  const dataSize = size ?? data.length;
+  const buffer = Buffer.from(data, "utf-8");
+  const dataSize = buffer.byteLength;
+
+  if (dataSize === 0) {
+    return null;
+  }
+
   const isChunked = dataSize > FILE_SIZE_LIMIT;
   const totalChunks = Math.ceil(dataSize / FILE_SIZE_LIMIT);
 
+  const finalFileName = /\.\w+$/.test(fileName) ? fileName : `${fileName}.json`;
+
   for (let i = 0; i < totalChunks; i++) {
     const start = i * FILE_SIZE_LIMIT;
-    const end = start + FILE_SIZE_LIMIT;
-    const chunk = data.slice(start, end);
+    const end = Math.min(start + FILE_SIZE_LIMIT, dataSize);
+
+    const chunkBuffer = buffer.subarray(start, end);
+
+    const attachmentName = isChunked
+      ? `chunk_${i + 1}_${finalFileName}`
+      : finalFileName;
 
     attachments.push({
-      name:
-        (isChunked ? `chunk_${i + 1}_${fileName}` : fileName) +
-        (/\.\w+$/.test(fileName) ? "" : ".json"),
-      buffer: Buffer.from(chunk),
+      name: attachmentName,
+      buffer: chunkBuffer,
       ...(isChunked && { description: `Chunk ${i + 1} of ${totalChunks}` }),
     });
   }
 
-  return attachments;
+  return { attachments, dataSize };
 }
 
 export type SanitizedMessage = {
