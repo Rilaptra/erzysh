@@ -130,7 +130,7 @@ async function handleGetAllStructuredData(userData: UserData) {
   //   "categoryId": ["channelId1", "channelId2", ...],
   //   "categoryId": ["channelId1", "channelId2", ...],
   // }
-  console.log(chalk.green(" Fetching all structured data..."));
+  console.log(chalk.green("Fetching all structured data..."));
   const allChannels = await getChannels();
   const userCategories = Object.keys(databases);
   const categories = new Map<string, ApiDbCategory>();
@@ -147,11 +147,6 @@ async function handleGetAllStructuredData(userData: UserData) {
         channels: [] as unknown as ApiDbCategoryChannel[],
       });
     } else if (channel.categoryId) {
-      console.log(
-        userData.databases[channel.categoryId],
-        channel.id,
-        channel.categoryId,
-      );
       textChannels.push(channel);
     }
   }
