@@ -349,8 +349,8 @@ export function ChannelView({
           <DialogHeader>
             <DialogTitle>Add New Collection(s)</DialogTitle>
             <DialogDescription className="text-off-white/70">
-              Upload files or enter JSON content for the "
-              <b>{targetChannel?.name}</b>" box.
+              Upload files or enter JSON content for the &quot;
+              <b>{targetChannel?.name}</b>&quot; box.
             </DialogDescription>
           </DialogHeader>
 

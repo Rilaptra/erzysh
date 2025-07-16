@@ -23,6 +23,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import type { ApiDbProcessedMessage, ApiDbUpdateMessageRequest } from "@/types";
+import Image from "next/image";
 
 interface CollectionDetailsModalProps {
   isOpen: boolean;
@@ -221,7 +222,7 @@ export function CollectionDetailsModal({
 
       if (fileType === "image" && dataUrl) {
         return (
-          <img
+          <Image
             src={dataUrl}
             alt={collection.name}
             className="mt-2 max-h-64 w-full rounded-md object-contain"
