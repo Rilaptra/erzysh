@@ -9,7 +9,6 @@ export async function GET(): Promise<NextResponse> {
     const files = fileAttachmentsBuilder({
       fileName: "file.txt",
       data: fileData,
-      size: fileData.length,
     });
     const res = await sendMessage("1391571208973189181", {
       files,
