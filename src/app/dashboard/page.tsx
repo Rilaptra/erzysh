@@ -14,10 +14,13 @@ async function getDashboardData() {
 
   try {
     // Gunakan Vercel's fetch cache (revalidate every 5 minutes)
-    const res = await fetch("/api/database", {
-      headers: { Cookie: `token=${token.value}` },
-      next: { revalidate: 300 }, // Cache selama 5 menit
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
+      {
+        headers: { Cookie: `token=${token.value}` },
+        next: { revalidate: 300 }, // Cache selama 5 menit
+      },
+    );
 
     if (!res.ok) {
       if (res.status === 401) redirect("/login");
@@ -38,10 +41,13 @@ async function getUserData(): Promise<UserPayload> {
 
   if (!token) redirect("/login");
 
-  const res = await fetch("/api/auth/me", {
-    headers: { Cookie: `token=${token.value}` },
-    cache: "no-store", // User data should always be fresh
-  });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/me`,
+    {
+      headers: { Cookie: `token=${token.value}` },
+      cache: "no-store", // User data should always be fresh
+    },
+  );
 
   if (!res.ok) redirect("/login");
 
