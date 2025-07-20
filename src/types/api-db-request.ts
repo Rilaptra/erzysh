@@ -15,6 +15,7 @@ export type ApiDbCreateChannelRequest = {
 // Request body for sending a message (e.g., /api/database/categoryId/channelId)
 export interface ApiBodySendMessageRequest extends ApiBodyDataDbCommonRequest {
   size?: number;
+  isPublic?: boolean;
   userID?: string;
   content: string | object; // Can be raw string or JSON object
 }

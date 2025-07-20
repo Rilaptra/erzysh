@@ -29,6 +29,8 @@ import {
   CHANNEL_TYPE,
   updateUserData,
   getUsersData,
+  getMimeType,
+  MessageMetadata,
 } from "../helpers";
 import {
   ApiDbGetCategoryMessagesResponse,
@@ -36,6 +38,7 @@ import {
   GetApiDatabaseChannelMessagesResponse,
   GetApiDatabaseMessageResponse,
 } from "@/types/api-db-response";
+import { verifyAuth } from "@/lib/authUtils";
 
 // --- Helper to get user info from headers ---
 function getAuthInfo(req: NextRequest) {
@@ -48,6 +51,10 @@ function getAuthInfo(req: NextRequest) {
   }
   return { userID };
 }
+// --- Helper Baru: Cek apakah request datang dengan token valid ---
+function isAuthenticated(req: NextRequest): boolean {
+  return !!verifyAuth(req);
+}
 
 // --- Main HTTP Handlers ---
 
@@ -56,8 +63,75 @@ export async function GET(
   { params }: { params: Promise<{ slug: string[] }> },
 ): Promise<NextResponse> {
   try {
-    const { userID } = getAuthInfo(req);
     const [categoryId, channelId, messageId] = (await params).slug;
+    const isRawRequest = req.nextUrl.searchParams.get("raw") === "true";
+    const isAuth = isAuthenticated(req);
+
+    if (!isAuth) {
+      // Validasi bahwa request publik harus spesifik ke satu message dan raw
+      if (!messageId || !isRawRequest) {
+        return createApiResponse(
+          {
+            error:
+              "Public access requires a specific message ID and 'raw=true' parameter.",
+          },
+          400,
+        );
+      }
+
+      const requestUserID = req.nextUrl.searchParams.get("userID");
+      if (!requestUserID) {
+        return createApiResponse(
+          { error: "'userID' query parameter is required for public access." },
+          400,
+        );
+      }
+
+      try {
+        const message = await discord.get<DiscordMessage>(
+          `/channels/${channelId}/messages/${messageId}`,
+        );
+        const sanitized = sanitizeMessage(message);
+        const metadata = sanitized.content as MessageMetadata;
+
+        // --- KUNCI KEAMANAN PUBLIK ---
+        if (!metadata.isPublic || metadata.userID !== requestUserID) {
+          return createApiResponse(
+            { error: "Resource not found or access denied." },
+            404,
+          );
+        }
+
+        const attachmentData = await loadAttachmentsData(sanitized.attachments);
+        if (!attachmentData) {
+          return createApiResponse(
+            { error: "Attachment data not found." },
+            404,
+          );
+        }
+
+        const fileName = sanitized.attachments?.[0]?.filename || "file";
+        const mimeType = getMimeType(fileName);
+        const headers = new Headers();
+        headers.set("Content-Type", mimeType);
+        headers.set("Content-Disposition", `inline; filename="${fileName}"`);
+        headers.set(
+          "Cache-Control",
+          "public, s-maxage=86400, stale-while-revalidate=59",
+        ); // Cache publik
+
+        return new NextResponse(attachmentData, { status: 200, headers });
+      } catch (error) {
+        // Untuk request publik, semua error internal kita samarkan sebagai 404
+        console.error(
+          chalk.yellow("Public access error:"),
+          (error as Error).message,
+        );
+        return createApiResponse({ error: "Resource not found." }, 404);
+      }
+    }
+
+    const { userID } = getAuthInfo(req);
     const users = await getUsersData();
     const user = users?.get(userID || "");
     const isAdmin = user?.is_admin ?? false;
@@ -82,6 +156,40 @@ export async function GET(
       const attachmentData = await loadAttachmentsData(sanitized.attachments);
       // const dataToReturn =
       //   attachmentData || (sanitized.content ? "" : sanitized.content);
+
+      // --- BARU: Logika untuk merespons dengan data mentah ---
+      if (isRawRequest) {
+        if (!attachmentData) {
+          return createApiResponse(
+            { error: "No attachment data found for this message." },
+            404,
+          );
+        }
+
+        const userId = req.nextUrl.searchParams.get("userId");
+        if (!userId)
+          return createApiResponse(
+            {
+              message:
+                "Forbidden: You do not own this message or are not an admin.",
+            },
+            403,
+          );
+
+        // Tentukan Content-Type berdasarkan nama file dari attachment
+        const fileName = sanitized.attachments?.[0]?.filename || "file";
+        const mimeType = getMimeType(fileName);
+
+        const headers = new Headers();
+        headers.set("Content-Type", mimeType);
+        headers.set("Content-Disposition", `inline; filename="${fileName}"`); // Menyarankan browser untuk menampilkan, bukan download paksa
+        headers.set(
+          "Cache-Control",
+          "public, s-maxage=86400, stale-while-revalidate=59",
+        );
+        // 'attachmentData' bisa berupa Buffer atau string (untuk JSON)
+        return new NextResponse(attachmentData, { status: 200, headers });
+      }
 
       const responseData: GetApiDatabaseMessageResponse = {
         ...((typeof sanitized.content === "object" && sanitized.content) || {}),
@@ -195,8 +303,12 @@ export async function PATCH(
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
+    const { userID } = getAuthInfo(req); // PATCH harus selalu terautentikasi
 
-    if (!data || !data.name) {
+    if (
+      (!data || !data.name) &&
+      (data?.isPublic === undefined || data?.isPublic === null)
+    ) {
       return createApiResponse(
         { message: "Invalid request body, name is required" },
         400,
@@ -206,6 +318,15 @@ export async function PATCH(
     const slugifiedName = slugify(data.name);
 
     if (messageId && channelId) {
+      // --- BARU: Logika untuk toggle isPublic ---
+      // Jika request hanya berisi 'isPublic', ini adalah operasi ringan.
+      if (
+        typeof data.isPublic === "boolean" &&
+        Object.keys(data).length === 1
+      ) {
+        return handleTogglePublic(channelId, messageId, data.isPublic, userID);
+      }
+      // Jika tidak, ini adalah update konten penuh (logika lama)
       return handleUpdateMessage(categoryId, channelId, messageId, data);
     }
 
@@ -390,6 +511,7 @@ async function handleSendMessage(
     name: data.name,
     size: dataSize,
     userID,
+    isPublic: data.isPublic || false, // Set default ke false
   };
 
   if (!attachments)
@@ -476,6 +598,41 @@ async function handleUpdateMessage(
   return response;
 }
 
+// --- Helper Baru untuk PATCH (tambahkan di dalam file yang sama) ---
+async function handleTogglePublic(
+  channelId: string,
+  messageId: string,
+  isPublic: boolean,
+  userID: string,
+) {
+  const originalMessage = await discord.get<DiscordMessage>(
+    `/channels/${channelId}/messages/${messageId}`,
+  );
+  const sanitized = sanitizeMessage(originalMessage);
+  const metadata = sanitized.content as MessageMetadata;
+
+  // Pastikan hanya pemilik yang bisa mengubah status publik
+  if (metadata.userID !== userID) {
+    return createApiResponse(
+      { error: "Forbidden: You do not own this resource." },
+      403,
+    );
+  }
+
+  // Update metadata
+  const updatedMetadata: MessageMetadata = { ...metadata, isPublic };
+
+  const options = {
+    content: `\`\`\`json\n${JSON.stringify(updatedMetadata, null, 2)}\n\`\`\``,
+    // Tidak perlu menyertakan 'files' karena kita hanya mengedit teks metadata
+  };
+
+  return handleDiscordApiCall(
+    () => editMessage(channelId, messageId, options),
+    "Public status updated successfully",
+  );
+}
+
 /**
  * Mendapatkan pesan-pesan dari semua channel di dalam kategori tertentu.
  * Jika bukan admin, filter pesan berdasarkan userID.
@@ -525,36 +682,35 @@ async function getMessagesFromCategory(
   return { data };
 }
 
+// --- MODIFIKASI: Fungsi ini diubah total untuk menangani biner ---
 async function loadAttachmentsData(
-  attachments:
-    | {
-        url: string;
-        filename: string;
-        size: number;
-      }[]
-    | undefined,
+  attachments: { url: string; filename: string; size: number }[] | undefined,
 ) {
   if (!attachments || attachments.length === 0) return null;
 
-  const fetchPromises = attachments.map((att) =>
-    fetch(att.url).then((res) => {
-      if (!res.ok)
-        throw new Error(`Failed to fetch attachment: ${res.statusText}`);
-      return res.text();
-    }),
-  );
-
-  const contents = await Promise.all(fetchPromises);
-  const combinedContent = contents.join("");
+  // Asumsi kita hanya proses attachment pertama untuk preview
+  const mainAttachment = attachments[0];
+  const isJson = mainAttachment.filename.endsWith(".json");
 
   try {
-    return JSON.parse(combinedContent);
-  } catch {
-    console.warn(
-      chalk.yellow(
-        "Warning: Attachment data is not valid JSON, returning as raw string.",
-      ),
-    );
-    return combinedContent;
+    const response = await fetch(mainAttachment.url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch attachment: ${response.statusText}`);
+    }
+
+    // Jika file adalah JSON, proses sebagai teks dan parse
+    if (isJson) {
+      const textContent = await response.text();
+      return textContent;
+    } else {
+      // Jika file adalah biner (gambar/video), proses sebagai ArrayBuffer
+      // dan kembalikan sebagai Buffer agar bisa di-serialize oleh Next.js
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    }
+  } catch (error) {
+    console.error(chalk.red("Error loading attachment data:"), error);
+    // Jika ada error (misal JSON tidak valid atau fetch gagal), kembalikan null
+    return null;
   }
 }
