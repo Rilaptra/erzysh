@@ -11,7 +11,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createApiResponse,
   handleDiscordApiCall,
-  loadBodyRequest,
   slugify,
   CHANNEL_TYPE,
   updateUserData,
@@ -22,54 +21,22 @@ import {
   ApiDbCategory,
   ApiDbCategoryChannel,
   ApiDbCreateCategoryResponse,
-  ApiDbErrorResponse,
   GetApiDatabaseResponse,
 } from "@/types/api-db-response";
-import { verifyAuth } from "@/lib/authUtils";
-
+import { validateAndGetUser } from "@/lib/authService";
 // --- Main HTTP Handlers ---
 
-export async function GET(
-  req: NextRequest,
-): Promise<NextResponse<GetApiDatabaseResponse>> {
+export async function GET(req: NextRequest) {
   try {
-    const userData = verifyAuth(req);
-    if (!userData) {
-      return createApiResponse<ApiDbErrorResponse>(
-        { message: "Unauthorized: Invalid or missing token." },
-        401,
-      );
-    }
-    const users = await getUsersData();
-    if (!users)
-      return createApiResponse<ApiDbErrorResponse>(
-        {
-          message: "Data not found or internal error",
-        },
-        500,
-      );
-
-    const user = users.get(userData.userID) || users.get(userData.username);
-    if (!user)
-      return createApiResponse<ApiDbErrorResponse>(
-        {
-          message: "Data not found or internal error",
-        },
-        500,
-      );
-
-    // return await handleGetAllStructuredData();
-    const data = await handleGetAllStructuredData(user);
-    return data;
+    const userData = await validateAndGetUser(req);
+    return await handleGetAllStructuredData(userData);
   } catch (error) {
-    console.error(chalk.red("Error in GET handler:"), error);
-    return createApiResponse<ApiDbErrorResponse>(
-      {
-        message: "Data not found or internal error",
-        error: (error as Error).message,
-      },
-      500,
-    );
+    const err = error as Error;
+    if (err.message === "UNAUTHORIZED") {
+      return createApiResponse({ message: "Unauthorized" }, 401);
+    }
+    console.error("GET /api/database error:", err);
+    return createApiResponse({ error: "Internal Server Error" }, 500);
   }
 }
 
@@ -77,40 +44,10 @@ export async function POST(
   req: NextRequest,
 ): Promise<NextResponse<ApiDbCreateCategoryResponse>> {
   try {
-    const userData = verifyAuth(req);
-    if (!userData) {
-      return createApiResponse<ApiDbCreateCategoryResponse>(
-        {
-          message: "Unauthorized: Invalid or missing token.",
-        },
-        401,
-      );
-    }
-    const users = await getUsersData();
-    if (!users)
-      return createApiResponse<ApiDbCreateCategoryResponse>(
-        {
-          message: "Data not found or internal error",
-        },
-        500,
-      );
+    const userData = await validateAndGetUser(req);
+    const data = (await req.json())?.data;
 
-    const user = users.get(userData.userID) || users.get(userData.username);
-    if (!user)
-      return createApiResponse<ApiDbCreateCategoryResponse>(
-        {
-          message: "Data not found or internal error",
-        },
-        500,
-      );
-
-    const data = await loadBodyRequest(req);
-    if (!data)
-      return createApiResponse<ApiDbCreateCategoryResponse>(
-        { message: "Invalid request body" },
-        400,
-      );
-    return await handleCreateCategory(data, user);
+    return await handleCreateCategory(data, userData);
   } catch (error) {
     console.error(chalk.red("Error in POST handler:"), error);
     return createApiResponse<ApiDbCreateCategoryResponse>(
@@ -124,18 +61,11 @@ export async function POST(
 
 async function handleGetAllStructuredData(userData: UserData) {
   const { databases } = userData;
-  // console.log(userData, databases);
-  // databases: {
-  //   "categoryId": ["channelId1", "channelId2", ...],
-  //   "categoryId": ["channelId1", "channelId2", ...],
-  //   "categoryId": ["channelId1", "channelId2", ...],
-  // }
   console.log(chalk.green("Fetching all structured data..."));
   const allChannels = await getChannels();
   const userCategories = Object.keys(databases);
   const categories = new Map<string, ApiDbCategory>();
   const textChannels: DiscordPartialChannelResponse[] = [];
-  // console.log(userCategories);
 
   for (const channel of allChannels) {
     if (

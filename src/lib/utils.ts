@@ -333,9 +333,10 @@ export function processMessage(
   };
 }
 
+// --- MODIFIKASI: Fungsi ini diubah untuk menangani Base64 ---
 export function fileAttachmentsBuilder({
   fileName,
-  data,
+  data, // Asumsikan 'data' untuk file biner adalah string Base64
 }: {
   fileName: string;
   data: string;
@@ -343,25 +344,28 @@ export function fileAttachmentsBuilder({
   attachments: SendMessageOptions["files"];
   dataSize: number;
 } | null {
-  const attachments: SendMessageOptions["files"] = [];
-  const buffer = Buffer.from(data, "utf-8");
+  if (!data) {
+    return null;
+  }
+
+  const isJson = fileName.endsWith(".json");
+  // Jika bukan JSON, kita anggap datanya Base64. Jika JSON, anggap utf-8.
+  const buffer = Buffer.from(data, isJson ? "utf-8" : "base64");
   const dataSize = buffer.byteLength;
 
   if (dataSize === 0) {
     return null;
   }
 
+  const attachments: SendMessageOptions["files"] = [];
   const isChunked = dataSize > FILE_SIZE_LIMIT;
   const totalChunks = Math.ceil(dataSize / FILE_SIZE_LIMIT);
-
   const finalFileName = /\.\w+$/.test(fileName) ? fileName : `${fileName}.json`;
 
   for (let i = 0; i < totalChunks; i++) {
     const start = i * FILE_SIZE_LIMIT;
     const end = Math.min(start + FILE_SIZE_LIMIT, dataSize);
-
     const chunkBuffer = buffer.subarray(start, end);
-
     const attachmentName = isChunked
       ? `chunk_${i + 1}_${finalFileName}`
       : finalFileName;
@@ -375,7 +379,6 @@ export function fileAttachmentsBuilder({
 
   return { attachments, dataSize };
 }
-
 export type SanitizedMessage = {
   attachments:
     | {

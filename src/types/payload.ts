@@ -3,6 +3,7 @@ import { DiscordEmbed, DiscordButtonComponents } from ".";
 export interface RequestData {
   name: string;
   content: string;
+  isPublic?: boolean;
   size?: number;
 }
 

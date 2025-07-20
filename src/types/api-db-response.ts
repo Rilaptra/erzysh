@@ -68,6 +68,7 @@ export type ApiDbCreateCategoryResponse =
 // Response for fetching a single message by ID (e.g., /api/database/categoryId/channelId/messageId)
 export interface ApiDbGetMessageResponse {
   id: string;
+  isPublic?: boolean;
   timestamp: string;
   edited_timestamp?: string | null;
   data?: any; // Can be parsed JSON from attachment or raw string

@@ -1,6 +1,6 @@
 // src/components/Dashboard/ChannelView/index.tsx
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,6 +33,8 @@ import type {
   ApiDbCreateChannelRequest,
 } from "@/types";
 import { CollectionDetailsModal } from "../CollectionDetailModal";
+import { getCachedCollection, setCachedCollection } from "../Helper/cache";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ChannelViewProps {
   channels: ApiDbCategoryChannel[];
@@ -69,6 +71,63 @@ export function ChannelView({
     id: string;
     name: string;
   } | null>(null);
+
+  const [manualIsPublic, setManualIsPublic] = useState(false); // State baru
+
+  // --- BARU: useEffect untuk pre-fetch data koleksi di background ---
+  useEffect(() => {
+    // Pastikan ada kategori aktif dan channel yang ditampilkan
+    if (!activeCategoryId || channels.length === 0) {
+      return;
+    }
+
+    console.log("🚀 Starting background pre-fetch for collections...");
+
+    const preFetchPromises = [];
+
+    // Kumpulkan semua 'message' (koleksi) dari semua channel
+    for (const channel of channels) {
+      for (const message of channel.messages) {
+        // Cek dulu, kalau sudah ada di cache, lewati
+        if (getCachedCollection(message.id)) {
+          continue;
+        }
+
+        // Buat promise untuk fetch data, tapi jangan di-await dulu
+        const promise = fetch(
+          `/api/database/${activeCategoryId}/${channel.id}/${message.id}`,
+        )
+          .then((res) => {
+            if (!res.ok) {
+              // Abaikan error untuk pre-fetch, jangan sampai crash
+              return Promise.reject(`Failed to pre-fetch ${message.name}`);
+            }
+            return res.json();
+          })
+          .then((data) => {
+            // Kalau berhasil, simpan di cache
+            setCachedCollection(message.id, data);
+            console.log(`✅ Cached: ${message.name}`);
+          })
+          .catch((err) => {
+            // Tangkap error agar Promise.allSettled tidak berhenti
+            console.warn(err);
+          });
+
+        preFetchPromises.push(promise);
+      }
+    }
+
+    // Jalankan semua promise secara paralel dan "lupakan"
+    // Ini proses background, kita tidak perlu menunggu hasilnya di sini
+    if (preFetchPromises.length > 0) {
+      Promise.allSettled(preFetchPromises).then(() => {
+        console.log("🏁 Background pre-fetch finished.");
+      });
+    } else {
+      console.log("✅ All collections already cached.");
+    }
+  }, [channels, activeCategoryId]); // Jalankan effect ini saat channels atau kategori berubah
 
   // State untuk mode upload & form
   const [uploadMode, setUploadMode] = useState<"file" | "manual">("file");
@@ -142,6 +201,7 @@ export function ChannelView({
     setManualContent("");
     setJsonError(null);
     setAddCollectionOpen(true);
+    setManualIsPublic(false); // Reset juga state ini
   };
 
   const handleStartUpload = () => {
@@ -164,8 +224,11 @@ export function ChannelView({
           manualName.endsWith(".json") ? manualName : `${manualName}.json`,
           { type: "application/json" },
         );
+        // Buat objek file dengan properti isPublic
+        const fileWithMeta = Object.assign(file, { isPublic: manualIsPublic });
+
         onAddToQueue(
-          [file],
+          [fileWithMeta],
           activeCategoryId,
           targetChannel.id,
           activeContainerName,
@@ -364,7 +427,7 @@ export function ChannelView({
                   : "border-gunmetal hover:bg-gunmetal/80"
               }
             >
-              <FileUp className="mr-2 h-4 w-4" /> Upload File(s)
+              <FileUp className="mr-2 h-4 w-4" /> Upload file
             </Button>
             <Button
               variant={uploadMode === "manual" ? "default" : "outline"}
@@ -412,7 +475,7 @@ export function ChannelView({
                 {selectedFiles && selectedFiles.length > 0 && (
                   <div className="text-off-white/80 text-xs">
                     <p className="mb-1 font-semibold">
-                      {selectedFiles.length} file(s) selected:
+                      {selectedFiles.length} file selected:
                     </p>
                     <ul className="max-h-24 list-inside list-disc space-y-1 overflow-y-auto pl-2">
                       {Array.from(selectedFiles).map((file) => (
@@ -449,6 +512,21 @@ export function ChannelView({
                     <p className="text-sm text-red-500">{jsonError}</p>
                   )}
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="manual-public"
+                    checked={manualIsPublic}
+                    onCheckedChange={(checked) =>
+                      setManualIsPublic(Boolean(checked))
+                    }
+                  />
+                  <Label
+                    htmlFor="manual-public"
+                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Make this collection public
+                  </Label>
+                </div>
               </div>
             )}
           </div>
@@ -463,7 +541,7 @@ export function ChannelView({
               className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
             >
               {uploadMode === "file"
-                ? `Upload ${selectedFiles?.length || 0} file(s)`
+                ? `Upload ${selectedFiles?.length || 0} file`
                 : "Add Collection"}
             </Button>
           </DialogFooter>

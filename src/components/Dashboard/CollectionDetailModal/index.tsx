@@ -1,6 +1,6 @@
 // src/components/Dashboard/CollectionDetailModal/index.tsx
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,9 +21,21 @@ import {
   Save,
   Eye,
   EyeOff,
+  Copy,
 } from "lucide-react";
-import type { ApiDbProcessedMessage, ApiDbUpdateMessageRequest } from "@/types";
+import type {
+  ApiDbGetMessageResponse,
+  ApiDbProcessedMessage,
+  ApiDbUpdateMessageRequest,
+} from "@/types";
 import Image from "next/image";
+import {
+  getCachedCollection,
+  removeCachedCollection,
+  setCachedCollection,
+} from "../Helper/cache";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 
 interface CollectionDetailsModalProps {
   isOpen: boolean;
@@ -37,10 +49,35 @@ interface CollectionDetailsModalProps {
 const getFileType = (fileName: string) => {
   const extension = fileName.split(".").pop()?.toLowerCase();
   if (!extension) return "string";
+  console.log(extension);
   if (["json", "txt"].includes(extension)) return "string";
   if (["png", "jpg", "jpeg", "gif", "webp"].includes(extension)) return "image";
   if (["mp4", "webm", "ogg"].includes(extension)) return "video";
   return "other";
+};
+
+// --- BARU: Helper untuk mendapatkan MIME type dari ekstensi file ---
+const getMimeType = (fileName: string): string => {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp"; // Buffer 'RIFF' biasanya adalah WEBP
+    case "mp4":
+      return "video/mp4";
+    case "webm":
+      return "video/webm";
+    case "ogg":
+      return "video/ogg";
+    default:
+      return "application/octet-stream"; // Tipe default
+  }
 };
 
 export function CollectionDetailsModal({
@@ -54,8 +91,9 @@ export function CollectionDetailsModal({
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // State untuk data preview (lazy loading)
-  const [collectionData, setCollectionData] = useState<any>(null); // Cache untuk data
+  const [lastCollectionId, setLastCollectionId] = useState<string | null>(null);
+  const [collectionData, setCollectionData] =
+    useState<ApiDbGetMessageResponse | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -64,72 +102,185 @@ export function CollectionDetailsModal({
   const [editFile, setEditFile] = useState<File | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
 
+  // --- BARU: State untuk menyimpan Blob URL yang dibuat dari buffer ---
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileType = useMemo(
     () => getFileType(collection.name),
     [collection.name],
   );
   const isStringOrJson = fileType === "string";
 
-  // Fungsi untuk mengambil data saat preview diklik
-  const handleTogglePreview = async () => {
-    const shouldShow = !showPreview;
-    setShowPreview(shouldShow);
+  useEffect(() => {
+    if (collection.id !== lastCollectionId) {
+      setLastCollectionId(collection.id);
+      setCollectionData(null);
+      setShowPreview(false);
+      setIsEditing(false);
+      setPreviewError(null);
+    }
+  }, [collection.id, lastCollectionId]);
 
-    // Fetch data hanya jika akan ditampilkan & belum ada di cache
-    if ((shouldShow && !collectionData) || previewError) {
+  // --- BARU: useEffect untuk menangani fetch data dengan AbortController ---
+  useEffect(() => {
+    // Hanya jalankan fetch jika showPreview true dan data belum ada
+    if (!showPreview || collectionData) {
+      return;
+    }
+
+    // Buat AbortController untuk membatalkan fetch jika komponen berubah
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const fetchData = async () => {
       setIsPreviewLoading(true);
+      setPreviewError(null);
+
+      const cachedData = getCachedCollection(collection.id);
+      if (cachedData) {
+        setCollectionData(cachedData);
+        if (isStringOrJson) {
+          setEditContent(JSON.stringify(cachedData.data, null, 2));
+        }
+        setIsPreviewLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(
           `/api/database/${categoryId}/${channelId}/${collection.id}`,
+          { signal }, // <-- Lewatkan signal ke fetch
         );
         if (!res.ok) throw new Error("Failed to fetch collection data.");
+
         const data = await res.json();
-        setCollectionData(data); // Simpan ke cache
+        setCollectionData(data);
+        setCachedCollection(collection.id, data);
+
         if (isStringOrJson) {
           setEditContent(JSON.stringify(data.data, null, 2));
         }
-        setPreviewError(null);
       } catch (error: any) {
-        console.error(error);
-        setPreviewError(error.message);
+        // Jangan set error jika error karena pembatalan (abort)
+        if (error.name === "AbortError") {
+          console.log("Fetch aborted");
+        } else {
+          console.error(error);
+          setPreviewError(error.message);
+        }
       } finally {
         setIsPreviewLoading(false);
       }
+    };
+
+    fetchData();
+
+    // --- Cleanup Function: Ini adalah kuncinya ---
+    // Fungsi ini akan dijalankan saat dependency berubah (misal collection.id)
+    // atau saat komponen di-unmount.
+    return () => {
+      controller.abort();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showPreview, collection.id, categoryId, channelId, collectionData]); // <-- dependensi effect
+
+  // --- BARU: useEffect untuk membuat & membersihkan Blob URL dari buffer ---
+  useEffect(() => {
+    // Cek jika collectionData ada, dan tipenya adalah image/video
+    if (
+      collectionData?.data &&
+      (fileType === "image" || fileType === "video")
+    ) {
+      const buffer = collectionData.data.data;
+      if (!buffer) return;
+
+      // Buat Blob dari buffer
+      const mimeType = getMimeType(collection.name);
+      const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+
+      // Buat Object URL (Blob URL) dari Blob
+      const objectUrl = URL.createObjectURL(blob);
+      setPreviewUrl(objectUrl);
+
+      // Cleanup Function: Hapus URL saat komponen tidak lagi memerlukannya
+      // Ini sangat penting untuk mencegah memory leak!
+      return () => {
+        URL.revokeObjectURL(objectUrl);
+        setPreviewUrl(null);
+      };
+    }
+  }, [collectionData, fileType, collection.name]); // Jalankan saat data atau tipe file berubah
+
+  // --- DISEDERHANAKAN: Fungsi toggle preview sekarang hanya mengubah state ---
+  const handleTogglePreview = () => {
+    setShowPreview((prev) => !prev);
+  };
+
+  const handleTogglePublic = async (isPublic: boolean) => {
+    try {
+      const res = await fetch(
+        `/api/database/${categoryId}/${channelId}/${collection.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: { isPublic } }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to update status.");
+
+      // Update state lokal agar UI langsung berubah
+      setCollectionData((prev) => (prev ? { ...prev, isPublic } : null));
+      toast.success(`Collection is now ${isPublic ? "public" : "private"}.`);
+    } catch (error) {
+      toast.error("Failed to update public status.");
+      console.error(error);
     }
   };
 
+  const handleCopyPublicLink = () => {
+    if (!collectionData?.isPublic) {
+      toast.error("This collection is not public.", {
+        description: "You can make it public using the toggle.",
+      });
+      return;
+    }
+    const publicUrl = `${window.location.origin}/api/database/${categoryId}/${channelId}/${collection.id}?raw=true&userID=${collectionData.userID}`;
+    navigator.clipboard.writeText(publicUrl);
+    toast.success("Public link copied to clipboard!");
+  };
+
   const handleStartEdit = () => {
-    if (!collectionData) return; // Seharusnya tidak terjadi karena tombol dinonaktifkan
+    if (!collectionData) return;
     setIsEditing(true);
   };
 
   const handleDownload = () => {
-    // Jika data belum di-load, download dari URL jika ada
-    const dataUrl = collectionData?.url;
-    if (!collectionData && dataUrl) {
-      window.open(dataUrl, "_blank");
-      return;
-    }
-    // Jika data sudah di-load, buat blob
+    // Cek paling awal, jika tidak ada data sama sekali, jangan lakukan apa-apa.
     if (!collectionData?.data) return;
-    const blob = new Blob(
-      [
-        isStringOrJson
-          ? JSON.stringify(collectionData.data)
-          : collectionData.data,
-      ],
-      { type: "application/octet-stream" },
-    );
+
+    // Tentukan data yang akan disimpan ke dalam Blob.
+    const dataForBlob = isStringOrJson
+      ? // Untuk JSON/string, kita stringify datanya.
+        JSON.stringify(collectionData.data, null, 2)
+      : // Untuk biner (gambar/video), kita ambil array buffer-nya.
+        new Uint8Array(collectionData.data.data);
+
+    // Buat Blob dengan tipe MIME yang sesuai agar file dikenali dengan benar.
+    const blob = new Blob([dataForBlob], {
+      type: getMimeType(collection.name),
+    });
+
+    // Buat URL sementara untuk di-download.
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = collection.name;
+    a.download = collection.name; // Gunakan nama file asli.
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.click(); // Simulasikan klik untuk memulai download.
+    document.body.removeChild(a); // Hapus elemen 'a' setelah selesai.
+    URL.revokeObjectURL(url); // Hapus URL dari memori untuk mencegah memory leak.
   };
 
+  // --- MODIFIED: Hapus cache saat item dihapus ---
   const handleDelete = async () => {
     try {
       if (!confirm("Are you sure you want to delete this collection?")) return;
@@ -137,24 +288,53 @@ export function CollectionDetailsModal({
       await fetch(`/api/database/${categoryId}/${channelId}/${collection.id}`, {
         method: "DELETE",
       });
+      removeCachedCollection(collection.id); // Hapus dari cache
       setIsProcessing(false);
       setCollectionData(null);
-      onDataChanged();
+      onDataChanged(); // Ini akan menutup modal dan refresh list
     } catch (error) {
       console.error(error);
+      setIsProcessing(false); // Pastikan loading state mati jika error
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setEditFile(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Simpan info file (terutama nama) untuk dikirim ke API nanti
+    setEditFile(file);
+
+    const reader = new FileReader();
+
+    // Definisikan apa yang terjadi setelah file selesai dibaca
+    reader.onload = (event) => {
+      if (!event.target?.result) return;
+
+      const fileContent = event.target.result as string;
+
       if (isStringOrJson) {
-        setEditContent("");
+        // Jika file berupa JSON/TXT, langsung simpan konten teksnya
+        setEditContent(fileContent);
         setJsonError(null);
+      } else {
+        // Jika file berupa gambar/video, hasilnya adalah Data URL
+        // Format: "data:image/png;base64,iVBORw0KGgo..."
+        // Kita perlu buang bagian depannya untuk mendapatkan string Base64 murni
+        const base64String = fileContent.split(",")[1];
+        setEditContent(base64String);
       }
+    };
+
+    // Pilih cara membaca file berdasarkan tipenya
+    if (isStringOrJson) {
+      reader.readAsText(file); // Baca sebagai teks biasa
+    } else {
+      reader.readAsDataURL(file); // Baca sebagai Data URL (untuk mendapatkan Base64)
     }
   };
 
+  // --- MODIFIED: Hapus cache saat item diupdate ---
   const handleUpdate = async () => {
     try {
       if (
@@ -189,19 +369,21 @@ export function CollectionDetailsModal({
 
       await fetch(`/api/database/${categoryId}/${channelId}/${collection.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
+      removeCachedCollection(collection.id); // Hapus cache lama setelah update berhasil
       setIsProcessing(false);
       setIsEditing(false);
       setCollectionData(null);
-      onDataChanged();
+      onDataChanged(); // Ini akan menutup modal dan refresh list
     } catch (error) {
       console.error(error);
+      setIsProcessing(false); // Pastikan loading state mati jika error
     }
   };
 
+  // --- MODIFIKASI: Render preview menggunakan state previewUrl ---
   const renderPreviewArea = () => {
     if (!showPreview) return null;
 
@@ -218,26 +400,30 @@ export function CollectionDetailsModal({
       );
     }
     if (collectionData) {
-      const dataUrl = collectionData.url || collectionData.data?.url; // Menangani berbagai kemungkinan struktur data
+      // --- Menggunakan previewUrl untuk gambar dan video ---
+      if ((fileType === "image" || fileType === "video") && previewUrl) {
+        if (fileType === "image") {
+          return (
+            <Image
+              src={previewUrl} // <-- Gunakan Blob URL
+              width={500}
+              height={256}
+              alt={collection.name}
+              className="mt-2 max-h-64 w-full rounded-md object-contain"
+            />
+          );
+        }
+        if (fileType === "video") {
+          return (
+            <video
+              src={previewUrl} // <-- Gunakan Blob URL
+              controls
+              className="mt-2 max-h-64 w-full rounded-md"
+            />
+          );
+        }
+      }
 
-      if (fileType === "image" && dataUrl) {
-        return (
-          <Image
-            src={dataUrl}
-            alt={collection.name}
-            className="mt-2 max-h-64 w-full rounded-md object-contain"
-          />
-        );
-      }
-      if (fileType === "video" && dataUrl) {
-        return (
-          <video
-            src={dataUrl}
-            controls
-            className="mt-2 max-h-64 w-full rounded-md"
-          />
-        );
-      }
       if (isStringOrJson) {
         return (
           <pre className="bg-dark-shale/50 mt-2 max-h-48 overflow-auto rounded-md p-2 font-mono text-xs whitespace-pre-wrap">
@@ -269,6 +455,7 @@ export function CollectionDetailsModal({
               type="file"
               onChange={handleFileChange}
               className="bg-dark-shale border-teal-muted/50"
+              accept=".json,.txt"
             />
           </div>
           <div className="relative space-y-2">
@@ -287,7 +474,7 @@ export function CollectionDetailsModal({
                 setEditFile(null);
               }}
               disabled={!!editFile}
-              className="bg-dark-shale border-teal-muted/50 min-h-[200px] font-mono"
+              className="bg-dark-shale border-teal-muted/50 max-h-[200px] font-mono"
             />
             {jsonError && <p className="text-sm text-red-500">{jsonError}</p>}
           </div>
@@ -311,7 +498,7 @@ export function CollectionDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white max-h-[90vh] sm:max-w-lg">
+      <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? `Editing: ${collection.name}` : collection.name}
@@ -337,11 +524,29 @@ export function CollectionDetailsModal({
             <p>
               <strong>Size:</strong> {collection.size} bytes
             </p>
+            {/* --- UI BARU UNTUK STATUS PUBLIK --- */}
+            <div className="bg-dark-shale/50 flex items-center justify-between rounded-lg p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="public-status" className="font-semibold">
+                  Public Access
+                </Label>
+                <p className="text-off-white/60 text-xs">
+                  Anyone with the link can view this file.
+                </p>
+              </div>
+              <Switch
+                id="public-status"
+                className="cursor-pointer"
+                checked={collectionData?.isPublic || false}
+                onCheckedChange={handleTogglePublic}
+                disabled={!collectionData}
+              />
+            </div>
             {renderPreviewArea()}
           </div>
         )}
 
-        <DialogFooter className="w-full flex-col gap-2 sm:flex-row sm:justify-between">
+        <DialogFooter className="w-full flex-col gap-2 pt-4 sm:flex-row sm:justify-between">
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -349,7 +554,13 @@ export function CollectionDetailsModal({
               onClick={handleDelete}
               disabled={isProcessing}
             >
-              <Trash2 size={16} className="mr-2" /> Delete
+              {isProcessing ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Trash2 size={16} className="mr-2" /> Delete
+                </>
+              )}
             </Button>
           </div>
           <div className="flex justify-end gap-2">
@@ -365,7 +576,7 @@ export function CollectionDetailsModal({
                 <Button
                   className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
                   onClick={handleUpdate}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (!editFile && !editContent)}
                 >
                   {isProcessing ? (
                     <Loader2 className="mr-2 animate-spin" />
@@ -376,7 +587,15 @@ export function CollectionDetailsModal({
                 </Button>
               </>
             ) : (
-              <>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="outline"
+                  className="border-gunmetal hover:bg-gunmetal/80"
+                  onClick={handleCopyPublicLink}
+                  disabled={!collectionData?.isPublic}
+                >
+                  <Copy size={16} className="mr-2" /> Copy Link
+                </Button>
                 <Button
                   variant="outline"
                   className="border-gunmetal hover:bg-gunmetal/80"
@@ -393,6 +612,7 @@ export function CollectionDetailsModal({
                   variant="outline"
                   className="border-gunmetal hover:bg-gunmetal/80"
                   onClick={handleDownload}
+                  disabled={!collectionData} // Download hanya aktif jika data sudah di-load
                 >
                   <Download size={16} className="mr-2" /> Download
                 </Button>
@@ -403,7 +623,7 @@ export function CollectionDetailsModal({
                 >
                   <Edit size={16} className="mr-2" /> Edit
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </DialogFooter>

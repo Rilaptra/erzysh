@@ -42,8 +42,9 @@ export interface MessageMetadata {
   lastUpdate?: string;
   name?: string;
   size?: number;
-  userID?: string; // Added userID
-  [key: string]: any; // Allow other properties if necessary
+  userID?: string;
+  isPublic?: boolean; // <-- TAMBAHKAN INI
+  [key: string]: any;
 }
 
 // --- Shared Helper Functions ---
@@ -105,6 +106,33 @@ export async function handleDiscordApiCall<
     );
   }
 }
+
+export const getMimeType = (fileName: string): string => {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "mp4":
+      return "video/mp4";
+    case "webm":
+      return "video/webm";
+    case "ogg":
+      return "video/ogg";
+    case "json":
+      return "application/json";
+    case "txt":
+      return "text/plain";
+    default:
+      return "application/octet-stream";
+  }
+};
 
 export async function loadBodyRequest(
   req: NextRequest, // Changed from Request to NextRequest for consistency if needed, or use global Request
