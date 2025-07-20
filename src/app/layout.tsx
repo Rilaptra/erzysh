@@ -18,6 +18,22 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Eryzsh DB",
   description: "Simple Database-as-a-Service powered by Discord",
+  openGraph: {
+    title: "Eryzsh DB",
+    description: "Simple Database-as-a-Service powered by Discord",
+    url: "https://eryzshdb.vercel.app",
+    siteName: "Eryzsh DB",
+    locale: "en-US",
+    type: "website",
+    images: [
+      {
+        url: "https://erzysh.vercel.app/api/database/1396528719002075287/1396528759082844230/1396528858702024784?raw=true&userID=881d4d54-126d-4362-8228-dd2235e90b58",
+        width: 512,
+        height: 512,
+        alt: "Eryzsh DB Logo",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
