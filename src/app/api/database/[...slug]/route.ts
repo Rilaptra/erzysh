@@ -304,6 +304,7 @@ export async function PATCH(
     const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req); // PATCH harus selalu terautentikasi
+    const isAdmin = await (await getUsersData()).get(userID || "")?.is_admin;
 
     if (
       (!data || !data.name) &&
@@ -324,7 +325,13 @@ export async function PATCH(
         typeof data.isPublic === "boolean" &&
         Object.keys(data).length === 1
       ) {
-        return handleTogglePublic(channelId, messageId, data.isPublic, userID);
+        return handleTogglePublic(
+          channelId,
+          messageId,
+          data.isPublic,
+          userID,
+          isAdmin,
+        );
       }
       // Jika tidak, ini adalah update konten penuh (logika lama)
       return handleUpdateMessage(categoryId, channelId, messageId, data);
@@ -604,6 +611,7 @@ async function handleTogglePublic(
   messageId: string,
   isPublic: boolean,
   userID: string,
+  isAdmin?: boolean,
 ) {
   const originalMessage = await discord.get<DiscordMessage>(
     `/channels/${channelId}/messages/${messageId}`,
@@ -612,7 +620,7 @@ async function handleTogglePublic(
   const metadata = sanitized.content as MessageMetadata;
 
   // Pastikan hanya pemilik yang bisa mengubah status publik
-  if (metadata.userID !== userID) {
+  if (metadata.userID !== userID && !isAdmin) {
     return createApiResponse(
       { error: "Forbidden: You do not own this resource." },
       403,
