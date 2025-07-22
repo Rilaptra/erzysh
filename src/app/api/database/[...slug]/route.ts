@@ -69,11 +69,18 @@ export async function GET(
 
     if (!isAuth || isRawRequest) {
       // Validasi bahwa request publik harus spesifik ke satu message dan raw
-      if (!messageId || !isRawRequest) {
+      if (!messageId) {
         return createApiResponse(
           {
-            error:
-              "Public access requires a specific message ID and 'raw=true' parameter.",
+            error: "Data not found or access denied.",
+          },
+          400,
+        );
+      }
+      if (!isRawRequest) {
+        return createApiResponse(
+          {
+            error: "Public access requires 'raw=true' parameter.",
           },
           400,
         );
