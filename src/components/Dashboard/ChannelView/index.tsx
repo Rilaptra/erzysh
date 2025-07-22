@@ -217,10 +217,10 @@ export function ChannelView({
       );
     } else if (uploadMode === "manual" && manualName && manualContent) {
       try {
-        JSON.parse(manualContent);
+        const parsedJson = JSON.parse(manualContent);
         setJsonError(null);
         const file = new File(
-          [manualContent],
+          [JSON.stringify(parsedJson, null, 2)],
           manualName.endsWith(".json") ? manualName : `${manualName}.json`,
           { type: "application/json" },
         );

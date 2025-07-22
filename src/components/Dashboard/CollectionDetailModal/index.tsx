@@ -139,7 +139,7 @@ export function CollectionDetailsModal({
       if (cachedData) {
         setCollectionData(cachedData);
         if (isStringOrJson) {
-          setEditContent(JSON.stringify(cachedData.data, null, 2));
+          setEditContent(JSON.stringify(JSON.parse(cachedData.data), null, 2));
         }
         setIsPreviewLoading(false);
         return;
@@ -427,7 +427,7 @@ export function CollectionDetailsModal({
       if (isStringOrJson) {
         return (
           <pre className="bg-dark-shale/50 mt-2 max-h-48 overflow-auto rounded-md p-2 font-mono text-xs whitespace-pre-wrap">
-            {JSON.stringify(collectionData.data, null, 2)}
+            {JSON.stringify(JSON.parse(collectionData.data), null, 2)}
           </pre>
         );
       }
@@ -474,7 +474,7 @@ export function CollectionDetailsModal({
                 setEditFile(null);
               }}
               disabled={!!editFile}
-              className="bg-dark-shale border-teal-muted/50 max-h-[200px] font-mono"
+              className="bg-dark-shale border-teal-muted/50 max-h-[200px] max-w-md overflow-auto font-mono"
             />
             {jsonError && <p className="text-sm text-red-500">{jsonError}</p>}
           </div>
