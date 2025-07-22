@@ -46,10 +46,15 @@ export async function discordFetch<T>(
         ? JSON.stringify(body)
         : (body as any),
   };
+  console.log(
+    chalk.green(` Fetching from Discord API: ${route}, method: ${method}`),
+  );
   const res = await fetch(`${DISCORD_API_BASE}${route}`, options);
   if (!res.ok) {
     const errorData = await res.json();
-    console.error(`💥 Discord API Error [${res.status}]: ${errorData.message}`);
+    console.error(
+      `💥 Discord API Fetch Error [${res.status}]: ${errorData.message}`,
+    );
     throw new Error(`Error (${res.status}): ${errorData.message}`);
   }
   if (res.headers.get("content-type")?.includes("application/json"))
