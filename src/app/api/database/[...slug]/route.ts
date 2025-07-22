@@ -67,7 +67,7 @@ export async function GET(
     const isRawRequest = req.nextUrl.searchParams.get("raw") === "true";
     const isAuth = isAuthenticated(req);
 
-    if (!isAuth) {
+    if (!isAuth || isRawRequest) {
       // Validasi bahwa request publik harus spesifik ke satu message dan raw
       if (!messageId || !isRawRequest) {
         return createApiResponse(
