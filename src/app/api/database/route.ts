@@ -74,7 +74,7 @@ async function handleGetAllStructuredData(userData: UserData) {
     ) {
       categories.set(channel.id, {
         ...channel,
-        channels: [] as unknown as ApiDbCategoryChannel[],
+        boxes: [] as unknown as ApiDbCategoryChannel[],
       });
     } else if (channel.categoryId) {
       textChannels.push(channel);
@@ -89,9 +89,9 @@ async function handleGetAllStructuredData(userData: UserData) {
   textChannels.forEach((channel, index) => {
     const parentCategory = categories.get(channel.categoryId!);
     if (parentCategory) {
-      parentCategory.channels.push({
+      parentCategory.boxes.push({
         ...channel,
-        messages: allMessages[index] || [],
+        collections: allMessages[index] || [],
       });
     }
   });

@@ -35,7 +35,7 @@ export interface ApiDbCategoryChannel {
   name: string;
   type: number; // Discord channel type (e.g., 0 for text)
   categoryId: string | null;
-  messages: ApiDbProcessedMessage[];
+  collections: ApiDbProcessedMessage[];
 }
 
 // Represents a category in the structured data response
@@ -44,7 +44,7 @@ export interface ApiDbCategory {
   name: string;
   isCategory: boolean;
   type: number; // Discord channel type (e.g., 4 for category)
-  channels: ApiDbCategoryChannel[];
+  boxes: ApiDbCategoryChannel[];
 }
 
 // Full response for GET /api/database

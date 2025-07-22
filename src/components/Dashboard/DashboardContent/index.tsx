@@ -165,7 +165,7 @@ export function DashboardContent({
   }));
 
   const allChannels: ApiDbCategoryChannel[] = categories.flatMap(
-    (cat) => cat.channels || [],
+    (cat) => cat.boxes || [],
   );
 
   const filteredChannels = allChannels.filter(
@@ -222,13 +222,13 @@ export function DashboardContent({
             onCategoryUpdated={handleDataChange}
           />
           <ChannelView
-            channels={filteredChannels}
+            boxes={filteredChannels}
             activeCategoryId={activeCategoryId}
             activeContainerName={activeContainer?.name || ""}
             onDataChanged={handleDataChange}
-            onChannelCreated={handleDataChange}
-            onChannelDeleted={handleDataChange}
-            onChannelUpdated={handleDataChange}
+            onboxCreated={handleDataChange}
+            onboxDeleted={handleDataChange}
+            onboxUpdated={handleDataChange}
             onAddToQueue={handleAddToUploadQueue}
           />
         </div>

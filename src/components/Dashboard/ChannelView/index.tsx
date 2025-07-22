@@ -1,4 +1,4 @@
-// src/components/Dashboard/ChannelView/index.tsx
+// src/components/Dashboard/boxView/index.tsx
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -36,38 +36,38 @@ import { CollectionDetailsModal } from "../CollectionDetailModal";
 import { getCachedCollection, setCachedCollection } from "../Helper/cache";
 import { Checkbox } from "@/components/ui/checkbox";
 
-interface ChannelViewProps {
-  channels: ApiDbCategoryChannel[];
+interface boxViewProps {
+  boxes: ApiDbCategoryChannel[];
   activeCategoryId: string | null;
   activeContainerName: string;
-  onChannelCreated: () => void;
-  onChannelDeleted: () => void;
+  onboxCreated: () => void;
+  onboxDeleted: () => void;
   onDataChanged: () => void;
-  onChannelUpdated: () => void;
+  onboxUpdated: () => void;
   onAddToQueue: (
     files: File[],
     categoryId: string,
-    channelId: string,
+    boxId: string,
     containerName: string,
     boxName: string,
   ) => void;
 }
 
 export function ChannelView({
-  channels,
+  boxes,
   activeCategoryId,
   activeContainerName,
-  onChannelCreated,
-  onChannelDeleted,
+  onboxCreated,
+  onboxDeleted,
   onDataChanged,
-  onChannelUpdated,
+  onboxUpdated,
   onAddToQueue,
-}: ChannelViewProps) {
+}: boxViewProps) {
   const [addBoxOpen, setAddBoxOpen] = useState(false);
-  const [newChannelName, setNewChannelName] = useState("");
-  const [isCreatingChannel, setIsCreatingChannel] = useState(false);
+  const [newboxName, setNewboxName] = useState("");
+  const [isCreatingbox, setIsCreatingbox] = useState(false);
   const [addCollectionOpen, setAddCollectionOpen] = useState(false);
-  const [targetChannel, setTargetChannel] = useState<{
+  const [targetbox, setTargetbox] = useState<{
     id: string;
     name: string;
   } | null>(null);
@@ -76,8 +76,8 @@ export function ChannelView({
 
   // --- BARU: useEffect untuk pre-fetch data koleksi di background ---
   useEffect(() => {
-    // Pastikan ada kategori aktif dan channel yang ditampilkan
-    if (!activeCategoryId || channels.length === 0) {
+    // Pastikan ada kategori aktif dan box yang ditampilkan
+    if (!activeCategoryId || boxes.length === 0) {
       return;
     }
 
@@ -85,9 +85,9 @@ export function ChannelView({
 
     const preFetchPromises = [];
 
-    // Kumpulkan semua 'message' (koleksi) dari semua channel
-    for (const channel of channels) {
-      for (const message of channel.messages) {
+    // Kumpulkan semua 'message' (koleksi) dari semua box
+    for (const box of boxes) {
+      for (const message of box.collections) {
         // Cek dulu, kalau sudah ada di cache, lewati
         if (getCachedCollection(message.id)) {
           continue;
@@ -95,7 +95,7 @@ export function ChannelView({
 
         // Buat promise untuk fetch data, tapi jangan di-await dulu
         const promise = fetch(
-          `/api/database/${activeCategoryId}/${channel.id}/${message.id}`,
+          `/api/database/${activeCategoryId}/${box.id}/${message.id}`,
         )
           .then((res) => {
             if (!res.ok) {
@@ -127,7 +127,7 @@ export function ChannelView({
     } else {
       console.log("✅ All collections already cached.");
     }
-  }, [channels, activeCategoryId]); // Jalankan effect ini saat channels atau kategori berubah
+  }, [boxes, activeCategoryId]); // Jalankan effect ini saat boxes atau kategori berubah
 
   // State untuk mode upload & form
   const [uploadMode, setUploadMode] = useState<"file" | "manual">("file");
@@ -137,63 +137,63 @@ export function ChannelView({
   const [jsonError, setJsonError] = useState<string | null>(null);
 
   const [selectedCollection, setSelectedCollection] = useState<
-    (ApiDbProcessedMessage & { channelId: string }) | null
+    (ApiDbProcessedMessage & { boxId: string }) | null
   >(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [editingChannelId, setEditingChannelId] = useState<string | null>(null);
-  const [editingChannelName, setEditingChannelName] = useState("");
-  const [isUpdatingChannel, setIsUpdatingChannel] = useState(false);
+  const [editingboxId, setEditingboxId] = useState<string | null>(null);
+  const [editingboxName, setEditingboxName] = useState("");
+  const [isUpdatingbox, setIsUpdatingbox] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleCreateChannel = async () => {
-    if (!newChannelName || !activeCategoryId) return;
-    setIsCreatingChannel(true);
+  const handleCreatebox = async () => {
+    if (!newboxName || !activeCategoryId) return;
+    setIsCreatingbox(true);
     await fetch(`/api/database/${activeCategoryId}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        data: { name: newChannelName },
+        data: { name: newboxName },
       } as ApiDbCreateChannelRequest),
     });
-    setIsCreatingChannel(false);
-    setNewChannelName("");
+    setIsCreatingbox(false);
+    setNewboxName("");
     setAddBoxOpen(false);
-    onChannelCreated();
+    onboxCreated();
   };
 
-  const handleDeleteChannel = async (channelId: string) => {
+  const handleDeletebox = async (boxId: string) => {
     if (!activeCategoryId) return;
-    setIsDeleting(channelId);
-    await fetch(`/api/database/${activeCategoryId}/${channelId}`, {
+    setIsDeleting(boxId);
+    await fetch(`/api/database/${activeCategoryId}/${boxId}`, {
       method: "DELETE",
     });
     setIsDeleting(null);
-    onChannelDeleted();
+    onboxDeleted();
   };
 
-  const handleStartEditChannel = (ch: ApiDbCategoryChannel) => {
-    setEditingChannelId(ch.id);
-    setEditingChannelName(ch.name);
+  const handleStartEditbox = (ch: ApiDbCategoryChannel) => {
+    setEditingboxId(ch.id);
+    setEditingboxName(ch.name);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  const handleUpdateChannelName = async (channelId: string) => {
-    if (!editingChannelName || !activeCategoryId || isUpdatingChannel) return;
-    setIsUpdatingChannel(true);
-    await fetch(`/api/database/${activeCategoryId}/${channelId}`, {
+  const handleUpdateboxName = async (boxId: string) => {
+    if (!editingboxName || !activeCategoryId || isUpdatingbox) return;
+    setIsUpdatingbox(true);
+    await fetch(`/api/database/${activeCategoryId}/${boxId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editingChannelName }),
+      body: JSON.stringify({ name: editingboxName }),
     });
-    setIsUpdatingChannel(false);
-    setEditingChannelId(null);
-    setEditingChannelName("");
-    onChannelUpdated();
+    setIsUpdatingbox(false);
+    setEditingboxId(null);
+    setEditingboxName("");
+    onboxUpdated();
   };
 
-  const openAddCollectionDialog = (channel: ApiDbCategoryChannel) => {
-    setTargetChannel({ id: channel.id, name: channel.name });
+  const openAddCollectionDialog = (box: ApiDbCategoryChannel) => {
+    setTargetbox({ id: box.id, name: box.name });
     // Reset form states
     setUploadMode("file");
     setSelectedFiles(null);
@@ -205,15 +205,15 @@ export function ChannelView({
   };
 
   const handleStartUpload = () => {
-    if (!activeCategoryId || !targetChannel) return;
+    if (!activeCategoryId || !targetbox) return;
 
     if (uploadMode === "file" && selectedFiles) {
       onAddToQueue(
         Array.from(selectedFiles),
         activeCategoryId,
-        targetChannel.id,
+        targetbox.id,
         activeContainerName,
-        targetChannel.name,
+        targetbox.name,
       );
     } else if (uploadMode === "manual" && manualName && manualContent) {
       try {
@@ -230,9 +230,9 @@ export function ChannelView({
         onAddToQueue(
           [fileWithMeta],
           activeCategoryId,
-          targetChannel.id,
+          targetbox.id,
           activeContainerName,
-          targetChannel.name,
+          targetbox.name,
         );
       } catch {
         setJsonError("Invalid JSON format. Please provide valid JSON.");
@@ -244,9 +244,9 @@ export function ChannelView({
 
   const handleOpenDetails = (
     collection: ApiDbProcessedMessage,
-    channelId: string,
+    boxId: string,
   ) => {
-    setSelectedCollection({ ...collection, channelId });
+    setSelectedCollection({ ...collection, boxId });
     setIsDetailModalOpen(true);
   };
 
@@ -273,27 +273,27 @@ export function ChannelView({
               <DialogHeader>
                 <DialogTitle>Add New Box</DialogTitle>
                 <DialogDescription className="text-off-white/70">
-                  This will create a new data box (channel) in the selected
+                  This will create a new data box (box) in the selected
                   container.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <Label htmlFor="channel-name">Box Name</Label>
+                <Label htmlFor="box-name">Box Name</Label>
                 <Input
-                  id="channel-name"
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
+                  id="box-name"
+                  value={newboxName}
+                  onChange={(e) => setNewboxName(e.target.value)}
                   className="bg-dark-shale border-teal-muted/50"
                   placeholder="e.g., user-profiles"
                 />
               </div>
               <DialogFooter>
                 <Button
-                  onClick={handleCreateChannel}
-                  disabled={isCreatingChannel}
+                  onClick={handleCreatebox}
+                  disabled={isCreatingbox}
                   className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
                 >
-                  {isCreatingChannel && (
+                  {isCreatingbox && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
                   Add Box
@@ -303,7 +303,7 @@ export function ChannelView({
           </Dialog>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {channels.map((ch) => (
+          {boxes.map((ch) => (
             <Card
               key={ch.id}
               className="bg-gunmetal/50 border-gunmetal text-off-white flex flex-col"
@@ -311,32 +311,32 @@ export function ChannelView({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <FileJson size={16} />
-                  {editingChannelId === ch.id ? (
+                  {editingboxId === ch.id ? (
                     <Input
                       ref={inputRef}
-                      value={editingChannelName}
-                      onChange={(e) => setEditingChannelName(e.target.value)}
-                      onBlur={() => handleUpdateChannelName(ch.id)}
+                      value={editingboxName}
+                      onChange={(e) => setEditingboxName(e.target.value)}
+                      onBlur={() => handleUpdateboxName(ch.id)}
                       onKeyDown={(e) =>
-                        e.key === "Enter" && handleUpdateChannelName(ch.id)
+                        e.key === "Enter" && handleUpdateboxName(ch.id)
                       }
                       className="bg-dark-shale border-teal-muted/50 h-8 flex-1"
-                      disabled={isUpdatingChannel}
+                      disabled={isUpdatingbox}
                     />
                   ) : (
                     <CardTitle>{ch.name}</CardTitle>
                   )}
                 </div>
                 <div className="flex items-center">
-                  {editingChannelId === ch.id ? (
+                  {editingboxId === ch.id ? (
                     <Button
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
-                      onClick={() => handleUpdateChannelName(ch.id)}
-                      disabled={isUpdatingChannel}
+                      onClick={() => handleUpdateboxName(ch.id)}
+                      disabled={isUpdatingbox}
                     >
-                      {isUpdatingChannel ? (
+                      {isUpdatingbox ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Check size={16} />
@@ -347,7 +347,7 @@ export function ChannelView({
                       size="icon"
                       variant="ghost"
                       className="text-off-white/50 hover:text-off-white/80 h-8 w-8"
-                      onClick={() => handleStartEditChannel(ch)}
+                      onClick={() => handleStartEditbox(ch)}
                     >
                       <Edit size={16} />
                     </Button>
@@ -355,7 +355,7 @@ export function ChannelView({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDeleteChannel(ch.id)}
+                    onClick={() => handleDeletebox(ch.id)}
                     disabled={!!isDeleting}
                     className="h-8 w-8 text-red-500/50 hover:bg-red-900/30 hover:text-red-500"
                   >
@@ -370,11 +370,11 @@ export function ChannelView({
               <CardContent className="flex flex-1 flex-col justify-between">
                 <div className="mb-4">
                   <h4 className="text-off-white/60 mb-2 text-xs font-semibold uppercase">
-                    Collections ({ch.messages.length})
+                    Collections ({ch.collections.length})
                   </h4>
-                  {ch.messages.length > 0 ? (
+                  {ch.collections.length > 0 ? (
                     <ul className="max-h-24 space-y-1 overflow-y-auto pr-2 text-xs">
-                      {ch.messages.map((msg: ApiDbProcessedMessage) => (
+                      {ch.collections.map((msg: ApiDbProcessedMessage) => (
                         <li
                           key={msg.id}
                           className="bg-dark-shale/50 hover:bg-dark-shale/80 flex cursor-pointer items-center justify-between rounded p-1.5 transition-colors"
@@ -413,7 +413,7 @@ export function ChannelView({
             <DialogTitle>Add New Collection(s)</DialogTitle>
             <DialogDescription className="text-off-white/70">
               Upload files or enter JSON content for the &quot;
-              <b>{targetChannel?.name}</b>&quot; box.
+              <b>{targetbox?.name}</b>&quot; box.
             </DialogDescription>
           </DialogHeader>
 
@@ -554,7 +554,7 @@ export function ChannelView({
           onClose={() => setIsDetailModalOpen(false)}
           collection={selectedCollection}
           categoryId={activeCategoryId}
-          channelId={selectedCollection.channelId}
+          channelId={selectedCollection.boxId}
           onDataChanged={() => {
             setIsDetailModalOpen(false);
             onDataChanged();
