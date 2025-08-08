@@ -11,7 +11,7 @@ export default function DashboardPage() {
           <Button>Database</Button>
         </Link>
         <Link href="/kuliah">
-          <Button disabled>Kuliah (Coming Soon)</Button>
+          <Button>Kuliah</Button>
         </Link>
       </div>
     </div>
