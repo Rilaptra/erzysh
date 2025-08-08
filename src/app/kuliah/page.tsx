@@ -10,8 +10,8 @@ export default function KuliahPage() {
         <Link href="#">
           <Button disabled>Profile (Coming Soon)</Button>
         </Link>
-        <Link href="#">
-          <Button disabled>Jadwal (Coming Soon)</Button>
+        <Link href="/kuliah/jadwal">
+          <Button>Jadwal</Button>
         </Link>
       </div>
     </div>
