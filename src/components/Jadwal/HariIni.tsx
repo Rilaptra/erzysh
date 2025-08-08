@@ -10,19 +10,21 @@ interface HariIniProps {
 
 export function HariIni({ hari, jadwal }: HariIniProps) {
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">
+    <div className="bg-card text-card-foreground rounded-xl p-6 shadow-inner">
+      <h1 className="mb-6 text-3xl font-bold">
         Jadwal Hari: <span className="text-primary">{hari}</span>
       </h1>
       {jadwal && jadwal.length > 0 ? (
         <div className="space-y-6">
-          {jadwal.map((matkul, index) => (
-            <JadwalCard key={index} matkul={matkul} />
+          {jadwal.map((matkul, idx) => (
+            <JadwalCard key={idx} matkul={matkul} />
           ))}
         </div>
       ) : (
-        <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-          <p className="text-xl text-gray-500">Tidak ada jadwal kuliah pada hari {hari}.</p>
+        <div className="border-border flex h-64 items-center justify-center rounded-lg border-2 border-dashed">
+          <p className="text-muted-foreground text-xl">
+            Tidak ada jadwal kuliah pada hari {hari}.
+          </p>
         </div>
       )}
     </div>

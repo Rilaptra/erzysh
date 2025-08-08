@@ -17,23 +17,33 @@ interface HariLainCardProps {
   onSelectDay: (day: string) => void;
 }
 
-export function HariLainCard({ hari, jadwal, isSelected, onSelectDay }: HariLainCardProps) {
+export function HariLainCard({
+  hari,
+  jadwal,
+  isSelected,
+  onSelectDay,
+}: HariLainCardProps) {
   const courseNames = jadwal.map((m) => m.matkul).join(", ");
 
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-colors hover:bg-gray-100",
-        isSelected && "border-primary bg-primary/10"
+        "border-border bg-card text-card-foreground cursor-pointer rounded-lg border p-4 transition-all duration-200 hover:shadow-md",
+        isSelected ? "ring-primary ring-2" : "",
       )}
       onClick={() => onSelectDay(hari)}
     >
-      <CardHeader>
-        <CardTitle className="text-lg">{hari}</CardTitle>
-        <CardDescription>{jadwal.length} Matkul</CardDescription>
+      <CardHeader className="mb-2 p-0">
+        <CardTitle className="text-base font-semibold">{hari}</CardTitle>
+        <CardDescription className="text-muted-foreground text-xs">
+          {jadwal.length} Matkul
+        </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-gray-600 truncate" title={courseNames}>
+      <CardContent className="p-0">
+        <p
+          className="text-muted-foreground truncate text-sm"
+          title={courseNames}
+        >
           {courseNames}
         </p>
       </CardContent>

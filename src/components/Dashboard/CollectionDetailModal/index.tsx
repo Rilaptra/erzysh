@@ -92,8 +92,9 @@ export function CollectionDetailsModal({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [lastCollectionId, setLastCollectionId] = useState<string | null>(null);
-  const [collectionData, setCollectionData] =
-    useState<ApiDbGetMessageResponse | null>(null);
+  const [ItemData, setItemData] = useState<ApiDbGetMessageResponse | null>(
+    null,
+  );
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export function CollectionDetailsModal({
   useEffect(() => {
     if (collection.id !== lastCollectionId) {
       setLastCollectionId(collection.id);
-      setCollectionData(null);
+      setItemData(null);
       setShowPreview(false);
       setIsEditing(false);
       setPreviewError(null);
@@ -123,7 +124,7 @@ export function CollectionDetailsModal({
   // --- BARU: useEffect untuk menangani fetch data dengan AbortController ---
   useEffect(() => {
     // Hanya jalankan fetch jika showPreview true dan data belum ada
-    if (!showPreview || collectionData) {
+    if (!showPreview || ItemData) {
       return;
     }
 
@@ -137,7 +138,7 @@ export function CollectionDetailsModal({
 
       const cachedData = getCachedCollection(collection.id);
       if (cachedData) {
-        setCollectionData(cachedData);
+        setItemData(cachedData);
         if (isStringOrJson) {
           setEditContent(JSON.stringify(JSON.parse(cachedData.data), null, 2));
         }
@@ -153,7 +154,7 @@ export function CollectionDetailsModal({
         if (!res.ok) throw new Error("Failed to fetch collection data.");
 
         const data = await res.json();
-        setCollectionData(data);
+        setItemData(data);
         setCachedCollection(collection.id, data);
 
         if (isStringOrJson) {
@@ -181,16 +182,13 @@ export function CollectionDetailsModal({
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showPreview, collection.id, categoryId, channelId, collectionData]); // <-- dependensi effect
+  }, [showPreview, collection.id, categoryId, channelId, ItemData]); // <-- dependensi effect
 
   // --- BARU: useEffect untuk membuat & membersihkan Blob URL dari buffer ---
   useEffect(() => {
-    // Cek jika collectionData ada, dan tipenya adalah image/video
-    if (
-      collectionData?.data &&
-      (fileType === "image" || fileType === "video")
-    ) {
-      const buffer = collectionData.data.data;
+    // Cek jika ItemData ada, dan tipenya adalah image/video
+    if (ItemData?.data && (fileType === "image" || fileType === "video")) {
+      const buffer = ItemData.data.data;
       if (!buffer) return;
 
       // Buat Blob dari buffer
@@ -208,7 +206,7 @@ export function CollectionDetailsModal({
         setPreviewUrl(null);
       };
     }
-  }, [collectionData, fileType, collection.name]); // Jalankan saat data atau tipe file berubah
+  }, [ItemData, fileType, collection.name]); // Jalankan saat data atau tipe file berubah
 
   // --- DISEDERHANAKAN: Fungsi toggle preview sekarang hanya mengubah state ---
   const handleTogglePreview = () => {
@@ -228,7 +226,7 @@ export function CollectionDetailsModal({
       if (!res.ok) throw new Error("Failed to update status.");
 
       // Update state lokal agar UI langsung berubah
-      setCollectionData((prev) => (prev ? { ...prev, isPublic } : null));
+      setItemData((prev) => (prev ? { ...prev, isPublic } : null));
       toast.success(`Collection is now ${isPublic ? "public" : "private"}.`);
     } catch (error) {
       toast.error("Failed to update public status.");
@@ -237,32 +235,32 @@ export function CollectionDetailsModal({
   };
 
   const handleCopyPublicLink = () => {
-    if (!collectionData?.isPublic) {
+    if (!ItemData?.isPublic) {
       toast.error("This collection is not public.", {
         description: "You can make it public using the toggle.",
       });
       return;
     }
-    const publicUrl = `${window.location.origin}/api/database/${categoryId}/${channelId}/${collection.id}?raw=true&userID=${collectionData.userID}`;
+    const publicUrl = `${window.location.origin}/api/database/${categoryId}/${channelId}/${collection.id}?raw=true&userID=${ItemData.userID}`;
     navigator.clipboard.writeText(publicUrl);
     toast.success("Public link copied to clipboard!");
   };
 
   const handleStartEdit = () => {
-    if (!collectionData) return;
+    if (!ItemData) return;
     setIsEditing(true);
   };
 
   const handleDownload = () => {
     // Cek paling awal, jika tidak ada data sama sekali, jangan lakukan apa-apa.
-    if (!collectionData?.data) return;
+    if (!ItemData?.data) return;
 
     // Tentukan data yang akan disimpan ke dalam Blob.
     const dataForBlob = isStringOrJson
       ? // Untuk JSON/string, kita stringify datanya.
-        JSON.stringify(collectionData.data, null, 2)
+        JSON.stringify(ItemData.data, null, 2)
       : // Untuk biner (gambar/video), kita ambil array buffer-nya.
-        new Uint8Array(collectionData.data.data);
+        new Uint8Array(ItemData.data.data);
 
     // Buat Blob dengan tipe MIME yang sesuai agar file dikenali dengan benar.
     const blob = new Blob([dataForBlob], {
@@ -290,7 +288,7 @@ export function CollectionDetailsModal({
       });
       removeCachedCollection(collection.id); // Hapus dari cache
       setIsProcessing(false);
-      setCollectionData(null);
+      setItemData(null);
       onDataChanged(); // Ini akan menutup modal dan refresh list
     } catch (error) {
       console.error(error);
@@ -375,7 +373,7 @@ export function CollectionDetailsModal({
       removeCachedCollection(collection.id); // Hapus cache lama setelah update berhasil
       setIsProcessing(false);
       setIsEditing(false);
-      setCollectionData(null);
+      setItemData(null);
       onDataChanged(); // Ini akan menutup modal dan refresh list
     } catch (error) {
       console.error(error);
@@ -399,7 +397,7 @@ export function CollectionDetailsModal({
         <p className="p-4 text-center text-sm text-red-500">{previewError}</p>
       );
     }
-    if (collectionData) {
+    if (ItemData) {
       // --- Menggunakan previewUrl untuk gambar dan video ---
       if ((fileType === "image" || fileType === "video") && previewUrl) {
         if (fileType === "image") {
@@ -427,7 +425,7 @@ export function CollectionDetailsModal({
       if (isStringOrJson) {
         return (
           <pre className="bg-dark-shale/50 mt-2 max-h-48 overflow-auto rounded-md p-2 font-mono text-xs whitespace-pre-wrap">
-            {JSON.stringify(JSON.parse(collectionData.data), null, 2)}
+            {JSON.stringify(JSON.parse(ItemData.data), null, 2)}
           </pre>
         );
       }
@@ -537,9 +535,9 @@ export function CollectionDetailsModal({
               <Switch
                 id="public-status"
                 className="cursor-pointer"
-                checked={collectionData?.isPublic || false}
+                checked={ItemData?.isPublic || false}
                 onCheckedChange={handleTogglePublic}
-                disabled={!collectionData}
+                disabled={!ItemData}
               />
             </div>
             {renderPreviewArea()}
@@ -592,7 +590,7 @@ export function CollectionDetailsModal({
                   variant="outline"
                   className="border-gunmetal hover:bg-gunmetal/80"
                   onClick={handleCopyPublicLink}
-                  disabled={!collectionData?.isPublic}
+                  disabled={!ItemData?.isPublic}
                 >
                   <Copy size={16} className="mr-2" /> Copy Link
                 </Button>
@@ -612,14 +610,14 @@ export function CollectionDetailsModal({
                   variant="outline"
                   className="border-gunmetal hover:bg-gunmetal/80"
                   onClick={handleDownload}
-                  disabled={!collectionData} // Download hanya aktif jika data sudah di-load
+                  disabled={!ItemData} // Download hanya aktif jika data sudah di-load
                 >
                   <Download size={16} className="mr-2" /> Download
                 </Button>
                 <Button
                   className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
                   onClick={handleStartEdit}
-                  disabled={!collectionData || isPreviewLoading}
+                  disabled={!ItemData || isPreviewLoading}
                 >
                   <Edit size={16} className="mr-2" /> Edit
                 </Button>

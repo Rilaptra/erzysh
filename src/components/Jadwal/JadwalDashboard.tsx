@@ -16,15 +16,11 @@ export function JadwalDashboard({
 }: JadwalDashboardProps) {
   const [selectedDay, setSelectedDay] = useState(initialDay);
 
-  const handleSelectDay = (day: string) => {
-    setSelectedDay(day);
-  };
-
   const selectedSchedule = fullSchedule[selectedDay];
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="max-w-full px-4 py-6 sm:px-6 md:px-8 lg:px-10 xl:px-12">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
         <main className="lg:col-span-2">
           <HariIni hari={selectedDay} jadwal={selectedSchedule} />
         </main>
@@ -32,7 +28,7 @@ export function JadwalDashboard({
           <HariLain
             fullSchedule={fullSchedule}
             selectedDay={selectedDay}
-            onSelectDay={handleSelectDay}
+            onSelectDay={setSelectedDay}
           />
         </aside>
       </div>

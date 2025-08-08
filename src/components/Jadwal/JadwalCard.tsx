@@ -18,31 +18,54 @@ interface JadwalCardProps {
 
 export function JadwalCard({ matkul }: JadwalCardProps) {
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-xl font-bold">{matkul.matkul}</CardTitle>
-        <CardDescription>{matkul.sks} SKS</CardDescription>
+    <Card className="border-border bg-card text-card-foreground w-full rounded-lg border shadow-sm transition-shadow duration-200 hover:shadow-md">
+      <CardHeader className="px-4">
+        <CardTitle className="text-lg leading-snug font-semibold">
+          {matkul.matkul}
+        </CardTitle>
+        <CardDescription className="text-muted-foreground text-sm">
+          {matkul.sks} SKS
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="flex items-center">
-          <Clock className="mr-2 h-4 w-4 text-gray-500" />
-          <span>{matkul.jam_pelajaran.mulai} - {matkul.jam_pelajaran.selesai}</span>
+
+      <CardContent className="space-y-3 px-4 py-2 text-sm">
+        <div className="text-muted-foreground flex items-start gap-2">
+          <Clock className="mt-[2px] h-4 w-4 shrink-0" />
+          <div>
+            {matkul.jam_pelajaran.mulai} - {matkul.jam_pelajaran.selesai}
+          </div>
         </div>
-        <div className="flex items-center">
-          <MapPin className="mr-2 h-4 w-4 text-gray-500" />
-          <span>{matkul.ruang_kelas.id_ruang}</span>
+
+        <div className="text-muted-foreground flex items-start gap-2">
+          <MapPin className="mt-[2px] h-4 w-4 shrink-0" />
+          <div className="leading-tight">
+            <div className="font-medium">{matkul.ruang_kelas.id_ruang}</div>
+            <div className="text-xs">
+              Gedung FT {matkul.ruang_kelas.gedung_ft}, Lantai
+              {matkul.ruang_kelas.lantai}, Ruang
+              {matkul.ruang_kelas.nomor_ruang}
+              {matkul.ruang_kelas.keterangan
+                ? ` - ${matkul.ruang_kelas.keterangan}`
+                : ""}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center">
-          <User className="mr-2 h-4 w-4 text-gray-500" />
+
+        <div className="text-muted-foreground flex items-start gap-2">
+          <User className="mt-[2px] h-4 w-4 shrink-0" />
           <span>{matkul.dosen.full_name}</span>
         </div>
       </CardContent>
-      <CardFooter>
-        <div className="flex flex-wrap gap-2">
-          {matkul.dosen.karakteristik.map((char, index) => (
-            <Badge key={index} variant="outline">{char}</Badge>
-          ))}
-        </div>
+
+      <CardFooter className="flex flex-wrap gap-2 px-4">
+        {matkul.dosen.karakteristik.map((char, index) => (
+          <Badge key={index} variant="outline" className="px-2 py-1 text-xs">
+            {char
+              .split(" ")
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(" ")}
+          </Badge>
+        ))}
       </CardFooter>
     </Card>
   );

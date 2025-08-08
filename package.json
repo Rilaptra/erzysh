@@ -1,6 +1,5 @@
 {
-  "name": "latihan-sempoa",
-  "version": "0.1.0",
+  "name": "erzysh",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
