@@ -12,7 +12,7 @@ export function HariIni({ hari, jadwal }: HariIniProps) {
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">
-        Jadwal Hari Ini: <span className="text-primary">{hari}</span>
+        Jadwal Hari: <span className="text-primary">{hari}</span>
       </h1>
       {jadwal && jadwal.length > 0 ? (
         <div className="space-y-6">
@@ -22,7 +22,7 @@ export function HariIni({ hari, jadwal }: HariIniProps) {
         </div>
       ) : (
         <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-          <p className="text-xl text-gray-500">Hari ini tidak ada jadwal kuliah. Selamat beristirahat!</p>
+          <p className="text-xl text-gray-500">Tidak ada jadwal kuliah pada hari {hari}.</p>
         </div>
       )}
     </div>
