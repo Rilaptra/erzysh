@@ -1,6 +1,6 @@
-// File: pages/index.tsx
+// File: pages/index.tsx (SOLUSI)
 // ---------------------
-// 👨‍💻 Rizqi Lasheva | 2025
+// 捉窶昨汳ｻ Rizqi Lasheva | 2025
 //
 // Versi Next.js + TypeScript dari DOCX Generator Tool.
 // Kode ini telah diperbarui untuk mendukung Dark Theme dan
@@ -17,6 +17,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Upload, FileText, CheckCircle, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
+import { saveAs } from "file-saver";
 
 // --- TYPE DEFINITIONS ---
 interface SelectedImage {
@@ -230,7 +231,8 @@ const DocxGeneratorPage: NextPage = () => {
 
     try {
       const JSZip = (await import("jszip")).default;
-      const { saveAs } = await import("file-saver");
+      // --- PERBAIKAN DI SINI ---
+      // 1. Import seluruh modul 'file-saver'
 
       const imagesWithBase64: SelectedImage[] = [];
       for (let i = 0; i < selectedImages.length; i++) {
@@ -276,6 +278,8 @@ const DocxGeneratorPage: NextPage = () => {
       setProgress({ percentage: 90, message: "Generating DOCX file..." });
       const blob = await docxZip.generateAsync({ type: "blob" });
       const generated_document = `${nama}_${npm}_${nomor_kelas}`;
+
+      // 2. Gunakan fileSaver.saveAs, bukan hanya saveAs
       saveAs(blob, `${generated_document}.docx`);
 
       setProgress({
@@ -383,6 +387,8 @@ const DocxGeneratorPage: NextPage = () => {
                   <div key={image.url} className="relative aspect-square">
                     <Image
                       src={image.url}
+                      width={256}
+                      height={256}
                       alt={image.filename}
                       className="h-full w-full rounded-md object-cover shadow-md"
                     />
