@@ -77,7 +77,7 @@ export default function LoginPage() {
       }
 
       // Jika berhasil, API akan set cookie dan kita redirect ke dashboard
-      router.push("/dashboard");
+      router.push("/database");
     } catch (err) {
       setError((err as Error).message);
     } finally {

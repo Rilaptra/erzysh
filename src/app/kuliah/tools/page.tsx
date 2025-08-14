@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import gsap from "gsap";
-
 export default function KuliahPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -24,21 +23,17 @@ export default function KuliahPage() {
       ref={containerRef}
       className="flex min-h-screen flex-col items-center justify-center px-4 text-center"
     >
-      <h1 className="text-primary mb-8 text-4xl font-bold">Erzysh</h1>
+      <h1 className="text-primary mb-8 text-4xl font-bold">Tools Kuliah</h1>
+      {/*
+       * Responsive Layout Strategy:
+       * - Default to a vertical column layout for mobile (`flex-col`, `space-y-4`).
+       * - Switch to a horizontal row layout on small screens and up (`sm:flex-row`).
+       * - Reset vertical spacing and apply horizontal spacing for larger screens (`sm:space-y-0`, `sm:space-x-4`).
+       */}
       <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-        <Link href="/dashboard">
-          <Button variant="default" className="w-40 justify-center">
-            Dashboard
-          </Button>
-        </Link>
-        <Link href="/database/dashboard">
-          <Button variant="default" className="w-40 justify-center">
-            Database
-          </Button>
-        </Link>
-        <Link href="/kuliah">
-          <Button variant="default" className="w-40 justify-center">
-            Kuliah
+        <Link href="/kuliah/tools/photo-formatter">
+          <Button variant="default" className="justify-center">
+            Photo to Docs Formatter (Tugas Prodi)
           </Button>
         </Link>
       </div>
