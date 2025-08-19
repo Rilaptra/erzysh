@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+export const metadata: Metadata = {
+  title: "Erzysh Website",
+  description: "Erzysh Website, web experiment dan kebutuhan pribadi"
+}
 /**
 export const metadata: Metadata = {
   title: "Eryzsh DB",
