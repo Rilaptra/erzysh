@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
+/**
 export const metadata: Metadata = {
   title: "Eryzsh DB",
   description: "Simple Database-as-a-Service powered by Discord",
@@ -36,6 +36,7 @@ export const metadata: Metadata = {
     ],
   },
 };
+*/
 
 export default function RootLayout({
   children,
