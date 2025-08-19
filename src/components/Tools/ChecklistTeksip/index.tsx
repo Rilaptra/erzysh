@@ -94,7 +94,7 @@ const daftarNama = [
   { No: 70, NPM: 2505030070, Nama: "Riovan Arif Kurninanto", Rombel: 2 },
   { No: 71, NPM: 2505030071, Nama: "Dimas Bagas Gilang Pranata", Rombel: 2 },
   { No: 72, NPM: 2505030072, Nama: "Muhammad Raikhan Ni", Rombel: 2 },
-  { No: 73, NPM: 2505030073, Nama: "Bima ", Rombel: 2 },
+  { No: 73, NPM: 2505030073, Nama: "Bima 'Aliy Akbar", Rombel: 2 },
   { No: 74, NPM: 2505030074, Nama: "Syahda Dhiyaa Ulhaq", Rombel: 2 },
   { No: 75, NPM: 2505030075, Nama: "Callista Nidie Salsabilla", Rombel: 2 },
   { No: 76, NPM: 2505030076, Nama: "Handika Galang Pratama", Rombel: 3 },
