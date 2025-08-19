@@ -280,7 +280,7 @@ export default function ChecklistTeksipPage() {
                       </span>{" "}
                       {item.Nama}{" "}
                       <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                        (Rombel/TS 0{item.Rombel})
+                        ({item.NPM})
                       </span>
                     </label>
                   </li>
