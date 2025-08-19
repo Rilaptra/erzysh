@@ -145,7 +145,7 @@ const daftarNama = [
   { No: 116, NPM: 2505030116, Nama: "Bagus Wahyu Nugroho", Rombel: 4 },
   { No: 117, NPM: 2505030117, Nama: "Zhafirah Elmassetyo Hartini", Rombel: 4 },
   { No: 118, NPM: 2505030118, Nama: "Dama Rizky Astawa", Rombel: 4 },
-  { No: 119, NPM: 2505030119, Nama: "Ja", Rombel: 4 },
+  { No: 119, NPM: 2505030119, Nama: "Ja'far Aziz Arifuddin", Rombel: 4 },
   { No: 120, NPM: 2505030120, Nama: "Rifqi Irfan Prayitno", Rombel: 4 },
   { No: 121, NPM: 2505030121, Nama: "Husain Faishal Nizam", Rombel: 4 },
   { No: 122, NPM: 2505030122, Nama: "Flashsena Dharma Nusa", Rombel: 4 },
