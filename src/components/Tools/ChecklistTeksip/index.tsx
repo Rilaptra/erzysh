@@ -1,340 +1,391 @@
-// index.tsx
+// src/components/Tools/ChecklistTeksip/index.tsx
 "use client";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import {
+  ChevronDown,
+  Undo2,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { cn } from "@/lib/cn";
+import daftarNama from "@/lib/data/mahasiswa.json";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+// --- DATA ---
+const STORAGE_KEY = "checkedTeksipStudents";
 
-// Data siswa Teknik Sipil
-const daftarNama = [
-  { No: 1, NPM: 2505030001, Nama: "Raisya Rahmi Faiza", Rombel: 1 },
-  { No: 2, NPM: 2505030002, Nama: "Dede Saputra", Rombel: 1 },
-  { No: 3, NPM: 2505030003, Nama: "Surya Oktavian Putra Pratama", Rombel: 1 },
-  { No: 4, NPM: 2505030004, Nama: "Muhamad Nafan Adi Prayoga", Rombel: 1 },
-  {
-    No: 5,
-    NPM: 2505030005,
-    Nama: "Muhammad Syariful Adyan Juniansyah",
-    Rombel: 1,
-  },
-  { No: 6, NPM: 2505030006, Nama: "Agus Wahyudi", Rombel: 1 },
-  { No: 7, NPM: 2505030007, Nama: "Galang Ghofar Alfarizi", Rombel: 1 },
-  { No: 8, NPM: 2505030008, Nama: "Aderiani Noviyanti", Rombel: 1 },
-  { No: 9, NPM: 2505030009, Nama: "Muhammad Raditya Ardi Nawawi", Rombel: 1 },
-  { No: 10, NPM: 2505030010, Nama: "Anjanis Kaifha Ayu Pasya", Rombel: 1 },
-  { No: 11, NPM: 2505030011, Nama: "Zahra Ainun Abida", Rombel: 1 },
-  { No: 12, NPM: 2505030012, Nama: "Angie Kirana Ratnadewati", Rombel: 1 },
-  { No: 13, NPM: 2505030013, Nama: "Muhamad Muflihudin", Rombel: 1 },
-  { No: 14, NPM: 2505030014, Nama: "Dzakwan Hada Musyaffa", Rombel: 1 },
-  {
-    No: 15,
-    NPM: 2505030015,
-    Nama: "Gebriella Ica Florensia Bancin",
-    Rombel: 1,
-  },
-  { No: 16, NPM: 2505030016, Nama: "Elma Tiana Tri wijaya", Rombel: 1 },
-  { No: 17, NPM: 2505030017, Nama: "Satrio Bagus Wicaksono", Rombel: 1 },
-  { No: 18, NPM: 2505030018, Nama: "Oktaf Nizwar Fahmi", Rombel: 1 },
-  { No: 19, NPM: 2505030019, Nama: "Amelia Sudirman Putri", Rombel: 1 },
-  { No: 20, NPM: 2505030020, Nama: "Mohamad Abimanyu Satya Negara", Rombel: 1 },
-  { No: 21, NPM: 2505030021, Nama: "Aqeela Danish Briliantina", Rombel: 1 },
-  { No: 22, NPM: 2505030022, Nama: "Taufik Arief Nugroho", Rombel: 1 },
-  { No: 23, NPM: 2505030023, Nama: "Muktaf Najib", Rombel: 1 },
-  { No: 24, NPM: 2505030024, Nama: "Achmad Latief", Rombel: 1 },
-  { No: 25, NPM: 2505030025, Nama: "Putri Ayuningtyas", Rombel: 1 },
-  { No: 26, NPM: 2505030026, Nama: "Caesazzahra Ramadhani", Rombel: 1 },
-  { No: 27, NPM: 2505030027, Nama: "Eriza Yafi Labib Adiyatma", Rombel: 1 },
-  { No: 28, NPM: 2505030028, Nama: "Zagar Shofi Nawwaf Alfarizi", Rombel: 1 },
-  { No: 29, NPM: 2505030029, Nama: "Ratih Anniza Harindi", Rombel: 1 },
-  { No: 30, NPM: 2505030030, Nama: "Zepanya Putra Kurniawan", Rombel: 1 },
-  { No: 31, NPM: 2505030031, Nama: "Banu Apriliansyah", Rombel: 1 },
-  { No: 32, NPM: 2505030032, Nama: "Meyfa Ciello Pranatania", Rombel: 1 },
-  { No: 33, NPM: 2505030033, Nama: "Arfan Irsyadani Rafi", Rombel: 1 },
-  { No: 34, NPM: 2505030034, Nama: "Krisna Hasnu Sidik", Rombel: 1 },
-  { No: 35, NPM: 2505030035, Nama: "R. Maulana Malik Endito", Rombel: 1 },
-  { No: 36, NPM: 2505030036, Nama: "Surya Dwi Riskiyan", Rombel: 1 },
-  { No: 37, NPM: 2505030037, Nama: "Fadhil Abrori", Rombel: 1 },
-  { No: 38, NPM: 2505030038, Nama: "Auriga Arkanozilvan", Rombel: 1 },
-  { No: 39, NPM: 2505030039, Nama: "Muhammad Haniif Al-Ghazali", Rombel: 2 },
-  { No: 40, NPM: 2505030040, Nama: "Isra Daffa Wityoko", Rombel: 2 },
-  { No: 41, NPM: 2505030041, Nama: "Anindia Helfrida", Rombel: 2 },
-  { No: 42, NPM: 2505030042, Nama: "Nurroyan Aditya Firmansyah", Rombel: 2 },
-  { No: 43, NPM: 2505030043, Nama: "Chaerunnisa Shafarani", Rombel: 2 },
-  { No: 44, NPM: 2505030044, Nama: "Sastya Arlita Putri", Rombel: 2 },
-  { No: 45, NPM: 2505030045, Nama: "Tamasaka Hadyan Muhammad", Rombel: 2 },
-  { No: 46, NPM: 2505030046, Nama: "Muh. Rizky Maulana", Rombel: 2 },
-  { No: 47, NPM: 2505030047, Nama: "Muhammad Faiz Zulfa", Rombel: 2 },
-  { No: 48, NPM: 2505030048, Nama: "Senja Heppy Endarwati", Rombel: 2 },
-  { No: 49, NPM: 2505030049, Nama: "Hersa Febriani", Rombel: 2 },
-  { No: 50, NPM: 2505030050, Nama: "Mesgy Fredita Perdana", Rombel: 2 },
-  { No: 51, NPM: 2505030051, Nama: "Gregorius Gilang Aditya Buana", Rombel: 2 },
-  { No: 52, NPM: 2505030052, Nama: "Ferliska Melia Oktaviani", Rombel: 2 },
-  { No: 53, NPM: 2505030053, Nama: "Muhammad Naufal Farras", Rombel: 2 },
-  { No: 54, NPM: 2505030054, Nama: "Gadang Ahmad Zidane", Rombel: 2 },
-  { No: 55, NPM: 2505030055, Nama: "Ezra Trifotius Ziliwu", Rombel: 2 },
-  { No: 56, NPM: 2505030056, Nama: "Muhammad Fadhlan Rifqi", Rombel: 2 },
-  { No: 57, NPM: 2505030057, Nama: "Bayu Ascherano Ramadhan", Rombel: 2 },
-  { No: 58, NPM: 2505030058, Nama: "Batara Shafa Anugrah Jiwa", Rombel: 2 },
-  {
-    No: 59,
-    NPM: 2505030059,
-    Nama: "Muhammad Rafi Lazuardhi Al Ashari",
-    Rombel: 2,
-  },
-  { No: 60, NPM: 2505030060, Nama: "Muhammad Rajwa Aufa Pratama", Rombel: 2 },
-  { No: 61, NPM: 2505030061, Nama: "Muhammad Ardine Icasia", Rombel: 2 },
-  { No: 62, NPM: 2505030062, Nama: "Fastabiqul Khoir", Rombel: 2 },
-  { No: 63, NPM: 2505030063, Nama: "Irma Febia Anggraeni", Rombel: 2 },
-  { No: 64, NPM: 2505030064, Nama: "Mohammad Falah Alfaraby", Rombel: 2 },
-  { No: 65, NPM: 2505030065, Nama: "Riwong Sujiwo", Rombel: 2 },
-  { No: 66, NPM: 2505030066, Nama: "Aisyah Naini", Rombel: 2 },
-  { No: 67, NPM: 2505030067, Nama: "Aulia Ramadhani", Rombel: 2 },
-  { No: 68, NPM: 2505030068, Nama: "Excel Dwi Hariyono", Rombel: 2 },
-  { No: 69, NPM: 2505030069, Nama: "Farhan Abi Nasrulloh", Rombel: 2 },
-  { No: 70, NPM: 2505030070, Nama: "Riovan Arif Kurninanto", Rombel: 2 },
-  { No: 71, NPM: 2505030071, Nama: "Dimas Bagas Gilang Pranata", Rombel: 2 },
-  { No: 72, NPM: 2505030072, Nama: "Muhammad Raikhan Ni", Rombel: 2 },
-  { No: 73, NPM: 2505030073, Nama: "Bima 'Aliy Akbar", Rombel: 2 },
-  { No: 74, NPM: 2505030074, Nama: "Syahda Dhiyaa Ulhaq", Rombel: 2 },
-  { No: 75, NPM: 2505030075, Nama: "Callista Nidie Salsabilla", Rombel: 2 },
-  { No: 76, NPM: 2505030076, Nama: "Handika Galang Pratama", Rombel: 3 },
-  { No: 77, NPM: 2505030077, Nama: "Alena Ewa Sulistyowati", Rombel: 3 },
-  { No: 78, NPM: 2505030078, Nama: "Muhammad Bima Adjie Kurniawan", Rombel: 3 },
-  { No: 79, NPM: 2505030079, Nama: "Panca Satria Pamungkas", Rombel: 3 },
-  { No: 80, NPM: 2505030080, Nama: "Fina Idamatus Silmi", Rombel: 3 },
-  { No: 81, NPM: 2505030081, Nama: "Reno Bona Afrielda", Rombel: 3 },
-  { No: 82, NPM: 2505030082, Nama: "Fernando Saputra", Rombel: 3 },
-  {
-    No: 83,
-    NPM: 2505030083,
-    Nama: "Sabdo Aji Gineng Damar Kucnoro",
-    Rombel: 3,
-  },
-  { No: 84, NPM: 2505030084, Nama: "Eka Adi Setyawan", Rombel: 3 },
-  { No: 85, NPM: 2505030085, Nama: "Mullasheyla Quratuaini", Rombel: 3 },
-  { No: 86, NPM: 2505030086, Nama: "Artika Putri Sari Dessa", Rombel: 3 },
-  { No: 87, NPM: 2505030087, Nama: "Annisa Widji Sekar Kinanthi", Rombel: 3 },
-  { No: 88, NPM: 2505030088, Nama: "Ignatius Evan Arka Baswara", Rombel: 3 },
-  { No: 89, NPM: 2505030089, Nama: "Rahadian Rizky Prasetyo", Rombel: 3 },
-  { No: 90, NPM: 2505030090, Nama: "Annisa Anindyah Artiningsih", Rombel: 3 },
-  { No: 91, NPM: 2505030091, Nama: "Muhammad Andicha Ilzam Fata", Rombel: 3 },
-  { No: 92, NPM: 2505030092, Nama: "Gian Najwan Hakim", Rombel: 3 },
-  { No: 93, NPM: 2505030093, Nama: "Maurel Afriza", Rombel: 3 },
-  { No: 94, NPM: 2505030094, Nama: "Muhammad Zaki Handriananta", Rombel: 3 },
-  { No: 95, NPM: 2505030095, Nama: "Filipus Yulian Joses Leksmana", Rombel: 3 },
-  { No: 96, NPM: 2505030096, Nama: "Fadhil Zaid Amanullah", Rombel: 3 },
-  { No: 97, NPM: 2505030097, Nama: "Ahmad Rizqi Alfaris", Rombel: 3 },
-  { No: 98, NPM: 2505030098, Nama: "Edita Dirga Ayu", Rombel: 3 },
-  { No: 99, NPM: 2505030099, Nama: "Ahnaf Fausta Hugo Santoso", Rombel: 3 },
-  { No: 100, NPM: 2505030100, Nama: "Ivana Syahda Widyadhana", Rombel: 3 },
-  { No: 101, NPM: 2505030101, Nama: "Athalla Rayhan Nursadidan", Rombel: 3 },
-  { No: 102, NPM: 2505030102, Nama: "Ilham Nur Jati", Rombel: 3 },
-  { No: 103, NPM: 2505030103, Nama: "Mirza Yafiq Zafran", Rombel: 3 },
-  { No: 104, NPM: 2505030104, Nama: "Ardhi Almas Prasetyo", Rombel: 3 },
-  { No: 105, NPM: 2505030105, Nama: "Naufal Fiqih Tauladani", Rombel: 3 },
-  { No: 106, NPM: 2505030106, Nama: "Ilham Taqiy Ayyasya", Rombel: 3 },
-  { No: 107, NPM: 2505030107, Nama: "Yudha Jati Kuncoro", Rombel: 3 },
-  { No: 108, NPM: 2505030108, Nama: "Ardina Pratiwi", Rombel: 3 },
-  { No: 109, NPM: 2505030109, Nama: "Raihan Aflah Sirajuddin", Rombel: 3 },
-  { No: 110, NPM: 2505030110, Nama: "Garin Permata Citra Ningtyas", Rombel: 3 },
-  { No: 111, NPM: 2505030111, Nama: "Taufikur Rokhman", Rombel: 3 },
-  { No: 112, NPM: 2505030112, Nama: "Destin Febrian Pranata", Rombel: 3 },
-  { No: 113, NPM: 2505030113, Nama: "Fransiska Cindy Widyastuti", Rombel: 4 },
-  { No: 114, NPM: 2505030114, Nama: "Ifada Shofi Amalia", Rombel: 4 },
-  { No: 115, NPM: 2505030115, Nama: "Zahra Vanessa Febrian Nova", Rombel: 4 },
-  { No: 116, NPM: 2505030116, Nama: "Bagus Wahyu Nugroho", Rombel: 4 },
-  { No: 117, NPM: 2505030117, Nama: "Zhafirah Elmassetyo Hartini", Rombel: 4 },
-  { No: 118, NPM: 2505030118, Nama: "Dama Rizky Astawa", Rombel: 4 },
-  { No: 119, NPM: 2505030119, Nama: "Ja'far Aziz Arifuddin", Rombel: 4 },
-  { No: 120, NPM: 2505030120, Nama: "Rifqi Irfan Prayitno", Rombel: 4 },
-  { No: 121, NPM: 2505030121, Nama: "Husain Faishal Nizam", Rombel: 4 },
-  { No: 122, NPM: 2505030122, Nama: "Flashsena Dharma Nusa", Rombel: 4 },
-  { No: 123, NPM: 2505030123, Nama: "Rheza Maulana Putra", Rombel: 4 },
-  { No: 124, NPM: 2505030124, Nama: "Tio Dwi Istanto", Rombel: 4 },
-  { No: 125, NPM: 2505030125, Nama: "Kinanti Ayu Ratri", Rombel: 4 },
-  { No: 126, NPM: 2505030127, Nama: "Aura Pramudya", Rombel: 4 },
-  { No: 127, NPM: 2505030128, Nama: "Adi Prabowo", Rombel: 4 },
-  { No: 128, NPM: 2505030129, Nama: "Neo Sulisdiantoro", Rombel: 4 },
-  { No: 129, NPM: 2505030130, Nama: "Alvin Dienova", Rombel: 4 },
-  { No: 130, NPM: 2505030131, Nama: "Citra Christina Rohani", Rombel: 4 },
-  { No: 131, NPM: 2505030132, Nama: "Rahmatika Sandy Aulia", Rombel: 4 },
-  { No: 132, NPM: 2505030133, Nama: "Melvina Elirika Aliah", Rombel: 4 },
-  { No: 133, NPM: 2505030134, Nama: "Korindo Chaesa Fernanda", Rombel: 4 },
-  { No: 134, NPM: 2505030135, Nama: "Helen Ivana Gunawan", Rombel: 4 },
-  { No: 135, NPM: 2505030136, Nama: "Kintan Alifia Astari", Rombel: 4 },
-  { No: 136, NPM: 2505030137, Nama: "Aliya Putri Kumalasari", Rombel: 4 },
-  { No: 137, NPM: 2505030138, Nama: "Ardina Astiwi", Rombel: 4 },
-  { No: 138, NPM: 2505030139, Nama: "Mikael Cristian Oktavio", Rombel: 4 },
-  { No: 139, NPM: 2505030140, Nama: "Siti Zulaikah", Rombel: 4 },
-  { No: 140, NPM: 2505030141, Nama: "Gita Kartika Dewi", Rombel: 4 },
-  { No: 141, NPM: 2505030142, Nama: "Rizqi Lasheva Purnama Putra", Rombel: 4 },
-  { No: 142, NPM: 2505030143, Nama: "Indana Fadia Aqiila", Rombel: 4 },
-  { No: 143, NPM: 2505030144, Nama: "Muhammad Yafi", Rombel: 4 },
-  { No: 144, NPM: 2505030145, Nama: "Achmad Juniaries Divatama", Rombel: 4 },
-  { No: 145, NPM: 2505030146, Nama: "Farrell Shareef Ghandi", Rombel: 4 },
-  { No: 146, NPM: 2505030147, Nama: "Rafa Nafisa Azkiya", Rombel: 4 },
-  { No: 147, NPM: 2505030148, Nama: "Muhammad Zaky Setiawan", Rombel: 4 },
-  { No: 148, NPM: 2505030149, Nama: "Farrel Widyatna Nugraha", Rombel: 4 },
-  { No: 149, NPM: 2505030150, Nama: "Radiya Satyawati", Rombel: 4 },
-];
-
-export default function ChecklistTeksipPage() {
-  // Gunakan Map untuk performa lookup yang lebih cepat
+// --- HOOKS ---
+const useStudentChecklist = () => {
   const [checkedItems, setCheckedItems] = useState<Map<number, boolean>>(
     new Map(),
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [, setLastAction] = useState<{
+    id: number;
+    name: string;
+    type: "checked" | "unchecked";
+  } | null>(null);
 
-  // Efek untuk memuat data dari localStorage saat komponen pertama kali dirender
   useEffect(() => {
     try {
-      const storedData = localStorage.getItem("checkedTeksipStudents");
+      const storedData = localStorage.getItem(STORAGE_KEY);
       if (storedData) {
-        // Konversi JSON string ke Map
         setCheckedItems(new Map(JSON.parse(storedData)));
       }
     } catch (error) {
-      console.error("Failed to load data from localStorage", error);
+      console.error("Gagal memuat data dari localStorage:", error);
     }
   }, []);
 
-  // Efek untuk menyimpan data ke localStorage setiap kali ada perubahan pada checkedItems
   useEffect(() => {
     try {
-      // Konversi Map ke JSON string
       const dataToStore = JSON.stringify(Array.from(checkedItems.entries()));
-      localStorage.setItem("checkedTeksipStudents", dataToStore);
+      localStorage.setItem(STORAGE_KEY, dataToStore);
     } catch (error) {
-      console.error("Failed to save data to localStorage", error);
+      console.error("Gagal menyimpan data ke localStorage:", error);
     }
   }, [checkedItems]);
 
-  const handleCheck = (no: number, isChecked: boolean) => {
-    setCheckedItems((prevItems) => {
-      const newItems = new Map(prevItems);
-      if (isChecked) {
-        newItems.set(no, true);
+  const handleUndo = useCallback(
+    (actionToUndo: {
+      id: number;
+      name: string;
+      type: "checked" | "unchecked";
+    }) => {
+      setCheckedItems((prev) => {
+        const newItems = new Map(prev);
+        if (actionToUndo.type === "checked") {
+          newItems.delete(actionToUndo.id);
+        } else {
+          newItems.set(actionToUndo.id, true);
+        }
+        return newItems;
+      });
+      toast.success(`Aksi untuk "${actionToUndo.name}" dibatalkan.`);
+      setLastAction(null);
+    },
+    [],
+  );
+
+  const handleCheck = useCallback(
+    (id: number, isChecked: boolean, name: string) => {
+      const type = isChecked ? "checked" : "unchecked";
+      setLastAction({ id, name, type });
+
+      setCheckedItems((prev) => {
+        const newItems = new Map(prev);
+        if (isChecked) {
+          newItems.set(id, true);
+        } else {
+          newItems.delete(id);
+        }
+        return newItems;
+      });
+
+      toast.info(
+        `"${name}" ditandai ${isChecked ? "sudah" : "belum"} selesai.`,
+        {
+          action: {
+            label: "Undo",
+            onClick: () => handleUndo({ id, name, type }),
+          },
+          icon: <Undo2 className="size-4" />,
+          duration: 5000,
+        },
+      );
+    },
+    [handleUndo],
+  );
+
+  const handleClearAll = useCallback(() => {
+    setCheckedItems(new Map());
+    toast.success("Daftar 'Sudah Foto' telah dibersihkan.");
+  }, []); // Dependency array kosong karena setCheckedItems stabil
+
+  const filteredStudents = useMemo(
+    () =>
+      daftarNama.filter(
+        (item) =>
+          item.Nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          String(item.NPM).includes(searchTerm),
+      ),
+    [searchTerm],
+  );
+
+  const { checkedStudents, uncheckedStudents } = useMemo(() => {
+    const checked: typeof daftarNama = [];
+    const unchecked: typeof daftarNama = [];
+    for (const student of filteredStudents) {
+      if (checkedItems.has(student.No)) {
+        checked.push(student);
       } else {
-        newItems.delete(no);
+        unchecked.push(student);
       }
-      return newItems;
-    });
+    }
+    return { checkedStudents: checked, uncheckedStudents: unchecked };
+  }, [filteredStudents, checkedItems]);
+
+  return {
+    searchTerm,
+    setSearchTerm,
+    checkedStudents,
+    uncheckedStudents,
+    handleCheck,
+    handleClearAll,
   };
+};
 
-  const isChecked = (no: number) => checkedItems.has(no);
+// --- COMPONENTS ---
 
-  const filteredDaftarNama = daftarNama.filter((item) =>
-    item.Nama.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+interface StudentListItemProps {
+  student: (typeof daftarNama)[0];
+  isChecked: boolean;
+  onCheck: (id: number, isChecked: boolean, name: string) => void;
+}
 
-  const checkedStudents = filteredDaftarNama.filter((item) =>
-    isChecked(item.No),
-  );
-  const uncheckedStudents = filteredDaftarNama.filter(
-    (item) => !isChecked(item.No),
-  );
+const StudentListItem: React.FC<StudentListItemProps> = ({
+  student,
+  isChecked,
+  onCheck,
+}) => (
+  <li
+    className={cn(
+      "flex items-center gap-3 rounded-md p-3 shadow-sm transition-all duration-200",
+      isChecked
+        ? "bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50"
+        : "bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-700 dark:hover:bg-neutral-600",
+    )}
+  >
+    <Checkbox
+      id={`checkbox-${student.No}`}
+      checked={isChecked}
+      onCheckedChange={(checked) =>
+        onCheck(student.No, checked as boolean, student.Nama)
+      }
+      className="flex-shrink-0"
+    />
+    <label
+      htmlFor={`checkbox-${student.No}`}
+      className={cn(
+        "flex-1 cursor-pointer font-medium text-neutral-800 dark:text-neutral-300",
+        isChecked && "dark:line-through-neutral-500 line-through",
+      )}
+    >
+      <span className="mr-2 font-bold text-neutral-500 dark:text-neutral-400">
+        {student.No}.
+      </span>
+      {student.Nama}
+      <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
+        {" "}
+        ({student.NPM})
+      </span>
+    </label>
+  </li>
+);
+
+interface CollapsibleStudentListProps {
+  title: string;
+  students: typeof daftarNama;
+  checkedState: "checked" | "unchecked";
+  onCheck: (id: number, isChecked: boolean, name: string) => void;
+  onClearAll?: () => void;
+  headerId: string;
+}
+
+const CollapsibleStudentList: React.FC<CollapsibleStudentListProps> = ({
+  title,
+  students,
+  checkedState,
+  onCheck,
+  onClearAll,
+  headerId,
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-6 sm:py-8 lg:py-12 dark:bg-neutral-900">
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-        <h1 className="mb-6 text-center text-2xl font-bold text-neutral-800 sm:text-3xl dark:text-neutral-100">
-          Checklist Tugas Foto Mahasiswa Teknik Sipil 2025
-        </h1>
-
-        <div className="mb-4">
-          <Input
-            type="text"
-            placeholder="Cari nama mahasiswa..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-md dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-          />
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-lg bg-white p-4 shadow-md dark:bg-neutral-800 dark:shadow-none">
-            <h2 className="mb-3 text-lg font-semibold text-neutral-700 dark:text-neutral-200">
-              Belum Foto ({uncheckedStudents.length})
-            </h2>
-            {uncheckedStudents.length > 0 ? (
-              <ul className="space-y-3">
-                {uncheckedStudents.map((item) => (
-                  <li
-                    key={item.No}
-                    className="flex items-center gap-3 rounded-md bg-neutral-50 p-3 shadow-sm transition-all duration-200 hover:bg-neutral-100 dark:bg-neutral-700 dark:shadow-none dark:hover:bg-neutral-600"
-                  >
-                    <Checkbox
-                      id={`checkbox-${item.No}`}
-                      checked={isChecked(item.No)}
-                      onCheckedChange={(checked) =>
-                        handleCheck(item.No, checked as boolean)
-                      }
-                      className="flex-shrink-0 rounded focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:border-neutral-500 dark:bg-neutral-600 dark:focus:ring-indigo-600"
-                    />
-                    <label
-                      htmlFor={`checkbox-${item.No}`}
-                      className="flex-1 cursor-pointer font-medium text-neutral-800 dark:text-neutral-300"
-                    >
-                      <span className="mr-2 font-bold text-neutral-500 dark:text-neutral-400">
-                        {item.No}.
-                      </span>{" "}
-                      {item.Nama}{" "}
-                      <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                        ({item.NPM})
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-center text-neutral-500 italic dark:text-neutral-400">
-                Sudah Foto dengan semua!
-              </p>
+    <div
+      id={headerId}
+      className="scroll-mt-4 rounded-lg bg-white p-4 shadow-md dark:bg-neutral-800"
+    >
+      <div className="flex w-full items-center justify-between text-left">
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="flex flex-1 items-center justify-between"
+        >
+          <h2
+            className={cn(
+              "text-lg font-semibold",
+              checkedState === "checked"
+                ? "text-green-700 dark:text-green-300"
+                : "text-neutral-700 dark:text-neutral-200",
             )}
+          >
+            {title} ({students.length})
+          </h2>
+          <ChevronDown
+            className={cn(
+              "transform transition-transform duration-200",
+              isCollapsed && "-rotate-180",
+            )}
+          />
+        </button>
+        {onClearAll && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" /* ...props lainnya */>
+                <Trash2 className="mr-1.5 size-4" />
+                Clear All
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Anda Yakin?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Aksi ini akan menghapus semua centang pada daftar "Sudah
+                  Foto". Data yang dihapus tidak bisa dikembalikan.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction onClick={onClearAll}>
+                  Ya, Hapus Semua
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+      {!isCollapsed && (
+        <div className="animate-in fade-in mt-4 duration-300">
+          {students.length > 0 ? (
+            <ul className="space-y-3">
+              {students.map((student) => (
+                <StudentListItem
+                  key={student.No}
+                  student={student}
+                  isChecked={checkedState === "checked"}
+                  onCheck={onCheck}
+                />
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-neutral-500 italic dark:text-neutral-400">
+              {checkedState === "checked" ? "Belum ada." : "Semua sudah foto!"}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ScrollButtons = () => {
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowButton(true);
+      } else {
+        setShowButton(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  if (!showButton) return null;
+
+  return (
+    <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-2">
+      <Button
+        size="icon"
+        onClick={() => scrollTo("unchecked-header")}
+        className="rounded-full shadow-lg"
+        aria-label="Scroll to Unchecked List"
+      >
+        <ArrowUpToLine />
+      </Button>
+      <Button
+        size="icon"
+        onClick={() => scrollTo("checked-header")}
+        className="rounded-full shadow-lg"
+        aria-label="Scroll to Checked List"
+      >
+        <ArrowDownToLine />
+      </Button>
+    </div>
+  );
+};
+
+// --- MAIN PAGE COMPONENT ---
+export default function ChecklistTeksipPage() {
+  const {
+    searchTerm,
+    setSearchTerm,
+    checkedStudents,
+    uncheckedStudents,
+    handleCheck,
+    handleClearAll,
+  } = useStudentChecklist();
+
+  return (
+    <>
+      <div className="min-h-screen bg-neutral-50 py-6 sm:py-8 lg:py-12 dark:bg-neutral-900">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+          <h1 className="mb-6 text-center text-2xl font-bold text-neutral-800 sm:text-3xl dark:text-neutral-100">
+            Checklist Tugas Foto Mahasiswa Teknik Sipil 2025
+          </h1>
+
+          <div className="mb-4">
+            <Input
+              type="text"
+              placeholder="Cari nama atau NPM..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-md dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+            />
           </div>
 
-          <div className="rounded-lg bg-white p-4 shadow-md dark:bg-neutral-800 dark:shadow-none">
-            <h2 className="mb-3 text-lg font-semibold text-green-700 dark:text-green-300">
-              Sudah Foto ({checkedStudents.length})
-            </h2>
-            {checkedStudents.length > 0 ? (
-              <ul className="space-y-3">
-                {checkedStudents.map((item) => (
-                  <li
-                    key={item.No}
-                    className="flex items-center gap-3 rounded-md bg-green-50 p-3 shadow-sm transition-all duration-200 hover:bg-green-100 dark:bg-green-900/30 dark:shadow-none dark:hover:bg-green-900/50"
-                  >
-                    <Checkbox
-                      id={`checkbox-${item.No}`}
-                      checked={isChecked(item.No)}
-                      onCheckedChange={(checked) =>
-                        handleCheck(item.No, checked as boolean)
-                      }
-                      className="flex-shrink-0 rounded focus:ring-2 focus:ring-green-500 focus:ring-offset-1 dark:border-green-500 dark:bg-green-600 dark:focus:ring-green-600"
-                    />
-                    <label
-                      htmlFor={`checkbox-${item.No}`}
-                      className="dark:line-through-neutral-500 flex-1 cursor-pointer font-medium text-neutral-800 line-through dark:text-neutral-300"
-                    >
-                      <span className="mr-2 font-bold text-neutral-500 dark:text-neutral-400">
-                        {item.No}.
-                      </span>{" "}
-                      {item.Nama}{" "}
-                      <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                        ({item.NPM})
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-center text-neutral-500 italic dark:text-neutral-400">
-                Belum ada.
-              </p>
-            )}
+          <div className="space-y-6">
+            <CollapsibleStudentList
+              headerId="unchecked-header"
+              title="Belum Foto"
+              students={uncheckedStudents}
+              checkedState="unchecked"
+              onCheck={handleCheck}
+            />
+            <CollapsibleStudentList
+              headerId="checked-header"
+              title="Sudah Foto"
+              students={checkedStudents}
+              checkedState="checked"
+              onCheck={handleCheck}
+              onClearAll={handleClearAll}
+            />
           </div>
         </div>
       </div>
-    </div>
+      <ScrollButtons />
+    </>
   );
 }

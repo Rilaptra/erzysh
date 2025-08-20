@@ -1,0 +1,486 @@
+[
+  { "No": 1, "NPM": 2505030001, "Nama": "Raisya Rahmi Faiza", "Rombel": 1 },
+  { "No": 2, "NPM": 2505030002, "Nama": "Dede Saputra", "Rombel": 1 },
+  {
+    "No": 3,
+    "NPM": 2505030003,
+    "Nama": "Surya Oktavian Putra Pratama",
+    "Rombel": 1
+  },
+  {
+    "No": 4,
+    "NPM": 2505030004,
+    "Nama": "Muhamad Nafan Adi Prayoga",
+    "Rombel": 1
+  },
+  {
+    "No": 5,
+    "NPM": 2505030005,
+    "Nama": "Muhammad Syariful Adyan Juniansyah",
+    "Rombel": 1
+  },
+  { "No": 6, "NPM": 2505030006, "Nama": "Agus Wahyudi", "Rombel": 1 },
+  { "No": 7, "NPM": 2505030007, "Nama": "Galang Ghofar Alfarizi", "Rombel": 1 },
+  { "No": 8, "NPM": 2505030008, "Nama": "Aderiani Noviyanti", "Rombel": 1 },
+  {
+    "No": 9,
+    "NPM": 2505030009,
+    "Nama": "Muhammad Raditya Ardi Nawawi",
+    "Rombel": 1
+  },
+  {
+    "No": 10,
+    "NPM": 2505030010,
+    "Nama": "Anjanis Kaifha Ayu Pasya",
+    "Rombel": 1
+  },
+  { "No": 11, "NPM": 2505030011, "Nama": "Zahra Ainun Abida", "Rombel": 1 },
+  {
+    "No": 12,
+    "NPM": 2505030012,
+    "Nama": "Angie Kirana Ratnadewati",
+    "Rombel": 1
+  },
+  { "No": 13, "NPM": 2505030013, "Nama": "Muhamad Muflihudin", "Rombel": 1 },
+  { "No": 14, "NPM": 2505030014, "Nama": "Dzakwan Hada Musyaffa", "Rombel": 1 },
+  {
+    "No": 15,
+    "NPM": 2505030015,
+    "Nama": "Gebriella Ica Florensia Bancin",
+    "Rombel": 1
+  },
+  { "No": 16, "NPM": 2505030016, "Nama": "Elma Tiana Tri wijaya", "Rombel": 1 },
+  {
+    "No": 17,
+    "NPM": 2505030017,
+    "Nama": "Satrio Bagus Wicaksono",
+    "Rombel": 1
+  },
+  { "No": 18, "NPM": 2505030018, "Nama": "Oktaf Nizwar Fahmi", "Rombel": 1 },
+  { "No": 19, "NPM": 2505030019, "Nama": "Amelia Sudirman Putri", "Rombel": 1 },
+  {
+    "No": 20,
+    "NPM": 2505030020,
+    "Nama": "Mohamad Abimanyu Satya Negara",
+    "Rombel": 1
+  },
+  {
+    "No": 21,
+    "NPM": 2505030021,
+    "Nama": "Aqeela Danish Briliantina",
+    "Rombel": 1
+  },
+  { "No": 22, "NPM": 2505030022, "Nama": "Taufik Arief Nugroho", "Rombel": 1 },
+  { "No": 23, "NPM": 2505030023, "Nama": "Muktaf Najib", "Rombel": 1 },
+  { "No": 24, "NPM": 2505030024, "Nama": "Achmad Latief", "Rombel": 1 },
+  { "No": 25, "NPM": 2505030025, "Nama": "Putri Ayuningtyas", "Rombel": 1 },
+  { "No": 26, "NPM": 2505030026, "Nama": "Caesazzahra Ramadhani", "Rombel": 1 },
+  {
+    "No": 27,
+    "NPM": 2505030027,
+    "Nama": "Eriza Yafi Labib Adiyatma",
+    "Rombel": 1
+  },
+  {
+    "No": 28,
+    "NPM": 2505030028,
+    "Nama": "Zagar Shofi Nawwaf Alfarizi",
+    "Rombel": 1
+  },
+  { "No": 29, "NPM": 2505030029, "Nama": "Ratih Anniza Harindi", "Rombel": 1 },
+  {
+    "No": 30,
+    "NPM": 2505030030,
+    "Nama": "Zepanya Putra Kurniawan",
+    "Rombel": 1
+  },
+  { "No": 31, "NPM": 2505030031, "Nama": "Banu Apriliansyah", "Rombel": 1 },
+  {
+    "No": 32,
+    "NPM": 2505030032,
+    "Nama": "Meyfa Ciello Pranatania",
+    "Rombel": 1
+  },
+  { "No": 33, "NPM": 2505030033, "Nama": "Arfan Irsyadani Rafi", "Rombel": 1 },
+  { "No": 34, "NPM": 2505030034, "Nama": "Krisna Hasnu Sidik", "Rombel": 1 },
+  {
+    "No": 35,
+    "NPM": 2505030035,
+    "Nama": "R. Maulana Malik Endito",
+    "Rombel": 1
+  },
+  { "No": 36, "NPM": 2505030036, "Nama": "Surya Dwi Riskiyan", "Rombel": 1 },
+  { "No": 37, "NPM": 2505030037, "Nama": "Fadhil Abrori", "Rombel": 1 },
+  { "No": 38, "NPM": 2505030038, "Nama": "Auriga Arkanozilvan", "Rombel": 1 },
+  {
+    "No": 39,
+    "NPM": 2505030039,
+    "Nama": "Muhammad Haniif Al-Ghazali",
+    "Rombel": 2
+  },
+  { "No": 40, "NPM": 2505030040, "Nama": "Isra Daffa Wityoko", "Rombel": 2 },
+  { "No": 41, "NPM": 2505030041, "Nama": "Anindia Helfrida", "Rombel": 2 },
+  {
+    "No": 42,
+    "NPM": 2505030042,
+    "Nama": "Nurroyan Aditya Firmansyah",
+    "Rombel": 2
+  },
+  { "No": 43, "NPM": 2505030043, "Nama": "Chaerunnisa Shafarani", "Rombel": 2 },
+  { "No": 44, "NPM": 2505030044, "Nama": "Sastya Arlita Putri", "Rombel": 2 },
+  {
+    "No": 45,
+    "NPM": 2505030045,
+    "Nama": "Tamasaka Hadyan Muhammad",
+    "Rombel": 2
+  },
+  { "No": 46, "NPM": 2505030046, "Nama": "Muh. Rizky Maulana", "Rombel": 2 },
+  { "No": 47, "NPM": 2505030047, "Nama": "Muhammad Faiz Zulfa", "Rombel": 2 },
+  { "No": 48, "NPM": 2505030048, "Nama": "Senja Heppy Endarwati", "Rombel": 2 },
+  { "No": 49, "NPM": 2505030049, "Nama": "Hersa Febriani", "Rombel": 2 },
+  { "No": 50, "NPM": 2505030050, "Nama": "Mesgy Fredita Perdana", "Rombel": 2 },
+  {
+    "No": 51,
+    "NPM": 2505030051,
+    "Nama": "Gregorius Gilang Aditya Buana",
+    "Rombel": 2
+  },
+  {
+    "No": 52,
+    "NPM": 2505030052,
+    "Nama": "Ferliska Melia Oktaviani",
+    "Rombel": 2
+  },
+  {
+    "No": 53,
+    "NPM": 2505030053,
+    "Nama": "Muhammad Naufal Farras",
+    "Rombel": 2
+  },
+  { "No": 54, "NPM": 2505030054, "Nama": "Gadang Ahmad Zidane", "Rombel": 2 },
+  { "No": 55, "NPM": 2505030055, "Nama": "Ezra Trifotius Ziliwu", "Rombel": 2 },
+  {
+    "No": 56,
+    "NPM": 2505030056,
+    "Nama": "Muhammad Fadhlan Rifqi",
+    "Rombel": 2
+  },
+  {
+    "No": 57,
+    "NPM": 2505030057,
+    "Nama": "Bayu Ascherano Ramadhan",
+    "Rombel": 2
+  },
+  {
+    "No": 58,
+    "NPM": 2505030058,
+    "Nama": "Batara Shafa Anugrah Jiwa",
+    "Rombel": 2
+  },
+  {
+    "No": 59,
+    "NPM": 2505030059,
+    "Nama": "Muhammad Rafi Lazuardhi Al Ashari",
+    "Rombel": 2
+  },
+  {
+    "No": 60,
+    "NPM": 2505030060,
+    "Nama": "Muhammad Rajwa Aufa Pratama",
+    "Rombel": 2
+  },
+  {
+    "No": 61,
+    "NPM": 2505030061,
+    "Nama": "Muhammad Ardine Icasia",
+    "Rombel": 2
+  },
+  { "No": 62, "NPM": 2505030062, "Nama": "Fastabiqul Khoir", "Rombel": 2 },
+  { "No": 63, "NPM": 2505030063, "Nama": "Irma Febia Anggraeni", "Rombel": 2 },
+  {
+    "No": 64,
+    "NPM": 2505030064,
+    "Nama": "Mohammad Falah Alfaraby",
+    "Rombel": 2
+  },
+  { "No": 65, "NPM": 2505030065, "Nama": "Riwong Sujiwo", "Rombel": 2 },
+  { "No": 66, "NPM": 2505030066, "Nama": "Aisyah Naini", "Rombel": 2 },
+  { "No": 67, "NPM": 2505030067, "Nama": "Aulia Ramadhani", "Rombel": 2 },
+  { "No": 68, "NPM": 2505030068, "Nama": "Excel Dwi Hariyono", "Rombel": 2 },
+  { "No": 69, "NPM": 2505030069, "Nama": "Farhan Abi Nasrulloh", "Rombel": 2 },
+  {
+    "No": 70,
+    "NPM": 2505030070,
+    "Nama": "Riovan Arif Kurninanto",
+    "Rombel": 2
+  },
+  {
+    "No": 71,
+    "NPM": 2505030071,
+    "Nama": "Dimas Bagas Gilang Pranata",
+    "Rombel": 2
+  },
+  { "No": 72, "NPM": 2505030072, "Nama": "Muhammad Raikhan Ni", "Rombel": 2 },
+  { "No": 73, "NPM": 2505030073, "Nama": "Bima ", "Rombel": 2 },
+  { "No": 74, "NPM": 2505030074, "Nama": "Syahda Dhiyaa Ulhaq", "Rombel": 2 },
+  {
+    "No": 75,
+    "NPM": 2505030075,
+    "Nama": "Callista Nidie Salsabilla",
+    "Rombel": 2
+  },
+  {
+    "No": 76,
+    "NPM": 2505030076,
+    "Nama": "Handika Galang Pratama",
+    "Rombel": 3
+  },
+  {
+    "No": 77,
+    "NPM": 2505030077,
+    "Nama": "Alena Ewa Sulistyowati",
+    "Rombel": 3
+  },
+  {
+    "No": 78,
+    "NPM": 2505030078,
+    "Nama": "Muhammad Bima Adjie Kurniawan",
+    "Rombel": 3
+  },
+  {
+    "No": 79,
+    "NPM": 2505030079,
+    "Nama": "Panca Satria Pamungkas",
+    "Rombel": 3
+  },
+  { "No": 80, "NPM": 2505030080, "Nama": "Fina Idamatus Silmi", "Rombel": 3 },
+  { "No": 81, "NPM": 2505030081, "Nama": "Reno Bona Afrielda", "Rombel": 3 },
+  { "No": 82, "NPM": 2505030082, "Nama": "Fernando Saputra", "Rombel": 3 },
+  {
+    "No": 83,
+    "NPM": 2505030083,
+    "Nama": "Sabdo Aji Gineng Damar Kucnoro",
+    "Rombel": 3
+  },
+  { "No": 84, "NPM": 2505030084, "Nama": "Eka Adi Setyawan", "Rombel": 3 },
+  {
+    "No": 85,
+    "NPM": 2505030085,
+    "Nama": "Mullasheyla Quratuaini",
+    "Rombel": 3
+  },
+  {
+    "No": 86,
+    "NPM": 2505030086,
+    "Nama": "Artika Putri Sari Dessa",
+    "Rombel": 3
+  },
+  {
+    "No": 87,
+    "NPM": 2505030087,
+    "Nama": "Annisa Widji Sekar Kinanthi",
+    "Rombel": 3
+  },
+  {
+    "No": 88,
+    "NPM": 2505030088,
+    "Nama": "Ignatius Evan Arka Baswara",
+    "Rombel": 3
+  },
+  {
+    "No": 89,
+    "NPM": 2505030089,
+    "Nama": "Rahadian Rizky Prasetyo",
+    "Rombel": 3
+  },
+  {
+    "No": 90,
+    "NPM": 2505030090,
+    "Nama": "Annisa Anindyah Artiningsih",
+    "Rombel": 3
+  },
+  {
+    "No": 91,
+    "NPM": 2505030091,
+    "Nama": "Muhammad Andicha Ilzam Fata",
+    "Rombel": 3
+  },
+  { "No": 92, "NPM": 2505030092, "Nama": "Gian Najwan Hakim", "Rombel": 3 },
+  { "No": 93, "NPM": 2505030093, "Nama": "Maurel Afriza", "Rombel": 3 },
+  {
+    "No": 94,
+    "NPM": 2505030094,
+    "Nama": "Muhammad Zaki Handriananta",
+    "Rombel": 3
+  },
+  {
+    "No": 95,
+    "NPM": 2505030095,
+    "Nama": "Filipus Yulian Joses Leksmana",
+    "Rombel": 3
+  },
+  { "No": 96, "NPM": 2505030096, "Nama": "Fadhil Zaid Amanullah", "Rombel": 3 },
+  { "No": 97, "NPM": 2505030097, "Nama": "Ahmad Rizqi Alfaris", "Rombel": 3 },
+  { "No": 98, "NPM": 2505030098, "Nama": "Edita Dirga Ayu", "Rombel": 3 },
+  {
+    "No": 99,
+    "NPM": 2505030099,
+    "Nama": "Ahnaf Fausta Hugo Santoso",
+    "Rombel": 3
+  },
+  {
+    "No": 100,
+    "NPM": 2505030100,
+    "Nama": "Ivana Syahda Widyadhana",
+    "Rombel": 3
+  },
+  {
+    "No": 101,
+    "NPM": 2505030101,
+    "Nama": "Athalla Rayhan Nursadidan",
+    "Rombel": 3
+  },
+  { "No": 102, "NPM": 2505030102, "Nama": "Ilham Nur Jati", "Rombel": 3 },
+  { "No": 103, "NPM": 2505030103, "Nama": "Mirza Yafiq Zafran", "Rombel": 3 },
+  { "No": 104, "NPM": 2505030104, "Nama": "Ardhi Almas Prasetyo", "Rombel": 3 },
+  {
+    "No": 105,
+    "NPM": 2505030105,
+    "Nama": "Naufal Fiqih Tauladani",
+    "Rombel": 3
+  },
+  { "No": 106, "NPM": 2505030106, "Nama": "Ilham Taqiy Ayyasya", "Rombel": 3 },
+  { "No": 107, "NPM": 2505030107, "Nama": "Yudha Jati Kuncoro", "Rombel": 3 },
+  { "No": 108, "NPM": 2505030108, "Nama": "Ardina Pratiwi", "Rombel": 3 },
+  {
+    "No": 109,
+    "NPM": 2505030109,
+    "Nama": "Raihan Aflah Sirajuddin",
+    "Rombel": 3
+  },
+  {
+    "No": 110,
+    "NPM": 2505030110,
+    "Nama": "Garin Permata Citra Ningtyas",
+    "Rombel": 3
+  },
+  { "No": 111, "NPM": 2505030111, "Nama": "Taufikur Rokhman", "Rombel": 3 },
+  {
+    "No": 112,
+    "NPM": 2505030112,
+    "Nama": "Destin Febrian Pranata",
+    "Rombel": 3
+  },
+  {
+    "No": 113,
+    "NPM": 2505030113,
+    "Nama": "Fransiska Cindy Widyastuti",
+    "Rombel": 4
+  },
+  { "No": 114, "NPM": 2505030114, "Nama": "Ifada Shofi Amalia", "Rombel": 4 },
+  {
+    "No": 115,
+    "NPM": 2505030115,
+    "Nama": "Zahra Vanessa Febrian Nova",
+    "Rombel": 4
+  },
+  { "No": 116, "NPM": 2505030116, "Nama": "Bagus Wahyu Nugroho", "Rombel": 4 },
+  {
+    "No": 117,
+    "NPM": 2505030117,
+    "Nama": "Zhafirah Elmassetyo Hartini",
+    "Rombel": 4
+  },
+  { "No": 118, "NPM": 2505030118, "Nama": "Dama Rizky Astawa", "Rombel": 4 },
+  { "No": 119, "NPM": 2505030119, "Nama": "Ja", "Rombel": 4 },
+  { "No": 120, "NPM": 2505030120, "Nama": "Rifqi Irfan Prayitno", "Rombel": 4 },
+  { "No": 121, "NPM": 2505030121, "Nama": "Husain Faishal Nizam", "Rombel": 4 },
+  {
+    "No": 122,
+    "NPM": 2505030122,
+    "Nama": "Flashsena Dharma Nusa",
+    "Rombel": 4
+  },
+  { "No": 123, "NPM": 2505030123, "Nama": "Rheza Maulana Putra", "Rombel": 4 },
+  { "No": 124, "NPM": 2505030124, "Nama": "Tio Dwi Istanto", "Rombel": 4 },
+  { "No": 125, "NPM": 2505030125, "Nama": "Kinanti Ayu Ratri", "Rombel": 4 },
+  { "No": 126, "NPM": 2505030127, "Nama": "Aura Pramudya", "Rombel": 4 },
+  { "No": 127, "NPM": 2505030128, "Nama": "Adi Prabowo", "Rombel": 4 },
+  { "No": 128, "NPM": 2505030129, "Nama": "Neo Sulisdiantoro", "Rombel": 4 },
+  { "No": 129, "NPM": 2505030130, "Nama": "Alvin Dienova", "Rombel": 4 },
+  {
+    "No": 130,
+    "NPM": 2505030131,
+    "Nama": "Citra Christina Rohani",
+    "Rombel": 4
+  },
+  {
+    "No": 131,
+    "NPM": 2505030132,
+    "Nama": "Rahmatika Sandy Aulia",
+    "Rombel": 4
+  },
+  {
+    "No": 132,
+    "NPM": 2505030133,
+    "Nama": "Melvina Elirika Aliah",
+    "Rombel": 4
+  },
+  {
+    "No": 133,
+    "NPM": 2505030134,
+    "Nama": "Korindo Chaesa Fernanda",
+    "Rombel": 4
+  },
+  { "No": 134, "NPM": 2505030135, "Nama": "Helen Ivana Gunawan", "Rombel": 4 },
+  { "No": 135, "NPM": 2505030136, "Nama": "Kintan Alifia Astari", "Rombel": 4 },
+  {
+    "No": 136,
+    "NPM": 2505030137,
+    "Nama": "Aliya Putri Kumalasari",
+    "Rombel": 4
+  },
+  { "No": 137, "NPM": 2505030138, "Nama": "Ardina Astiwi", "Rombel": 4 },
+  {
+    "No": 138,
+    "NPM": 2505030139,
+    "Nama": "Mikael Cristian Oktavio",
+    "Rombel": 4
+  },
+  { "No": 139, "NPM": 2505030140, "Nama": "Siti Zulaikah", "Rombel": 4 },
+  { "No": 140, "NPM": 2505030141, "Nama": "Gita Kartika Dewi", "Rombel": 4 },
+  {
+    "No": 141,
+    "NPM": 2505030142,
+    "Nama": "Rizqi Lasheva Purnama Putra",
+    "Rombel": 4
+  },
+  { "No": 142, "NPM": 2505030143, "Nama": "Indana Fadia Aqiila", "Rombel": 4 },
+  { "No": 143, "NPM": 2505030144, "Nama": "Muhammad Yafi", "Rombel": 4 },
+  {
+    "No": 144,
+    "NPM": 2505030145,
+    "Nama": "Achmad Juniaries Divatama",
+    "Rombel": 4
+  },
+  {
+    "No": 145,
+    "NPM": 2505030146,
+    "Nama": "Farrell Shareef Ghandi",
+    "Rombel": 4
+  },
+  { "No": 146, "NPM": 2505030147, "Nama": "Rafa Nafisa Azkiya", "Rombel": 4 },
+  {
+    "No": 147,
+    "NPM": 2505030148,
+    "Nama": "Muhammad Zaky Setiawan",
+    "Rombel": 4
+  },
+  {
+    "No": 148,
+    "NPM": 2505030149,
+    "Nama": "Farrel Widyatna Nugraha",
+    "Rombel": 4
+  },
+  { "No": 149, "NPM": 2505030150, "Nama": "Radiya Satyawati", "Rombel": 4 }
+]
