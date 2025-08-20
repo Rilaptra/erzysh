@@ -1,18 +1,23 @@
 // src/components/Dashboard/Header/index.tsx
 "use client";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react"; // <-- Tambah Menu
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import type { UserPayload, UploadQueueItem } from "@/types";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { UploadStatus } from "../UploadStatus"; // Impor UploadStatus
+import { UploadStatus } from "../UploadStatus";
 
 interface DashboardHeaderProps {
   user: UserPayload | null;
-  uploadQueue: UploadQueueItem[]; // Tambahkan prop ini
+  uploadQueue: UploadQueueItem[];
+  onMenuClick: () => void; // <-- PROP BARU
 }
 
-export function DashboardHeader({ user, uploadQueue }: DashboardHeaderProps) {
+export function DashboardHeader({
+  user,
+  uploadQueue,
+  onMenuClick, // <-- PROP BARU
+}: DashboardHeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -21,11 +26,22 @@ export function DashboardHeader({ user, uploadQueue }: DashboardHeaderProps) {
   };
 
   return (
-    <header className="border-gunmetal/50 bg-dark-shale/30 z-10 flex items-center justify-between border-b p-4 backdrop-blur-sm">
-      <h1 className="text-off-white text-xl font-semibold">
-        Welcome,{" "}
-        <span className="text-teal-muted">{user?.username || "User"}</span>
-      </h1>
+    <header className="border-gunmetal/50 bg-dark-shale/30 z-20 flex flex-shrink-0 items-center justify-between border-b p-4 backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        {/* Tombol Menu untuk Mobile */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-off-white/70 hover:bg-gunmetal hover:text-off-white lg:hidden" // <-- Hanya tampil di mobile
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <h1 className="text-off-white text-xl font-semibold">
+          Welcome,
+          <span className="text-teal-muted">{user?.username || "User"}</span>
+        </h1>
+      </div>
       <div className="flex items-center gap-2">
         <UploadStatus queue={uploadQueue} />
         <ThemeToggle />

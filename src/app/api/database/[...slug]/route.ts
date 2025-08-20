@@ -311,7 +311,7 @@ export async function PATCH(
     const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req); // PATCH harus selalu terautentikasi
-    const isAdmin = await (await getUsersData()).get(userID || "")?.is_admin;
+    const isAdmin = (await getUsersData()).get(userID || "")?.is_admin;
 
     if (
       (!data || !data.name) &&
@@ -341,7 +341,13 @@ export async function PATCH(
         );
       }
       // Jika tidak, ini adalah update konten penuh (logika lama)
-      return handleUpdateMessage(categoryId, channelId, messageId, data);
+      return handleUpdateMessage(
+        categoryId,
+        channelId,
+        messageId,
+        data,
+        userID,
+      );
     }
 
     if (channelId) {
@@ -563,6 +569,7 @@ async function handleUpdateMessage(
   channelId: string,
   messageId: string,
   data: RequestData,
+  userID: string,
 ) {
   if (
     typeof data.content !== "undefined" &&
@@ -587,6 +594,8 @@ async function handleUpdateMessage(
         lastUpdate: new Date().toISOString(),
         name: dataName,
         size: dataSize,
+        userID,
+        isPublic: data.isPublic || false, // Set default ke false
       },
       null,
       2,

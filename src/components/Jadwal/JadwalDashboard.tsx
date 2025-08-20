@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Jadwal } from "@/lib/jadwal-data";
+import type { Jadwal } from "@/lib/data/jadwal-types";
 import { HariIni } from "./HariIni";
 import { HariLain } from "./HariLain";
 

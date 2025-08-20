@@ -31,6 +31,7 @@ import type {
   ApiDbCategoryChannel,
   ApiDbProcessedMessage,
   ApiDbCreateChannelRequest,
+  ApiDbUpdateChannelRequest,
 } from "@/types";
 import { CollectionDetailsModal } from "../CollectionDetailModal";
 import { getCachedCollection, setCachedCollection } from "../Helper/cache";
@@ -184,7 +185,9 @@ export function ChannelView({
     await fetch(`/api/database/${activeCategoryId}/${boxId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editingboxName }),
+      body: JSON.stringify({
+        data: { name: editingboxName },
+      } as ApiDbUpdateChannelRequest),
     });
     setIsUpdatingbox(false);
     setEditingboxId(null);
@@ -302,7 +305,7 @@ export function ChannelView({
             </DialogContent>
           </Dialog>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {boxes.map((ch) => (
             <Card
               key={ch.id}
@@ -463,7 +466,7 @@ export function ChannelView({
                       <p className="text-off-white/70 mb-2 text-sm">
                         <span className="text-teal-muted font-semibold">
                           Click to upload
-                        </span>{" "}
+                        </span>
                         or drag and drop
                       </p>
                       <p className="text-off-white/50 text-xs">

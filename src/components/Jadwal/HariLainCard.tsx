@@ -1,6 +1,7 @@
+// src/components/Jadwal/HariLainCard.tsx
 "use client";
 
-import type { MataKuliah } from "@/lib/jadwal-data";
+import type { MataKuliah } from "@/lib/data/jadwal-types"; // <-- Diubah
 import {
   Card,
   CardContent,
@@ -36,7 +37,7 @@ export function HariLainCard({
       <CardHeader className="mb-2 p-0">
         <CardTitle className="text-base font-semibold">{hari}</CardTitle>
         <CardDescription className="text-muted-foreground text-xs">
-          {jadwal.length} Matkul
+          {jadwal.length} Mata Kuliah
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">

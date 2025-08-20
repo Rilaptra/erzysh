@@ -1,4 +1,4 @@
-// src/components/Dashboard/DashboardContent.tsx
+// src/components/Dashboard/DashboardContent/tsx
 "use client";
 
 import { useState, useRef, useCallback } from "react";
@@ -16,6 +16,7 @@ import type {
   DiscordCategory,
   ApiDbCategoryChannel,
 } from "@/types";
+import { cn } from "@/lib/cn";
 
 interface DashboardContentProps {
   initialCategories: ApiDbCategory[];
@@ -33,13 +34,10 @@ export function DashboardContent({
     initialCategories[0]?.id || null,
   );
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
-
-  // ... (Copy semua state hooks, GSAP, dan fungsi handler dari page.tsx lama ke sini)
-  // Termasuk: useGSAP, handleAddToUploadQueue, handleSelectCategory, handleDataChange
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      // Fetch hanya data utama, user sudah ada dari props
       const res = await fetch("/api/database");
       if (!res.ok) throw new Error("Failed to refresh server data.");
 
@@ -55,15 +53,16 @@ export function DashboardContent({
   }, []);
 
   const handleDataChange = useCallback(() => {
-    // Beri jeda agar perubahan di backend sempat diproses
     setTimeout(() => {
       fetchData();
     }, 1000);
   }, [fetchData]);
 
-  const handleSelectCategory = (id: string) => setActiveCategoryId(id);
+  const handleSelectCategory = (id: string) => {
+    setActiveCategoryId(id);
+    setIsSidebarOpen(false);
+  };
 
-  // ... (Salin fungsi handleAddToUploadQueue yang sudah diperbaiki ke sini)
   const handleAddToUploadQueue = (
     files: (File & { isPublic?: boolean })[],
     categoryId: string,
@@ -176,7 +175,6 @@ export function DashboardContent({
     (cat) => cat.id === activeCategoryId,
   );
 
-  // useGSAP hook... (salin dari page.tsx lama)
   useGSAP(
     () => {
       gsap.to(".gsap-blob-1", {
@@ -204,14 +202,20 @@ export function DashboardContent({
   return (
     <div
       ref={container}
-      className="bg-dark-shale text-off-white relative min-h-screen"
+      className="bg-dark-shale text-off-white relative h-[calc(100vh-4rem)] overflow-hidden"
     >
       <div className="absolute inset-0 z-0">
         <div className="gsap-blob-1 bg-teal-muted/10 absolute top-1/4 left-1/4 h-80 w-80 rounded-full blur-3xl filter"></div>
         <div className="gsap-blob-2 bg-gunmetal/40 absolute top-1/2 right-1/4 h-72 w-72 rounded-full blur-3xl filter"></div>
       </div>
-      <div className="relative z-10 flex h-screen flex-col">
-        <DashboardHeader user={user} uploadQueue={uploadQueue} />
+
+      {/* --- PERUBAHAN DI SINI --- */}
+      <div className="relative z-10 flex h-[calc(100vh-4rem)] flex-col">
+        <DashboardHeader
+          user={user}
+          uploadQueue={uploadQueue}
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
         <div className="flex flex-1 overflow-hidden">
           <CategorySidebar
             categories={simplifiedCategories}
@@ -220,17 +224,32 @@ export function DashboardContent({
             onCategoryCreated={handleDataChange}
             onCategoryDeleted={handleDataChange}
             onCategoryUpdated={handleDataChange}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
           />
-          <ChannelView
-            boxes={filteredChannels}
-            activeCategoryId={activeCategoryId}
-            activeContainerName={activeContainer?.name || ""}
-            onDataChanged={handleDataChange}
-            onboxCreated={handleDataChange}
-            onboxDeleted={handleDataChange}
-            onboxUpdated={handleDataChange}
-            onAddToQueue={handleAddToUploadQueue}
-          />
+          {isSidebarOpen && (
+            <div
+              className="fixed inset-0 z-10 bg-black/50 lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+          <main
+            className={cn(
+              "flex-1 transform transition-transform duration-300 ease-in-out",
+              isSidebarOpen && "translate-x-48 md:translate-x-64",
+            )}
+          >
+            <ChannelView
+              boxes={filteredChannels}
+              activeCategoryId={activeCategoryId}
+              activeContainerName={activeContainer?.name || ""}
+              onDataChanged={handleDataChange}
+              onboxCreated={handleDataChange}
+              onboxDeleted={handleDataChange}
+              onboxUpdated={handleDataChange}
+              onAddToQueue={handleAddToUploadQueue}
+            />
+          </main>
         </div>
       </div>
     </div>

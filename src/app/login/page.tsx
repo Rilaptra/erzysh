@@ -142,7 +142,7 @@ export default function LoginPage() {
               {loading ? "Signing In..." : "Sign In"}
             </Button>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
+              Don&apos;t have an account?
               <Link
                 href="/register"
                 className="text-teal-muted hover:text-teal-muted/80 underline"

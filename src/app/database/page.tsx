@@ -18,7 +18,7 @@ async function getDashboardData() {
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
       {
         headers: { Cookie: `token=${token.value}` },
-        next: { revalidate: 300 }, // Cache selama 5 menit
+        cache: "no-store", // Jangan simpan cache, selalu ambil data baru
       },
     );
 

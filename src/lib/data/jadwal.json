@@ -1,0 +1,181 @@
+{
+  "Senin": [
+    {
+      "jadwal": {
+        "mulai": "08:42:00",
+        "selesai": "10:23:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Menggambar Bangunan Sipil (T*)",
+      "dosen": "Abul Fida Ismaili, S.T., MSc.",
+      "ruang": "E.03.4.01 (Lab. Komputer)",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "4",
+        "nomor_ruangan": "01"
+      },
+      "karakteristik_dosen": ["ceplas ceplos", "nilai aman"]
+    },
+    {
+      "jadwal": {
+        "mulai": "10:24:00",
+        "selesai": "12:05:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Ilmu Ukur Tanah",
+      "dosen": "Hulfa Istikomah, S.T., M.T.",
+      "ruang": "E.03.3.05",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "3",
+        "nomor_ruangan": "05"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    },
+    {
+      "jadwal": {
+        "mulai": "14:42:00",
+        "selesai": "16:23:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Kimia Dasar",
+      "dosen": "Ety Fitriyani, S.T., M.Eng.",
+      "ruang": "E.03.4.01 (Lab. Komputer)",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "4",
+        "nomor_ruangan": "01"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    }
+  ],
+  "Selasa": [
+    {
+      "jadwal": {
+        "mulai": "13:00:00",
+        "selesai": "15:30:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Matematika I",
+      "dosen": "Ria Miftakhul Jannah",
+      "ruang": "E.03.3.06",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "3",
+        "nomor_ruangan": "06"
+      },
+      "karakteristik_dosen": [
+        "nggak suka kalau ada hp diatas meja",
+        "materi oke",
+        "nilai aman",
+        "enak"
+      ]
+    },
+    {
+      "jadwal": {
+        "mulai": "15:33:00",
+        "selesai": "17:14:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Fisika Dasar",
+      "dosen": "Abul Fida Ismaili, S.T., MSc.",
+      "ruang": "Ε.03.4.01 (Lab. Komputer)",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "4",
+        "nomor_ruangan": "01"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    }
+  ],
+  "Rabu": [
+    {
+      "jadwal": {
+        "mulai": "12:30:00",
+        "selesai": "14:10:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Pendidikan Agama Islam",
+      "dosen": "Mohammad 'Ulyan, S.Pd.I.. M.Pd.",
+      "ruang": "E.03.3.04",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "3",
+        "nomor_ruangan": "04"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    },
+    {
+      "jadwal": {
+        "mulai": "14:42:00",
+        "selesai": "16:23:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Mekanika Bahan",
+      "dosen": "Lalu Samsul Aswadi, MEng.",
+      "ruang": "E.03.3.06",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "3",
+        "nomor_ruangan": "06"
+      },
+      "karakteristik_dosen": [
+        "nilai aman",
+        "ngajar biasa aja nggak galak galak banget",
+        "susah dichat"
+      ]
+    }
+  ],
+  "Kamis": [
+    {
+      "jadwal": {
+        "mulai": "13:00:00",
+        "selesai": "15:50:00"
+      },
+      "kelas": "08",
+      "nama_matkul": "Praktikum Ilmu Ukur Tanah",
+      "dosen": "Hulfa Istikomah, S.T., M.T.",
+      "ruang": "E.03.2.05 (Lab. Hidrolika dan Geodesi)",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "2",
+        "nomor_ruangan": "05"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    }
+  ],
+  "Jumat": [
+    {
+      "jadwal": {
+        "mulai": "08:42:00",
+        "selesai": "10:23:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Dasar-Dasar Rekayasa Transportasi",
+      "dosen": "Yusfita Chrisnawati, S.Pd.T., M.Sc.",
+      "ruang": "E.03.4.01 (Lab. Komputer)",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "4",
+        "nomor_ruangan": "01"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    },
+    {
+      "jadwal": {
+        "mulai": "14:20:00",
+        "selesai": "16:00:00"
+      },
+      "kelas": "04",
+      "nama_matkul": "Pancasila",
+      "dosen": "Delfiyan Widiyanto, S.Pd.. M.Pd.",
+      "ruang": "E.03.3.04",
+      "detail_ruang": {
+        "gedung": "Fakultas Teknik 3",
+        "lantai": "3",
+        "nomor_ruangan": "04"
+      },
+      "karakteristik_dosen": ["belum tau"]
+    }
+  ]
+}

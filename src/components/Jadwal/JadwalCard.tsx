@@ -1,10 +1,10 @@
+// src/components/Jadwal/JadwalCard.tsx
 "use client";
 
-import type { MataKuliah } from "@/lib/jadwal-data";
+import type { MataKuliah } from "@/lib/data/jadwal-types"; // <-- Diubah
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -19,13 +19,10 @@ interface JadwalCardProps {
 export function JadwalCard({ matkul }: JadwalCardProps) {
   return (
     <Card className="border-border bg-card text-card-foreground w-full rounded-lg border shadow-sm transition-shadow duration-200 hover:shadow-md">
-      <CardHeader className="px-4">
+      <CardHeader className="px-4 pb-2">
         <CardTitle className="text-lg leading-snug font-semibold">
           {matkul.matkul}
         </CardTitle>
-        <CardDescription className="text-muted-foreground text-sm">
-          {matkul.sks} SKS
-        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-3 px-4 py-2 text-sm">
@@ -44,9 +41,6 @@ export function JadwalCard({ matkul }: JadwalCardProps) {
               Gedung FT {matkul.ruang_kelas.gedung_ft}, Lantai
               {matkul.ruang_kelas.lantai}, Ruang
               {matkul.ruang_kelas.nomor_ruang}
-              {matkul.ruang_kelas.keterangan
-                ? ` - ${matkul.ruang_kelas.keterangan}`
-                : ""}
             </div>
           </div>
         </div>
@@ -57,7 +51,7 @@ export function JadwalCard({ matkul }: JadwalCardProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="flex flex-wrap gap-2 px-4">
+      <CardFooter className="flex flex-wrap gap-2 px-4 pt-2">
         {matkul.dosen.karakteristik.map((char, index) => (
           <Badge key={index} variant="outline" className="px-2 py-1 text-xs">
             {char

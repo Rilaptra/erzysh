@@ -332,52 +332,101 @@ export function CollectionDetailsModal({
     }
   };
 
-  // --- MODIFIED: Hapus cache saat item diupdate ---
+  // --- MODIFIED: Hapus cache saat item diupdate & dukung semua tipe file ---
   const handleUpdate = async () => {
-    try {
-      if (
-        (isStringOrJson && !editContent && !editFile) ||
-        (!isStringOrJson && !editFile)
-      )
-        return;
+    // Validasi awal: pastikan ada sesuatu untuk diupdate
+    if (
+      (isStringOrJson && !editContent && !editFile) ||
+      (!isStringOrJson && !editFile)
+    ) {
+      toast.warning("No changes to save.");
+      return;
+    }
 
-      let contentToUpdate: string | object;
+    setIsProcessing(true);
+
+    try {
+      let finalContent: string;
+      let finalName: string = collection.name; // Default ke nama lama
+
+      // --- LOGIKA UTAMA ADA DI SINI ---
       if (editFile) {
-        contentToUpdate = await editFile.text();
+        // Jika ada file baru yang di-upload untuk menggantikan yang lama
+        finalName = editFile.name;
+        const fileType = getFileType(finalName);
+
+        // Proses file menggunakan FileReader, dibungkus dalam Promise
+        finalContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            if (!event.target?.result) {
+              return reject(new Error("Failed to read file."));
+            }
+            const result = event.target.result as string;
+            // Jika file-nya gambar/video/lainnya, ambil bagian Base64-nya
+            // Jika teks/json, gunakan konten aslinya
+            if (fileType === "string") {
+              resolve(result);
+            } else {
+              resolve(result.split(",")[1]); // Ambil Base64 dari data URL
+            }
+          };
+          reader.onerror = () => reject(new Error("Error reading file."));
+
+          // Pilih metode baca berdasarkan tipe file
+          if (fileType === "string") {
+            reader.readAsText(editFile);
+          } else {
+            reader.readAsDataURL(editFile); // Baca sebagai Data URL untuk dapat Base64
+          }
+        });
       } else {
+        // Jika tidak ada file baru, berarti pengguna hanya mengedit konten JSON manual
         try {
-          contentToUpdate = JSON.parse(editContent);
+          // Validasi bahwa kontennya adalah JSON yang valid
+          const parsedJson = JSON.parse(editContent);
+          finalContent = JSON.stringify(parsedJson); // Kirim sebagai string JSON
           setJsonError(null);
         } catch {
           setJsonError("Invalid JSON format.");
+          setIsProcessing(false);
           return;
         }
       }
 
-      setIsProcessing(true);
+      // Buat payload untuk dikirim ke API
       const payload: ApiDbUpdateMessageRequest = {
         data: {
-          name: editFile ? editFile.name : collection.name,
-          content:
-            typeof contentToUpdate === "string"
-              ? contentToUpdate
-              : JSON.stringify(contentToUpdate),
+          name: finalName,
+          content: finalContent, // Ini bisa berisi string JSON atau string Base64
         },
       };
 
-      await fetch(`/api/database/${categoryId}/${channelId}/${collection.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      // Kirim request PATCH ke server
+      const res = await fetch(
+        `/api/database/${categoryId}/${channelId}/${collection.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
-      removeCachedCollection(collection.id); // Hapus cache lama setelah update berhasil
-      setIsProcessing(false);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to update collection.");
+      }
+
+      toast.success("Collection updated successfully!");
+      removeCachedCollection(collection.id); // Hapus cache lama
       setIsEditing(false);
-      setItemData(null);
-      onDataChanged(); // Ini akan menutup modal dan refresh list
-    } catch (error) {
-      console.error(error);
-      setIsProcessing(false); // Pastikan loading state mati jika error
+      setItemData(null); // Reset data lokal untuk memaksa fetch ulang
+      onDataChanged(); // Refresh daftar di parent component
+    } catch (err) {
+      toast.error((err as Error).message);
+      console.error(err);
+    } finally {
+      setIsProcessing(false);
     }
   };
 

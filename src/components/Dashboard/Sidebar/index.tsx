@@ -1,7 +1,7 @@
 // src/components/Dashboard/Sidebar/index.tsx
 "use client";
 import { useState, useRef } from "react";
-import { Button, buttonVariants } from "@/components/ui/button"; // Impor buttonVariants
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +20,14 @@ import {
   Database,
   Edit,
   Check,
+  X,
 } from "lucide-react";
-import type { ApiDbCreateCategoryRequest, DiscordCategory } from "@/types";
-import { cn } from "@/lib/cn"; // Impor cn
+import type {
+  ApiDbCreateCategoryRequest,
+  ApiDbUpdateCategoryRequest,
+  DiscordCategory,
+} from "@/types";
+import { cn } from "@/lib/cn";
 
 interface CategorySidebarProps {
   categories: DiscordCategory[];
@@ -31,6 +36,8 @@ interface CategorySidebarProps {
   onCategoryCreated: () => void;
   onCategoryDeleted: () => void;
   onCategoryUpdated: () => void;
+  isOpen: boolean; // <-- PROP BARU
+  onClose: () => void; // <-- PROP BARU
 }
 
 export function CategorySidebar({
@@ -40,6 +47,8 @@ export function CategorySidebar({
   onCategoryCreated,
   onCategoryDeleted,
   onCategoryUpdated,
+  isOpen, // <-- PROP BARU
+  onClose, // <-- PROP BARU
 }: CategorySidebarProps) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -87,7 +96,9 @@ export function CategorySidebar({
     await fetch(`/api/database/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editingCategoryName }),
+      body: JSON.stringify({
+        data: { name: editingCategoryName },
+      } as ApiDbUpdateCategoryRequest),
     });
     setIsUpdating(false);
     setEditingCategoryId(null);
@@ -96,59 +107,77 @@ export function CategorySidebar({
   };
 
   return (
-    <aside className="border-gunmetal/50 bg-dark-shale/20 z-10 flex w-48 flex-col space-y-4 border-r p-4 backdrop-blur-sm md:w-64">
+    <aside
+      className={cn(
+        "bg-dark-shale/20 border-gunmetal/50 z-20 flex w-52 flex-shrink-0 transform flex-col space-y-4 border-r p-4 backdrop-blur-sm transition-transform duration-300 ease-in-out md:w-64",
+        // Logika untuk mobile vs desktop
+        "fixed top-16 bottom-0 left-0 lg:static lg:translate-x-0", // <-- INI SOLUSINYA
+        isOpen ? "translate-x-0" : "-translate-x-full",
+      )}
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-off-white flex items-center gap-2 text-lg font-bold">
           <Database size={20} /> Containers
         </h2>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-teal-muted hover:bg-gunmetal hover:text-teal-muted/80"
-            >
-              <PlusCircle size={20} />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Create New Container</DialogTitle>
-              <DialogDescription className="text-off-white/70">
-                This will create a new container (category) on your Discord
-                server.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="bg-dark-shale border-teal-muted/50 col-span-3"
-                  placeholder="e.g., project-documents"
-                />
-              </div>
-            </div>
-            <DialogFooter>
+        {/* Ganti DialogTrigger dengan tombol + biasa, lalu tombol X untuk mobile */}
+        <div className="flex items-center">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
               <Button
-                onClick={handleCreateCategory}
-                disabled={isCreating}
-                className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
+                variant="ghost"
+                size="icon"
+                className="text-teal-muted hover:bg-gunmetal hover:text-teal-muted/80"
               >
-                {isCreating && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Create Container
+                <PlusCircle size={20} />
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Create New Container</DialogTitle>
+                <DialogDescription className="text-off-white/70">
+                  This will create a new container (category) on your Discord
+                  server.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="name" className="text-right">
+                    Name
+                  </Label>
+                  <Input
+                    id="name"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="bg-dark-shale border-teal-muted/50 col-span-3"
+                    placeholder="e.g., project-documents"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={handleCreateCategory}
+                  disabled={isCreating}
+                  className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
+                >
+                  {isCreating && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Create Container
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-off-white/70 hover:bg-gunmetal hover:text-off-white lg:hidden"
+            onClick={onClose}
+          >
+            <X size={20} />
+          </Button>
+        </div>
       </div>
-      <nav className="flex flex-col space-y-1">
+      <nav className="flex flex-col space-y-1 overflow-y-auto">
         {categories.map((cat) => (
           <div key={cat.id} className="w-full">
             {editingCategoryId === cat.id ? (

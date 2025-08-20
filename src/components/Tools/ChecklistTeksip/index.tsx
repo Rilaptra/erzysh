@@ -26,8 +26,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// --- TYPES ---
+type Student = (typeof daftarNama)[0];
+type GroupedStudents = Record<string, Student[]>;
+
 // --- DATA ---
 const STORAGE_KEY = "checkedTeksipStudents";
+const ROMBELS = [1, 2, 3, 4];
 
 // --- HOOKS ---
 const useStudentChecklist = () => {
@@ -35,6 +41,7 @@ const useStudentChecklist = () => {
     new Map(),
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [rombelFilter, setRombelFilter] = useState<number | "all">("all");
   const [, setLastAction] = useState<{
     id: number;
     name: string;
@@ -115,34 +122,46 @@ const useStudentChecklist = () => {
   const handleClearAll = useCallback(() => {
     setCheckedItems(new Map());
     toast.success("Daftar 'Sudah Foto' telah dibersihkan.");
-  }, []); // Dependency array kosong karena setCheckedItems stabil
-
-  const filteredStudents = useMemo(
-    () =>
-      daftarNama.filter(
-        (item) =>
-          item.Nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          String(item.NPM).includes(searchTerm),
-      ),
-    [searchTerm],
-  );
+  }, []);
 
   const { checkedStudents, uncheckedStudents } = useMemo(() => {
-    const checked: typeof daftarNama = [];
-    const unchecked: typeof daftarNama = [];
-    for (const student of filteredStudents) {
+    const groupStudents = (list: Student[]): GroupedStudents =>
+      list.reduce((acc, student) => {
+        const key = String(student.Rombel);
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(student);
+        return acc;
+      }, {} as GroupedStudents);
+
+    const filtered = daftarNama.filter(
+      (item) =>
+        (rombelFilter === "all" || item.Rombel === rombelFilter) &&
+        (item.Nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          String(item.NPM).includes(searchTerm)),
+    );
+
+    const checked: Student[] = [];
+    const unchecked: Student[] = [];
+    for (const student of filtered) {
       if (checkedItems.has(student.No)) {
         checked.push(student);
       } else {
         unchecked.push(student);
       }
     }
-    return { checkedStudents: checked, uncheckedStudents: unchecked };
-  }, [filteredStudents, checkedItems]);
+    return {
+      checkedStudents: groupStudents(checked),
+      uncheckedStudents: groupStudents(unchecked),
+    };
+  }, [searchTerm, rombelFilter, checkedItems]);
 
   return {
     searchTerm,
     setSearchTerm,
+    rombelFilter,
+    setRombelFilter,
     checkedStudents,
     uncheckedStudents,
     handleCheck,
@@ -152,17 +171,11 @@ const useStudentChecklist = () => {
 
 // --- COMPONENTS ---
 
-interface StudentListItemProps {
-  student: (typeof daftarNama)[0];
+const StudentListItem: React.FC<{
+  student: Student;
   isChecked: boolean;
   onCheck: (id: number, isChecked: boolean, name: string) => void;
-}
-
-const StudentListItem: React.FC<StudentListItemProps> = ({
-  student,
-  isChecked,
-  onCheck,
-}) => (
+}> = ({ student, isChecked, onCheck }) => (
   <li
     className={cn(
       "flex items-center gap-3 rounded-md p-3 shadow-sm transition-all duration-200",
@@ -191,31 +204,74 @@ const StudentListItem: React.FC<StudentListItemProps> = ({
       </span>
       {student.Nama}
       <span className="text-sm font-normal text-neutral-500 dark:text-neutral-400">
-        {" "}
         ({student.NPM})
       </span>
     </label>
   </li>
 );
 
-interface CollapsibleStudentListProps {
+const RombelGroup: React.FC<{
+  rombel: string;
+  students: Student[];
+  isChecked: boolean;
+  onCheck: (id: number, isChecked: boolean, name: string) => void;
+}> = ({ rombel, students, isChecked, onCheck }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  if (!students || students.length === 0) return null;
+
+  return (
+    <div className="mt-4 rounded-md border border-neutral-200 p-3 dark:border-neutral-700">
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <h3 className="font-semibold text-neutral-600 dark:text-neutral-300">
+          Rombel {rombel} ({students.length})
+        </h3>
+        <ChevronDown
+          className={cn(
+            "transform transition-transform duration-200",
+            isCollapsed && "-rotate-180",
+          )}
+        />
+      </button>
+      {!isCollapsed && (
+        <ul className="animate-in fade-in mt-3 space-y-2 duration-300">
+          {students.map((student) => (
+            <StudentListItem
+              key={student.No}
+              student={student}
+              isChecked={isChecked}
+              onCheck={onCheck}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const CollapsibleStudentList: React.FC<{
   title: string;
-  students: typeof daftarNama;
+  groupedStudents: GroupedStudents;
   checkedState: "checked" | "unchecked";
   onCheck: (id: number, isChecked: boolean, name: string) => void;
   onClearAll?: () => void;
   headerId: string;
-}
-
-const CollapsibleStudentList: React.FC<CollapsibleStudentListProps> = ({
+}> = ({
   title,
-  students,
+  groupedStudents,
   checkedState,
   onCheck,
   onClearAll,
   headerId,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const totalStudents = Object.values(groupedStudents).reduce(
+    (sum, list) => sum + list.length,
+    0,
+  );
 
   return (
     <div
@@ -235,7 +291,7 @@ const CollapsibleStudentList: React.FC<CollapsibleStudentListProps> = ({
                 : "text-neutral-700 dark:text-neutral-200",
             )}
           >
-            {title} ({students.length})
+            {title} ({totalStudents})
           </h2>
           <ChevronDown
             className={cn(
@@ -247,9 +303,13 @@ const CollapsibleStudentList: React.FC<CollapsibleStudentListProps> = ({
         {onClearAll && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" /* ...props lainnya */>
-                <Trash2 className="mr-1.5 size-4" />
-                Clear All
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-4 text-red-500 hover:bg-red-100 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-900/50 dark:hover:text-red-400"
+                disabled={totalStudents === 0}
+              >
+                <Trash2 className="mr-1.5 size-4" /> Clear All
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -271,20 +331,21 @@ const CollapsibleStudentList: React.FC<CollapsibleStudentListProps> = ({
         )}
       </div>
       {!isCollapsed && (
-        <div className="animate-in fade-in mt-4 duration-300">
-          {students.length > 0 ? (
-            <ul className="space-y-3">
-              {students.map((student) => (
-                <StudentListItem
-                  key={student.No}
-                  student={student}
+        <div className="animate-in fade-in mt-2 duration-300">
+          {totalStudents > 0 ? (
+            Object.keys(groupedStudents)
+              .sort()
+              .map((rombel) => (
+                <RombelGroup
+                  key={rombel}
+                  rombel={rombel}
+                  students={groupedStudents[rombel]}
                   isChecked={checkedState === "checked"}
                   onCheck={onCheck}
                 />
-              ))}
-            </ul>
+              ))
           ) : (
-            <p className="text-center text-neutral-500 italic dark:text-neutral-400">
+            <p className="pt-4 text-center text-neutral-500 italic dark:text-neutral-400">
               {checkedState === "checked" ? "Belum ada." : "Semua sudah foto!"}
             </p>
           )}
@@ -298,13 +359,7 @@ const ScrollButtons = () => {
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowButton(true);
-      } else {
-        setShowButton(false);
-      }
-    };
+    const handleScroll = () => setShowButton(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -342,6 +397,8 @@ export default function ChecklistTeksipPage() {
   const {
     searchTerm,
     setSearchTerm,
+    rombelFilter,
+    setRombelFilter,
     checkedStudents,
     uncheckedStudents,
     handleCheck,
@@ -356,7 +413,7 @@ export default function ChecklistTeksipPage() {
             Checklist Tugas Foto Mahasiswa Teknik Sipil 2025
           </h1>
 
-          <div className="mb-4">
+          <div className="mb-4 flex flex-col gap-4 sm:flex-row">
             <Input
               type="text"
               placeholder="Cari nama atau NPM..."
@@ -365,19 +422,36 @@ export default function ChecklistTeksipPage() {
               className="w-full rounded-md dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
             />
           </div>
+          <div className="mb-6 flex flex-wrap justify-center gap-2">
+            <Button
+              variant={rombelFilter === "all" ? "default" : "outline"}
+              onClick={() => setRombelFilter("all")}
+            >
+              Semua Rombel
+            </Button>
+            {ROMBELS.map((r) => (
+              <Button
+                key={r}
+                variant={rombelFilter === r ? "default" : "outline"}
+                onClick={() => setRombelFilter(r)}
+              >
+                Rombel {r}
+              </Button>
+            ))}
+          </div>
 
           <div className="space-y-6">
             <CollapsibleStudentList
               headerId="unchecked-header"
               title="Belum Foto"
-              students={uncheckedStudents}
+              groupedStudents={uncheckedStudents}
               checkedState="unchecked"
               onCheck={handleCheck}
             />
             <CollapsibleStudentList
               headerId="checked-header"
               title="Sudah Foto"
-              students={checkedStudents}
+              groupedStudents={checkedStudents}
               checkedState="checked"
               onCheck={handleCheck}
               onClearAll={handleClearAll}

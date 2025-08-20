@@ -161,7 +161,7 @@ export default function RegisterPage() {
               {loading ? "Creating Account..." : "Create Account"}
             </Button>
             <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
+              Already have an account?
               <Link
                 href="/login"
                 className="text-teal-muted hover:text-teal-muted/80 underline"

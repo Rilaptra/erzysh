@@ -1,6 +1,6 @@
 "use client";
 
-import type { Jadwal } from "@/lib/jadwal-data";
+import type { Jadwal } from "@/lib/data/jadwal-types";
 import { HariLainCard } from "./HariLainCard";
 
 interface HariLainProps {

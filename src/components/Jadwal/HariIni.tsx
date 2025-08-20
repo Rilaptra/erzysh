@@ -1,6 +1,6 @@
 "use client";
 
-import type { MataKuliah } from "@/lib/jadwal-data";
+import type { MataKuliah } from "@/lib/data/jadwal-types";
 import { JadwalCard } from "./JadwalCard";
 
 interface HariIniProps {
