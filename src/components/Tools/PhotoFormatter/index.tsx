@@ -100,7 +100,7 @@ const DocxGeneratorPage: NextPage = () => {
         </div>
 
         <footer className="dark:text-off-white/60 mt-8 text-sm text-gray-600">
-          <p>Dibuat dengan Next.js, TypeScript, JSZip, dan FileSaver.js</p>
+          <p>Created by Erzy.sh</p>
         </footer>
       </main>
 

@@ -29,7 +29,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "public/workers/photoFormatter.worker.js"
+    "src/components/Tools/PhotoFormatter/workers/photoFormatter.worker.js"
   ],
   "exclude": ["node_modules"]
 }

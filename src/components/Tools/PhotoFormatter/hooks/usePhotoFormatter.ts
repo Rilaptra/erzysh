@@ -30,14 +30,15 @@ export const usePhotoFormatter = () => {
   });
   const [isProcessingZip, setIsProcessingZip] = useState(false);
 
-  // --- THE FIX IS HERE ---
   const workerRef = useRef<Worker | null>(null);
   const { generateAndDownloadDocx, isLoading, progress } = useDocxGenerator();
 
   useEffect(() => {
-    // Inisialisasi worker saat komponen dimuat
+    // --- THE FINAL FIX ---
+    // Inisialisasi worker menggunakan new URL dengan path RELATIF ke file worker
+    // yang sekarang ada di dalam `src`. Bundler Next.js akan memproses ini dengan benar.
     workerRef.current = new Worker(
-      new URL("/workers/photoFormatter.worker.js", import.meta.url),
+      new URL("../workers/photoFormatter.worker.js", import.meta.url),
     );
 
     // Handler untuk menerima pesan dari worker
@@ -127,7 +128,6 @@ export const usePhotoFormatter = () => {
     }
   };
 
-  // Hapus object URL saat gambar berubah untuk mencegah memory leak
   useEffect(() => {
     return () => {
       selectedImages.forEach((image) => URL.revokeObjectURL(image.url));
@@ -135,7 +135,6 @@ export const usePhotoFormatter = () => {
   }, [selectedImages]);
 
   return {
-    // States
     selectedImages,
     zipFileInfo,
     docxFile,
@@ -143,11 +142,9 @@ export const usePhotoFormatter = () => {
     userInfo,
     quality,
     messageBox,
-    isLoading: isLoading || isProcessingZip, // Gabungkan state loading
+    isLoading: isLoading || isProcessingZip,
     progress,
     isProcessingZip,
-
-    // Handlers
     handleUserInfoChange,
     setQuality,
     handleZipFileSelect,
