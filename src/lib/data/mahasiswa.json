@@ -42,7 +42,12 @@
     "Rombel": 1
   },
   { "No": 13, "NPM": 2505030013, "Nama": "Muhamad Muflihudin", "Rombel": 1 },
-  { "No": 14, "NPM": 2505030014, "Nama": "Dzakwan Hada Musyaffa", "Rombel": 1 },
+  {
+    "No": 14,
+    "NPM": 2505030014,
+    "Nama": "Dzakwan Hada Musyaffa'",
+    "Rombel": 1
+  },
   {
     "No": 15,
     "NPM": 2505030015,
@@ -220,7 +225,12 @@
     "Nama": "Dimas Bagas Gilang Pranata",
     "Rombel": 2
   },
-  { "No": 72, "NPM": 2505030072, "Nama": "Muhammad Raikhan Ni", "Rombel": 2 },
+  {
+    "No": 72,
+    "NPM": 2505030072,
+    "Nama": "Muhammad Raikhan Ni'am",
+    "Rombel": 2
+  },
   { "No": 73, "NPM": 2505030073, "Nama": "Bima 'Aliy Akbar", "Rombel": 2 },
   { "No": 74, "NPM": 2505030074, "Nama": "Syahda Dhiyaa Ulhaq", "Rombel": 2 },
   {
@@ -461,7 +471,12 @@
     "Rombel": 4
   },
   { "No": 142, "NPM": 2505030143, "Nama": "Indana Fadia Aqiila", "Rombel": 4 },
-  { "No": 143, "NPM": 2505030144, "Nama": "Muhammad Yafi'hashif Al Azhar", "Rombel": 4 },
+  {
+    "No": 143,
+    "NPM": 2505030144,
+    "Nama": "Muhammad Yafi'hashif Al Azhar",
+    "Rombel": 4
+  },
   {
     "No": 144,
     "NPM": 2505030145,

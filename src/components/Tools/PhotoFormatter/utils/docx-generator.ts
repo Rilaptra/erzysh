@@ -1,6 +1,8 @@
 // src/components/Tools/PhotoFormatter/utils/docx-generator.ts
 import type { SelectedImage } from "@/types";
 
+// ... (fungsi lain seperti getImageExtension, createContentTypes, dll. tidak berubah) ...
+
 const getImageExtension = (filename: string): string => {
   const extension = filename
     .toLowerCase()
@@ -18,8 +20,8 @@ export const createMainRels =
 
 export const createDocumentRels = (images: SelectedImage[]): string => {
   let rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;
-  images.forEach((image, i) => {
-    const extension = getImageExtension(image.filename);
+  images.forEach((_, i) => {
+    const extension = getImageExtension(images[i].filename);
     rels += `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${i + 1}.${extension}"/>`;
   });
   rels += `</Relationships>`;
@@ -30,13 +32,56 @@ export const createDocumentBody = (images: SelectedImage[]): string => {
   const widthInEMU = 10 * 360000;
   const heightInEMU = 5 * 360000;
 
-  let doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`;
-
+  let bodyContent = "";
   images.forEach((image, i) => {
-    doc += `<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>${i + 1}.</w:t></w:r></w:p>`;
-    doc += `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${widthInEMU}" cy="${heightInEMU}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${i + 1}" name="Picture ${i + 1}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="0"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${i + 1}" name="${image.filename}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${i + 1}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthInEMU}" cy="${heightInEMU}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+    bodyContent += `<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>${i + 1}.</w:t></w:r></w:p>`;
+    bodyContent += `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${widthInEMU}" cy="${heightInEMU}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${i + 1}" name="Picture ${i + 1}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="0"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${i + 1}" name="${image.filename}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${i + 1}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthInEMU}" cy="${heightInEMU}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
   });
 
-  doc += `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
-  return doc;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${bodyContent}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+};
+
+// --- FUNGSI UPDATE ---
+export const appendImagesToBody = (
+  originalBody: string,
+  images: SelectedImage[],
+  startingIds: { pId: number; rId: number; num: number }, // Tambahkan `num`
+): string => {
+  const widthInEMU = 10 * 360000;
+  const heightInEMU = 5 * 360000;
+  let newContent = "";
+
+  images.forEach((image, i) => {
+    const pictureId = startingIds.pId + i;
+    const relationId = startingIds.rId + i;
+    const displayNumber = startingIds.num + i; // Ini nomor yang akan ditampilkan
+
+    // Ganti nomor hardcode dengan `displayNumber`
+    newContent += `<w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>${displayNumber}.</w:t></w:r></w:p>`;
+    newContent += `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${widthInEMU}" cy="${heightInEMU}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${pictureId}" name="Picture ${pictureId}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="0"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${pictureId}" name="${image.filename}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId${relationId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthInEMU}" cy="${heightInEMU}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  });
+
+  const sectPrIndex = originalBody.lastIndexOf("<w:sectPr>");
+  if (sectPrIndex !== -1) {
+    return (
+      originalBody.slice(0, sectPrIndex) +
+      newContent +
+      originalBody.slice(sectPrIndex)
+    );
+  }
+
+  return originalBody.replace("</w:body>", newContent + "</w:body>");
+};
+
+export const appendToRels = (
+  originalRels: string,
+  images: SelectedImage[],
+  startingRId: number,
+): string => {
+  let newRels = "";
+  images.forEach((image, i) => {
+    const extension = getImageExtension(image.filename);
+    newRels += `<Relationship Id="rId${startingRId + i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image${startingRId + i}.${extension}"/>`;
+  });
+  return originalRels.replace("</Relationships>", newRels + "</Relationships>");
 };
