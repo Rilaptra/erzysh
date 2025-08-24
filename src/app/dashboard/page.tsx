@@ -1,56 +1,56 @@
-"use client";
+// src/app/dashboard/page.tsx
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import type { UserPayload, ApiDbGetAllStructuredDataResponse } from "@/types";
+import { DashboardClient } from "@/components/DashboardPage"; // Komponen Klien Baru
 
-import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { cn } from "@/lib/cn";
+async function getDashboardData() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+  if (!token) redirect("/login");
 
-export default function DashboardPage() {
-  const titleRef = useRef<HTMLHeadingElement | null>(null);
-  const [paddingTop, setPaddingTop] = useState(64); // default header height
-
-  useEffect(() => {
-    const header = document.querySelector("header");
-    if (header) {
-      setPaddingTop(header.clientHeight);
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
+      {
+        headers: { Cookie: `token=${token.value}` },
+        cache: "no-store",
+      },
+    );
+    if (!res.ok) {
+      if (res.status === 401) redirect("/login");
+      throw new Error("Failed to fetch server data.");
     }
+    const serverData: ApiDbGetAllStructuredDataResponse = await res.json();
+    return Object.values(serverData.data);
+  } catch (err) {
+    console.error("Dashboard data fetching error:", err);
+    redirect("/login");
+  }
+}
 
-    if (titleRef.current) {
-      gsap.fromTo(
-        titleRef.current,
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.6,
-          ease: "power2.out",
-        },
-      );
-    }
-  }, []);
+async function getUserData(): Promise<UserPayload> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+  if (!token) redirect("/login");
 
-  return (
-    <main
-      className={cn(
-        "min-h-screen w-full px-4 py-6 transition-colors",
-        "bg-background text-foreground",
-      )}
-      style={{ paddingTop }}
-    >
-      <div className="container mx-auto">
-        <h1
-          ref={titleRef}
-          className="text-3xl font-bold tracking-tight sm:text-4xl"
-        >
-          Dashboard
-        </h1>
-
-        <div className="border-border bg-muted/50 mt-6 rounded-lg border p-6 shadow-lg backdrop-blur-md">
-          <p className="text-muted-foreground">
-            Selamat datang di Eryzsh DB! 🎉 Di sini kamu bisa mengelola data,
-            jadwal kuliah, dan lainnya lewat antarmuka modern.
-          </p>
-        </div>
-      </div>
-    </main>
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/me`,
+    {
+      headers: { Cookie: `token=${token.value}` },
+      cache: "no-store",
+    },
   );
+  if (!res.ok) redirect("/login");
+  return res.json();
+}
+
+export default async function DashboardPage() {
+  // Ambil semua data yang dibutuhkan secara paralel
+  const [userData, dbData] = await Promise.all([
+    getUserData(),
+    getDashboardData(),
+  ]);
+
+  return <DashboardClient user={userData} initialData={dbData} />;
 }
