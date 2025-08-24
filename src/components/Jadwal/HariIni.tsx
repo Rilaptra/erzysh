@@ -2,6 +2,7 @@
 
 import type { MataKuliah } from "@/lib/data/jadwal-types";
 import { JadwalCard } from "./JadwalCard";
+import { LiveClock } from "./LiveClock"; // <-- Impor komponen jam
 
 interface HariIniProps {
   hari: string;
@@ -11,9 +12,16 @@ interface HariIniProps {
 export function HariIni({ hari, jadwal }: HariIniProps) {
   return (
     <div className="bg-card text-card-foreground rounded-xl p-6 shadow-inner">
-      <h1 className="mb-6 text-3xl font-bold">
-        Jadwal Hari: <span className="text-primary">{hari}</span>
-      </h1>
+      {/* --- PERUBAHAN DI SINI --- */}
+      <div className="mb-6 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold">
+          Jadwal Hari: <span className="text-primary">{hari}</span>
+        </h1>
+        {/* Panggil komponen jam di sini */}
+        <LiveClock />
+      </div>
+      {/* --- AKHIR PERUBAHAN --- */}
+
       {jadwal && jadwal.length > 0 ? (
         <div className="space-y-6">
           {jadwal.map((matkul, idx) => (
