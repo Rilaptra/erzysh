@@ -65,6 +65,8 @@ export async function GET(
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
     const isRawRequest = req.nextUrl.searchParams.get("raw") === "true";
+    const isFullRequest = req.nextUrl.searchParams.get("full") === "true"; // <-- Tambahan
+
     const isAuth = isAuthenticated(req);
 
     if (!isAuth || isRawRequest) {
@@ -213,15 +215,40 @@ export async function GET(
     }
 
     if (channelId) {
-      const messages = await getMessagesFromChannel(channelId);
-      const filteredMessages = isAdmin
-        ? messages
-        : messages.filter((msg) => msg.userID === userID);
+      // --- PERUBAHAN UTAMA DI SINI ---
+      if (isFullRequest) {
+        const messages = await getMessagesFromChannel(channelId);
 
-      return createApiResponse<GetApiDatabaseChannelMessagesResponse>(
-        { data: filteredMessages },
-        200,
-      );
+        const detailPromises = messages.map((msg) =>
+          discord
+            .get<DiscordMessage>(`/channels/${channelId}/messages/${msg.id}`)
+            .then(async (fullMsg) => {
+              const sanitized = sanitizeMessage(fullMsg);
+              const attachmentData = await loadAttachmentsData(
+                sanitized.attachments,
+              );
+              if (typeof attachmentData !== "string") return null;
+
+              const parsedData = JSON.parse(attachmentData);
+              return { id: sanitized.id, ...parsedData };
+            })
+            .catch(() => null),
+        );
+
+        const fullData = (await Promise.all(detailPromises)).filter(Boolean);
+        return createApiResponse({ data: fullData }, 200);
+      } else {
+        // Logika lama
+        const messages = await getMessagesFromChannel(channelId);
+        const filteredMessages = isAdmin
+          ? messages
+          : messages.filter((msg) => msg.userID === userID);
+
+        return createApiResponse<GetApiDatabaseChannelMessagesResponse>(
+          { data: filteredMessages },
+          200,
+        );
+      }
     }
 
     if (categoryId) {

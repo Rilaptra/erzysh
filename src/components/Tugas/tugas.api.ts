@@ -1,59 +1,24 @@
 // src/components/Tugas/tugas.api.ts
 import type { Tugas } from "@/types/tugas";
-import type {
-  ApiDbGetMessageResponse,
-  ApiDbProcessedMessage,
-} from "@/types/api-db-response";
 
-// ID yang udah lo kasih
 const CONTAINER_ID = "1409908765074919585";
 const BOX_ID = "1409908859971309681";
 const API_BASE_URL = `/api/database/${CONTAINER_ID}/${BOX_ID}`;
 
-// Helper untuk mengubah data dari API ke format Tugas yang siap pakai
-const transformApiToTugas = (apiData: ApiDbGetMessageResponse): Tugas => {
-  if (!apiData.data) throw new Error("Data tugas tidak ditemukan.");
-  const data = JSON.parse(apiData.data);
-  return {
-    id: apiData.id,
-    judul: data.judul,
-    mataKuliah: data.mataKuliah,
-    kategori: data.kategori,
-    deskripsi: data.deskripsi,
-    deadline: data.deadline,
-    isCompleted: data.isCompleted,
-  };
-};
-
-// --- FUNGSI-FUNGSI CRUD UNTUK BERINTERAKSI DENGAN API ---
-
 export const fetchTugas = async (): Promise<Tugas[]> => {
-  const listRes = await fetch(API_BASE_URL);
-  if (!listRes.ok) throw new Error("Gagal mengambil daftar tugas dari server.");
+  // Langsung panggil dengan ?full=true. Hanya 1 API call!
+  const res = await fetch(`${API_BASE_URL}?full=true`);
+  if (!res.ok) throw new Error("Gagal mengambil daftar tugas dari server.");
 
-  const { data: tugasList }: { data: ApiDbProcessedMessage[] } =
-    await listRes.json();
-
-  if (!tugasList || tugasList.length === 0) {
-    return [];
-  }
-
-  // Ambil detail untuk setiap tugas secara paralel biar cepat
-  const detailPromises = tugasList.map((tugasInfo) =>
-    fetch(`${API_BASE_URL}/${tugasInfo.id}`).then((res) => res.json()),
-  );
-
-  const allDetails: ApiDbGetMessageResponse[] =
-    await Promise.all(detailPromises);
-
-  return allDetails.map(transformApiToTugas);
+  const { data } = await res.json();
+  return data || [];
 };
 
 export const createTugas = async (
   tugasData: Omit<Tugas, "id">,
 ): Promise<Tugas> => {
   const payload = {
-    name: `${tugasData.judul.replace(/\s+/g, "-")}-${Date.now()}.json`, // Nama file unik
+    name: `${tugasData.judul.replace(/\s+/g, "-")}-${Date.now()}.json`,
     content: JSON.stringify(tugasData),
   };
 

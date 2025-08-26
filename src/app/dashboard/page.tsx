@@ -2,7 +2,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { UserPayload, ApiDbGetAllStructuredDataResponse } from "@/types";
-import { DashboardClient } from "@/components/DashboardPage"; // Komponen Klien Baru
+import type { Tugas } from "@/types/tugas";
+import { DashboardClient } from "@/components/DashboardPage";
 
 async function getDashboardData() {
   const cookieStore = await cookies();
@@ -45,12 +46,42 @@ async function getUserData(): Promise<UserPayload> {
   return res.json();
 }
 
+async function getTugasData(): Promise<Tugas[]> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token");
+  const userID = cookieStore.get("x-user-id");
+  if (!token) return [];
+
+  try {
+    const tugasRes = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database/1409908765074919585/1409908859971309681?full=true`,
+      {
+        headers: { Cookie: `token=${token.value}; x-user-id=${userID?.value}` },
+        cache: "no-store",
+      },
+    );
+    if (!tugasRes.ok) return [];
+
+    const { data } = await tugasRes.json();
+    return data || [];
+  } catch (e) {
+    console.error("Failed to fetch tugas for dashboard:", e);
+    return [];
+  }
+}
+
 export default async function DashboardPage() {
-  // Ambil semua data yang dibutuhkan secara paralel
-  const [userData, dbData] = await Promise.all([
+  const [userData, dbData, tugasData] = await Promise.all([
     getUserData(),
     getDashboardData(),
+    getTugasData(),
   ]);
 
-  return <DashboardClient user={userData} initialData={dbData} />;
+  return (
+    <DashboardClient
+      user={userData}
+      initialData={dbData}
+      tugasList={tugasData}
+    />
+  );
 }

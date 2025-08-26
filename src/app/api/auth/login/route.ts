@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         messageId: user.message_id,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }, // Token berlaku selama 1 jam
+      { expiresIn: "1w" }, // Token berlaku selama 1 jam
     );
 
     const response = NextResponse.json(
