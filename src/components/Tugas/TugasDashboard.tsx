@@ -1,7 +1,7 @@
 // src/components/Tugas/TugasDashboard.tsx
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { BookCheck, PlusCircle, Loader2 } from "lucide-react";
 import type { Tugas } from "@/types/tugas";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,7 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     try {
       await TugasAPI.updateTugas(originalTugas);
       toast.info("Perubahan telah dibatalkan.");
-    } catch (error) {
+    } catch {
       toast.error("Gagal membatalkan perubahan.");
       // Rollback UI jika undo di server gagal
       setTugasList((prev) =>
@@ -164,7 +164,7 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
             try {
               await TugasAPI.updateTugas(originalState);
               toast.info("Status tugas dibatalkan.");
-            } catch (error) {
+            } catch {
               toast.error("Gagal membatalkan status.");
               setTugasList((prev) =>
                 prev.map((t) => (t.id === id ? updatedTugas : t)),
