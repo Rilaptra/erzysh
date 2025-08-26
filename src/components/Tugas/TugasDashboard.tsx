@@ -1,0 +1,281 @@
+// src/components/Tugas/TugasDashboard.tsx
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import { BookCheck, PlusCircle, Loader2 } from "lucide-react";
+import type { Tugas } from "@/types/tugas";
+import { Button } from "@/components/ui/button";
+import { TugasCard } from "./TugasCard";
+import { TugasForm } from "./TugasForm";
+import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "../ui/label";
+import { Undo2 } from "lucide-react";
+import * as TugasAPI from "./tugas.api"; // <-- Impor service API kita
+
+type FilterStatus = "semua" | "aktif" | "selesai";
+type SortBy = "deadline" | "terbaru";
+
+interface TugasDashboardProps {
+  mataKuliahOptions: string[];
+}
+
+export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
+  const [tugasList, setTugasList] = useState<Tugas[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingTugas, setEditingTugas] = useState<Tugas | null>(null);
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("aktif");
+  const [sortBy, setSortBy] = useState<SortBy>("deadline");
+
+  useEffect(() => {
+    const loadTugas = async () => {
+      try {
+        setIsLoading(true);
+        const data = await TugasAPI.fetchTugas();
+        setTugasList(data);
+      } catch (error) {
+        toast.error("Gagal memuat data tugas.", {
+          description: (error as Error).message,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadTugas();
+  }, []);
+
+  const handleOpenForm = (tugas: Tugas | null) => {
+    setEditingTugas(tugas);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setEditingTugas(null);
+    setIsFormOpen(false);
+  };
+
+  const handleCrudSubmit = async (
+    data: Omit<Tugas, "id" | "isCompleted"> & { id?: string },
+    originalData?: Tugas,
+  ) => {
+    if (data.id) {
+      // Update
+      const optimisticUpdate = {
+        ...tugasList.find((t) => t.id === data.id)!,
+        ...data,
+      };
+      setTugasList((prev) =>
+        prev.map((t) => (t.id === data.id ? optimisticUpdate : t)),
+      ); // Optimistic UI
+      try {
+        await TugasAPI.updateTugas(optimisticUpdate);
+        toast.success(`Tugas "${data.judul}" berhasil diperbarui!`, {
+          action: {
+            label: "Undo",
+            onClick: () => handleUndoUpdate(originalData!),
+          },
+          icon: <Undo2 className="size-4" />,
+        });
+      } catch (error) {
+        toast.error("Gagal update, mengembalikan data.", {
+          description: (error as Error).message,
+        });
+        setTugasList((prev) =>
+          prev.map((t) => (t.id === data.id ? originalData! : t)),
+        ); // Rollback
+      }
+    } else {
+      // Create
+      const newTugasData: Omit<Tugas, "id" | "isCompleted"> = data;
+      try {
+        const createdTugas = await TugasAPI.createTugas({
+          ...newTugasData,
+          isCompleted: false,
+        });
+        setTugasList((prev) => [createdTugas, ...prev]);
+        toast.success(`Tugas "${data.judul}" berhasil ditambahkan!`);
+      } catch (error) {
+        toast.error("Gagal menambahkan tugas.", {
+          description: (error as Error).message,
+        });
+      }
+    }
+  };
+
+  const handleUndoUpdate = async (originalTugas: Tugas) => {
+    setTugasList((prev) =>
+      prev.map((t) => (t.id === originalTugas.id ? originalTugas : t)),
+    );
+    try {
+      await TugasAPI.updateTugas(originalTugas);
+      toast.info("Perubahan telah dibatalkan.");
+    } catch (error) {
+      toast.error("Gagal membatalkan perubahan.");
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    const tugasToDelete = tugasList.find((t) => t.id === id);
+    if (!tugasToDelete) return;
+
+    setTugasList((prev) => prev.filter((t) => t.id !== id)); // Optimistic UI
+
+    toast.info("Tugas telah dihapus.", {
+      action: {
+        label: "Undo",
+        onClick: () => handleUndoDelete(tugasToDelete),
+      },
+      icon: <Undo2 className="size-4" />,
+    });
+
+    TugasAPI.deleteTugas(id).catch((error) => {
+      toast.error("Gagal hapus permanen.", {
+        description: (error as Error).message,
+      });
+      setTugasList((prev) =>
+        [...prev, tugasToDelete].sort(/* sorting logic */),
+      ); // Rollback
+    });
+  };
+
+  const handleUndoDelete = async (tugas: Tugas) => {
+    const { id, ...tugasData } = tugas; // Hapus ID lama
+    try {
+      const createdTugas = await TugasAPI.createTugas(tugasData); // Buat ulang
+      setTugasList((prev) => [createdTugas, ...prev]);
+      toast.success("Tugas berhasil dikembalikan.");
+    } catch (error) {
+      toast.error("Gagal mengembalikan tugas.");
+    }
+  };
+
+  const handleToggleComplete = (id: string) => {
+    const tugas = tugasList.find((t) => t.id === id);
+    if (!tugas) return;
+
+    const updatedTugas = { ...tugas, isCompleted: !tugas.isCompleted };
+    setTugasList((prev) => prev.map((t) => (t.id === id ? updatedTugas : t))); // Optimistic UI
+
+    TugasAPI.updateTugas(updatedTugas).catch((error) => {
+      toast.error("Gagal update status.", {
+        description: (error as Error).message,
+      });
+      setTugasList((prev) => prev.map((t) => (t.id === id ? tugas : t))); // Rollback
+    });
+  };
+
+  const filteredAndSortedList = useMemo(() => {
+    // ... (Logika filter dan sort tidak berubah)
+    return tugasList
+      .filter((t) => {
+        if (filterStatus === "aktif") return !t.isCompleted;
+        if (filterStatus === "selesai") return t.isCompleted;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "deadline") {
+          if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+          return (
+            new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+          );
+        }
+        return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+      });
+  }, [tugasList, filterStatus, sortBy]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
+        <Loader2 className="text-primary size-12 animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      {/* ... (Bagian Header dan Filter tidak berubah) ... */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="flex items-center gap-3 text-3xl font-bold md:text-4xl">
+          <BookCheck className="text-teal-muted size-9 md:size-10" />
+          Manajemen Tugas
+        </h1>
+        <Button
+          size="lg"
+          onClick={() => handleOpenForm(null)}
+          className="w-full sm:w-auto"
+        >
+          <PlusCircle className="mr-2" />
+          Tambah Tugas Baru
+        </Button>
+      </div>
+
+      <div className="bg-card mb-6 flex flex-col gap-4 rounded-lg border p-4 sm:flex-row">
+        <div className="flex-1">
+          <Label className="text-muted-foreground text-xs">Tampilkan</Label>
+          <Select
+            onValueChange={(v: FilterStatus) => setFilterStatus(v)}
+            value={filterStatus}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="aktif">Tugas Aktif</SelectItem>
+              <SelectItem value="selesai">Tugas Selesai</SelectItem>
+              <SelectItem value="semua">Semua Tugas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1">
+          <Label className="text-muted-foreground text-xs">Urutkan</Label>
+          <Select onValueChange={(v: SortBy) => setSortBy(v)} value={sortBy}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="deadline">Deadline Terdekat</SelectItem>
+              <SelectItem value="terbaru">Baru Dibuat</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        {filteredAndSortedList.map((tugas) => (
+          <TugasCard
+            key={tugas.id}
+            tugas={tugas}
+            onEdit={handleOpenForm}
+            onDelete={handleDelete}
+            onToggleComplete={(id) => handleToggleComplete(id)}
+          />
+        ))}
+      </div>
+
+      {filteredAndSortedList.length === 0 && !isLoading && (
+        <div className="mt-6 rounded-lg border-2 border-dashed p-12 text-center">
+          <p className="text-muted-foreground text-lg">
+            {filterStatus === "aktif"
+              ? "Hore, tidak ada tugas aktif! 😎"
+              : "Belum ada tugas yang selesai."}
+          </p>
+        </div>
+      )}
+
+      <TugasForm
+        isOpen={isFormOpen}
+        onClose={handleCloseForm}
+        onSubmit={handleCrudSubmit}
+        initialData={editingTugas}
+        mataKuliahOptions={mataKuliahOptions}
+      />
+    </main>
+  );
+}
