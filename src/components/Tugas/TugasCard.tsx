@@ -20,12 +20,10 @@ import {
   BookOpen,
   CheckCircle2,
   Circle,
-  Undo2,
 } from "lucide-react";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/cn";
-import { toast } from "sonner";
 
 interface TugasCardProps {
   tugas: Tugas;
@@ -61,16 +59,8 @@ export const TugasCard = ({
   };
 
   const handleToggleClick = () => {
-    const newStatus = !tugas.isCompleted;
-    onToggleComplete(tugas.id, tugas.isCompleted); // Kirim state SEBELUM diubah untuk undo
-
-    toast.info(`Tugas ditandai ${newStatus ? "selesai" : "belum selesai"}.`, {
-      action: {
-        label: "Undo",
-        onClick: () => onToggleComplete(tugas.id, newStatus), // Kirim state BARU untuk dibalikkan
-      },
-      icon: <Undo2 className="size-4" />,
-    });
+    // Panggil onToggleComplete dengan ID dan state SEBELUM diubah
+    onToggleComplete(tugas.id, tugas.isCompleted);
   };
 
   return (
@@ -149,7 +139,7 @@ export const TugasCard = ({
           <Button
             variant={tugas.isCompleted ? "outline" : "default"}
             size="sm"
-            onClick={handleToggleClick}
+            onClick={handleToggleClick} // Logika toast dipindah ke Dashboard
             className={cn(
               tugas.isCompleted ? "border-green-500/50 text-green-500" : "",
             )}
