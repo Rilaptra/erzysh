@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
       // Verifikasi token untuk memastikan tidak ada token palsu
       verify(token, process.env.JWT_SECRET!);
       return NextResponse.redirect(new URL("/dashboard", request.url));
-    } catch (error) {
+    } catch {
       // Jika token tidak valid, biarkan mereka melanjutkan ke halaman login/register
       return NextResponse.next();
     }
@@ -69,7 +69,7 @@ export function middleware(request: NextRequest) {
       // --- ✨ LOGIKA SLIDING SESSION SELESAI ✨ ---
 
       return response;
-    } catch (error) {
+    } catch {
       // Jika token tidak valid (kadaluwarsa, salah, dll.),
       // redirect ke halaman login dan hapus cookie yang salah.
       const response = NextResponse.redirect(new URL("/login", request.url));
