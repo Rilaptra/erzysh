@@ -1,63 +1,95 @@
-// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyAuth } from "@/lib/authUtils";
+import { verify, sign } from "jsonwebtoken";
+import type { Payload } from "@/types/payload";
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+// Middleware akan dieksekusi untuk setiap request yang cocok dengan matcher di bawah
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("token")?.value;
 
-  const publicApiPaths = ["/api/auth/login", "/api/auth/register"];
-
-  // Allow requests to public API paths
-  if (publicApiPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+  // Jika pengguna sudah login dan mencoba mengakses halaman /login atau /register,
+  // arahkan mereka ke dashboard.
+  if (
+    token &&
+    (request.nextUrl.pathname.startsWith("/login") ||
+      request.nextUrl.pathname.startsWith("/register"))
+  ) {
+    try {
+      // Verifikasi token untuk memastikan tidak ada token palsu
+      verify(token, process.env.JWT_SECRET!);
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    } catch (error) {
+      // Jika token tidak valid, biarkan mereka melanjutkan ke halaman login/register
+      return NextResponse.next();
+    }
   }
 
-  // For all paths under /api/database, verify authentication
-  if (pathname.startsWith("/api/database")) {
-    const authenticatedUser = verifyAuth(request);
-    if (!authenticatedUser) {
-      return NextResponse.json(
-        { message: "Authentication required" },
-        { status: 401 }
-      );
+  // Lindungi halaman-halaman yang memerlukan autentikasi
+  if (
+    request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.startsWith("/database") ||
+    request.nextUrl.pathname.startsWith("/kuliah") ||
+    request.nextUrl.pathname.startsWith("/api/database")
+  ) {
+    // Jika tidak ada token, paksa redirect ke halaman login
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Add user information to request headers for API routes to access
-    const requestHeaders = new Headers(request.headers);
-    requestHeaders.set("x-user-id", authenticatedUser.userID);
-    requestHeaders.set("x-user-username", authenticatedUser.username);
-    requestHeaders.set("x-user-is-admin", String(authenticatedUser.isAdmin));
+    try {
+      // Verifikasi token yang ada
+      const decoded = verify(token, process.env.JWT_SECRET!) as Payload;
 
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
+      // --- ✨ LOGIKA SLIDING SESSION DIMULAI DI SINI ✨ ---
+
+      // 1. Buat ulang payload dari token yang ada untuk memastikan data tetap bersih
+      const newPayload: Payload = {
+        userId: decoded.userId,
+        username: decoded.username,
+      };
+
+      // 2. Buat token BARU dengan masa berlaku 7 hari dari SEKARANG
+      const newToken = sign(newPayload, process.env.JWT_SECRET!, {
+        expiresIn: "7d",
+      });
+
+      // 3. Siapkan response untuk melanjutkan request pengguna
+      const response = NextResponse.next();
+
+      // 4. Atur cookie di browser pengguna dengan token yang baru (refresh)
+      const sevenDaysInSeconds = 7 * 24 * 60 * 60;
+      response.cookies.set("token", newToken, {
+        httpOnly: true, // Cookie tidak bisa diakses dari JavaScript sisi klien
+        secure: process.env.NODE_ENV === "production", // Hanya kirim via HTTPS di produksi
+        sameSite: "strict", // Perlindungan CSRF
+        path: "/",
+        maxAge: sevenDaysInSeconds, // Browser akan menghapus cookie setelah 7 hari
+      });
+
+      // --- ✨ LOGIKA SLIDING SESSION SELESAI ✨ ---
+
+      return response;
+    } catch (error) {
+      // Jika token tidak valid (kadaluwarsa, salah, dll.),
+      // redirect ke halaman login dan hapus cookie yang salah.
+      const response = NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.delete("token");
+      return response;
+    }
   }
 
-  // For frontend paths like /dashboard, redirect to /login if not authenticated
-  // This part is more for UI/UX and might be adjusted based on frontend routing.
-  // For now, we'll focus on API protection.
-  // Example:
-  // if (pathname.startsWith('/dashboard')) {
-  //   const authenticatedUser = verifyAuth(request);
-  //   if (!authenticatedUser) {
-  //     const loginUrl = new URL('/login', request.url);
-  //     loginUrl.searchParams.set('redirect_to', pathname); // Optional: redirect back after login
-  //     return NextResponse.redirect(loginUrl);
-  //   }
-  // }
-
+  // Untuk semua request lainnya, biarkan saja
   return NextResponse.next();
 }
 
+// Konfigurasi path mana saja yang akan menjalankan middleware
 export const config = {
-  // Middleware will run on these paths
-  // Adjusted to primarily protect /api/database and allow auth endpoints
   matcher: [
+    "/dashboard/:path*",
+    "/database/:path*",
+    "/kuliah/:path*",
+    "/login",
+    "/register",
     "/api/database/:path*",
-    // '/dashboard/:path*', // Uncomment if you have frontend dashboard routes to protect
-    // Ensure auth paths are NOT matched here if they are handled as public above
   ],
 };
