@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verify, sign } from "jsonwebtoken";
-import type { Payload } from "@/types/payload";
+// import type { Payload } from "@/types/payload";
+interface Payload extends Record<string, unknown> {}
 
 // Middleware akan dieksekusi untuk setiap request yang cocok dengan matcher di bawah
 export function middleware(request: NextRequest) {
