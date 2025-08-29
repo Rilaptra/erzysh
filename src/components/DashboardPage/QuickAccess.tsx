@@ -3,7 +3,13 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Wrench, Camera, ListChecks, GraduationCap } from "lucide-react";
+import {
+  Wrench,
+  Camera,
+  ListChecks,
+  GraduationCap,
+  FileInput,
+} from "lucide-react"; // Tambahkan FileInput
 import Link from "next/link";
 
 const tools = [
@@ -11,6 +17,12 @@ const tools = [
     href: "/kuliah/tools/photo-formatter",
     label: "Photo to DOCX",
     icon: <Camera className="size-5" />,
+  },
+  // --- TAMBAHKAN TOOL BARU DI SINI ---
+  {
+    href: "/kuliah/tools/docx-extractor",
+    label: "DOCX to Photo",
+    icon: <FileInput className="size-5" />,
   },
   {
     href: "/kuliah/tools/checklist-teksip",
