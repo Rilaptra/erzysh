@@ -1,7 +1,6 @@
 // src/components/Tools/PhotoFormatter/index.tsx
 "use client";
 
-import type { NextPage } from "next";
 import { FileText, Loader2 } from "lucide-react";
 import { usePhotoFormatter } from "./hooks/usePhotoFormatter";
 
@@ -12,12 +11,16 @@ import { GenerationProgress } from "./GenerationProgress";
 import { MessageBox } from "./MessageBox";
 import { CompressionOptions } from "./CompressionOptions";
 
-const DocxGeneratorPage: NextPage = () => {
+import { logSuspiciousActivity } from "@/lib/actions"; // Sesuaikan path jika perlu
+import { toast } from "sonner";
+import { useState } from "react";
+
+const DocxGeneratorPage = ({ admin }: { admin: boolean }) => {
   const {
     selectedImages,
     zipFileInfo,
     docxFileInfo,
-    userInfo,
+    userInfo, // <-- Kita butuh ini
     quality,
     messageBox,
     isLoading,
@@ -30,6 +33,32 @@ const DocxGeneratorPage: NextPage = () => {
     handleGenerateClick,
     closeMessageBox,
   } = usePhotoFormatter();
+
+  const [isFaking, setIsFaking] = useState(false);
+
+  // --- FUNGSI JEBAKAN YANG SUDAH DI-UPGRADE ---
+  async function fakeHandleGenerateClick() {
+    setIsFaking(true);
+
+    // Siapkan data yang akan dikirim
+    const userInput = {
+      nama: userInfo.nama,
+      npm: userInfo.npm,
+      nomor_kelas: userInfo.nomor_kelas,
+      zipFileName: zipFileInfo?.name || null, // Ambil nama file dari state
+    };
+
+    // Panggil Server Action dengan data lengkap
+    await logSuspiciousActivity(userInput);
+
+    // Beri feedback palsu
+    setTimeout(() => {
+      toast.error("Generation Failed", {
+        description: "An unexpected error occurred. Please try again later.",
+      });
+      setIsFaking(false);
+    }, 1500);
+  }
 
   return (
     <>
@@ -78,14 +107,20 @@ const DocxGeneratorPage: NextPage = () => {
 
           <div className="flex flex-col items-center space-y-4">
             <button
-              onClick={handleGenerateClick}
-              disabled={isLoading || selectedImages.length === 0}
+              onClick={admin ? handleGenerateClick : fakeHandleGenerateClick}
+              disabled={isLoading || selectedImages.length === 0 || isFaking}
               className="w-full rounded-full bg-purple-600 px-8 py-3 font-bold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-purple-700 disabled:scale-100 disabled:cursor-not-allowed disabled:bg-gray-400 sm:w-auto dark:disabled:bg-gray-600"
             >
-              <FileText className="mr-2 inline h-5 w-5" />
-              {docxFileInfo
-                ? "Update & Download DOCX"
-                : "Generate & Download DOCX"}
+              {isFaking ? (
+                <Loader2 className="mr-2 inline h-5 w-5 animate-spin" />
+              ) : (
+                <FileText className="mr-2 inline h-5 w-5" />
+              )}
+              {isFaking
+                ? "Processing..."
+                : docxFileInfo
+                  ? "Update & Download DOCX"
+                  : "Generate & Download DOCX"}
             </button>
             <GenerationProgress
               isLoading={isLoading && !isProcessingZip}

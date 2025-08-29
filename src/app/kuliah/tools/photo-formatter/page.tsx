@@ -8,5 +8,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function PhotoFormatter() {
-  return <DocxGeneratorPage admin={true} />;
+  return <DocxGeneratorPage admin={false} />;
 }
