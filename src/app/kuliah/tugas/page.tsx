@@ -1,13 +1,18 @@
 // src/app/kuliah/tugas/page.tsx
 import { TugasDashboard } from "@/components/Tugas/TugasDashboard";
 import { jadwalKuliah } from "@/lib/data/jadwal";
+import { Metadata } from "next";
 
-// Helper untuk mengekstrak nama mata kuliah dari jadwal
+export const metadata: Metadata = {
+  title: "Manajemen Tugas",
+  description: "Track all your university assignments and deadlines.",
+  // openGraph dan twitter akan mewarisi dari root layout
+};
+
 const getMataKuliahList = () => {
   const matkulSet = new Set<string>();
   Object.values(jadwalKuliah).forEach((hari) => {
     hari.forEach((mk) => {
-      // Membersihkan nama matkul dari embel-embel praktikum
       const cleanName = mk.matkul
         .replace(/\s*\((T\*|Praktikum)\)\s*$/, "")
         .trim();
@@ -20,7 +25,5 @@ const getMataKuliahList = () => {
 export default function TugasPage() {
   const mataKuliahOptions = getMataKuliahList();
 
-  // Untuk saat ini, kita akan pass data tugas langsung ke komponen client.
-  // Ke depannya, di sini adalah tempat untuk fetch data dari API.
   return <TugasDashboard mataKuliahOptions={mataKuliahOptions} />;
 }

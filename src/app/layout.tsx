@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Toaster } from "@/components/ui/sonner"; // Impor Toaster
+import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Layout/Header";
 
 const geistSans = Geist({
@@ -15,48 +15,52 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// URL logo yang akan digunakan
+const LOGO_URL =
+  "https://erzysh.vercel.app/api/database/1396528719002075287/1396528759082844230/1411358085611520081?raw=true&userID=881d4d54-126d-4362-8228-dd2235e90b58";
+
 export const metadata: Metadata = {
-  title: "Erzysh Website",
-  description: "Erzysh Website, web experiment dan kebutuhan pribadi",
+  title: {
+    template: "%s | Eryzsh",
+    default: "Eryzsh",
+  },
+  description: "Personal dashboard, DBaaS, and university toolkit.",
   openGraph: {
-    title: "Eryzsh DB",
-    description: "Simple Database-as-a-Service powered by Discord",
-    url: "https://eryzshdb.vercel.app",
-    siteName: "Eryzsh DB",
-    locale: "en-US",
+    title: "Eryzsh",
+    description: "Personal dashboard, DBaaS, and university toolkit.",
+    url: "https://eryzsh.vercel.app",
+    siteName: "Eryzsh",
+    locale: "id_ID",
     type: "website",
     images: [
       {
-        url: "http://erzysh.vercel.app/api/database/1396528719002075287/1396528759082844230/1396528858702024784?raw=true&userID=881d4d54-126d-4362-8228-dd2235e90b58",
+        url: LOGO_URL, // Menggunakan URL logo yang baru
         width: 512,
         height: 512,
-        alt: "Eryzsh DB Logo",
+        alt: "Eryzsh Logo",
       },
     ],
   },
-};
-/**
-export const metadata: Metadata = {
-  title: "Eryzsh DB",
-  description: "Simple Database-as-a-Service powered by Discord",
-  openGraph: {
-    title: "Eryzsh DB",
-    description: "Simple Database-as-a-Service powered by Discord",
-    url: "https://eryzshdb.vercel.app",
-    siteName: "Eryzsh DB",
-    locale: "en-US",
-    type: "website",
-    images: [
-      {
-        url: "https://erzysh.vercel.app/api/database/1396528719002075287/1396528759082844230/1396528858702024784?raw=true&userID=881d4d54-126d-4362-8228-dd2235e90b58",
-        width: 512,
-        height: 512,
-        alt: "Eryzsh DB Logo",
-      },
-    ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Eryzsh",
+    description: "Personal dashboard, DBaaS, and university toolkit.",
+    // creator: "@yourtwitterhandle",
+    images: [LOGO_URL], // Menggunakan URL logo yang baru
   },
 };
-*/
 
 export default function RootLayout({
   children,

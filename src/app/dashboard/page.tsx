@@ -4,6 +4,20 @@ import { redirect } from "next/navigation";
 import type { UserPayload, ApiDbGetAllStructuredDataResponse } from "@/types";
 import type { Tugas } from "@/types/tugas";
 import { DashboardClient } from "@/components/DashboardPage";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Overview dashboard for schedules, tasks, and quick tools.",
+  // openGraph dan twitter akan mewarisi dari root layout
+  // Jika ingin gambar spesifik untuk halaman ini, tambahkan:
+  // openGraph: {
+  //   images: ["URL_GAMBAR_DASHBOARD_SPESIFIK"],
+  // },
+  // twitter: {
+  //   images: ["URL_GAMBAR_DASHBOARD_SPESIFIK"],
+  // },
+};
 
 async function getDashboardData() {
   const cookieStore = await cookies();
