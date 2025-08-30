@@ -21,12 +21,14 @@ const DocxGeneratorPage = ({ admin }: { admin: boolean }) => {
     zipFileInfo,
     docxFileInfo,
     userInfo, // <-- Kita butuh ini
+    startNumber,
     quality,
     messageBox,
     isLoading,
     progress,
     isProcessingZip,
     handleUserInfoChange,
+    setStartNumber,
     setQuality,
     handleZipFileSelect,
     handleDocxFileSelect,
@@ -79,6 +81,8 @@ const DocxGeneratorPage = ({ admin }: { admin: boolean }) => {
           <UserInfoForm
             userInfo={userInfo}
             onUserInfoChange={handleUserInfoChange}
+            startNumber={startNumber}
+            onStartNumberChange={setStartNumber}
           />
           <FileDropzone
             onZipFileSelect={handleZipFileSelect}

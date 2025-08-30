@@ -28,6 +28,7 @@ export const useDocxGenerator = () => {
     userInfo: UserInfo,
     quality: number,
     existingDocx: File | null,
+    startNumber: number, // <-- Tambahkan parameter ini
   ) => {
     if (images.length === 0) {
       throw new Error("Tidak ada gambar yang dipilih untuk diproses.");
@@ -120,7 +121,8 @@ export const useDocxGenerator = () => {
             : 0;
         const startingRId = lastRelId + 1;
         const startingPId = lastPId + 1;
-        const startingNum = lastNum + 1;
+        // Gunakan startNumber jika diisi, jika tidak, lanjutkan dari nomor terakhir
+        const startingNum = startNumber > 1 ? startNumber : lastNum + 1;
         const updatedBody = appendImagesToBody(
           originalBodyStr,
           imagesWithBase64,
@@ -149,7 +151,10 @@ export const useDocxGenerator = () => {
         docxZip.file("[Content_Types].xml", createContentTypes());
         docxZip.folder("_rels")?.file(".rels", createMainRels());
         const wordFolder = docxZip.folder("word");
-        wordFolder?.file("document.xml", createDocumentBody(imagesWithBase64));
+        wordFolder?.file(
+          "document.xml",
+          createDocumentBody(imagesWithBase64, startNumber), // <-- Pass ke fungsi
+        );
         wordFolder
           ?.folder("_rels")
           ?.file("document.xml.rels", createDocumentRels(imagesWithBase64));

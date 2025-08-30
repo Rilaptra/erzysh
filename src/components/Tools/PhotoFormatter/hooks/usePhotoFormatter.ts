@@ -22,6 +22,7 @@ export const usePhotoFormatter = () => {
     nomor_kelas: "",
   });
   const [quality, setQuality] = useState(0.8);
+  const [startNumber, setStartNumber] = useState(1); // <-- State baru untuk nomor awal
   const [messageBox, setMessageBox] = useState<MessageBoxType>({
     isOpen: false,
     title: "",
@@ -118,6 +119,7 @@ export const usePhotoFormatter = () => {
         userInfo,
         quality,
         docxFile,
+        startNumber, // <-- Kirim startNumber ke generator
       );
     } catch (error) {
       const message =
@@ -141,12 +143,14 @@ export const usePhotoFormatter = () => {
     docxFileInfo,
     userInfo,
     quality,
+    startNumber, // <-- Export state
     messageBox,
     isLoading: isLoading || isProcessingZip,
     progress,
     isProcessingZip,
     handleUserInfoChange,
     setQuality,
+    setStartNumber, // <-- Export setter
     handleZipFileSelect,
     handleDocxFileSelect,
     handleGenerateClick,
