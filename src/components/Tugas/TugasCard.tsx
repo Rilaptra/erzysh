@@ -20,7 +20,9 @@ import {
   BookOpen,
   CheckCircle2,
   Circle,
+  CalendarPlus, // <-- Ikon baru
 } from "lucide-react";
+import { formatISO } from "date-fns";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/cn";
@@ -59,8 +61,29 @@ export const TugasCard = ({
   };
 
   const handleToggleClick = () => {
-    // Panggil onToggleComplete dengan ID dan state SEBELUM diubah
     onToggleComplete(tugas.id, tugas.isCompleted);
+  };
+
+  // --- FUNGSI BARU UNTUK GOOGLE CALENDAR ---
+  const handleAddToCalendar = () => {
+    const startTime = formatISO(deadlineDate, {
+      representation: "date",
+    }).replace(/-/g, "");
+    const endTime = formatISO(
+      new Date(deadlineDate).setDate(deadlineDate.getDate() + 1),
+      { representation: "date" },
+    ).replace(/-/g, "");
+
+    const calendarUrl = new URL("https://www.google.com/calendar/render");
+    calendarUrl.searchParams.append("action", "TEMPLATE");
+    calendarUrl.searchParams.append("text", `Deadline: ${tugas.judul}`);
+    calendarUrl.searchParams.append("dates", `${startTime}/${endTime}`);
+    calendarUrl.searchParams.append(
+      "details",
+      `Tugas untuk mata kuliah ${tugas.mataKuliah}.\n\nDeskripsi:\n${tugas.deskripsi}`,
+    );
+
+    window.open(calendarUrl.toString(), "_blank");
   };
 
   return (
@@ -87,6 +110,14 @@ export const TugasCard = ({
             </CardDescription>
           </div>
           <div className="flex flex-shrink-0 items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={handleAddToCalendar} // <-- Panggil fungsi
+            >
+              <CalendarPlus className="size-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -135,11 +166,10 @@ export const TugasCard = ({
             <Clock className="text-teal-muted size-4" />
             <span className="font-medium">{getTimeRemaining()}</span>
           </div>
-          {/* --- PERUBAHAN DARI CHECKBOX KE BUTTON --- */}
           <Button
             variant={tugas.isCompleted ? "outline" : "default"}
             size="sm"
-            onClick={handleToggleClick} // Logika toast dipindah ke Dashboard
+            onClick={handleToggleClick}
             className={cn(
               tugas.isCompleted ? "border-green-500/50 text-green-500" : "",
             )}

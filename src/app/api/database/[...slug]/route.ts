@@ -65,24 +65,15 @@ export async function GET(
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
     const isRawRequest = req.nextUrl.searchParams.get("raw") === "true";
-    const isFullRequest = req.nextUrl.searchParams.get("full") === "true"; // <-- Tambahan
+    const isFullRequest = req.nextUrl.searchParams.get("full") === "true";
 
     const isAuth = isAuthenticated(req);
 
-    if (!isAuth || isRawRequest) {
-      // Validasi bahwa request publik harus spesifik ke satu message dan raw
+    if (!isAuth && isRawRequest) {
       if (!messageId) {
         return createApiResponse(
           {
             error: "Data not found or access denied.",
-          },
-          400,
-        );
-      }
-      if (!isRawRequest) {
-        return createApiResponse(
-          {
-            error: "Public access requires 'raw=true' parameter.",
           },
           400,
         );
@@ -103,7 +94,6 @@ export async function GET(
         const sanitized = sanitizeMessage(message);
         const metadata = sanitized.content as MessageMetadata;
 
-        // --- KUNCI KEAMANAN PUBLIK ---
         if (!metadata.isPublic || metadata.userID !== requestUserID) {
           return createApiResponse(
             { error: "Resource not found or access denied." },
@@ -127,17 +117,21 @@ export async function GET(
         headers.set(
           "Cache-Control",
           "public, s-maxage=86400, stale-while-revalidate=59",
-        ); // Cache publik
+        );
 
         return new NextResponse(attachmentData, { status: 200, headers });
       } catch (error) {
-        // Untuk request publik, semua error internal kita samarkan sebagai 404
         console.error(
           chalk.yellow("Public access error:"),
           (error as Error).message,
         );
         return createApiResponse({ error: "Resource not found." }, 404);
       }
+    }
+
+    // Auth required for all non-raw requests from here
+    if (!isAuth) {
+      return createApiResponse({ error: "Unauthorized" }, 401);
     }
 
     const { userID } = getAuthInfo(req);
@@ -163,10 +157,7 @@ export async function GET(
       }
 
       const attachmentData = await loadAttachmentsData(sanitized.attachments);
-      // const dataToReturn =
-      //   attachmentData || (sanitized.content ? "" : sanitized.content);
 
-      // --- BARU: Logika untuk merespons dengan data mentah ---
       if (isRawRequest) {
         if (!attachmentData) {
           return createApiResponse(
@@ -175,28 +166,13 @@ export async function GET(
           );
         }
 
-        const userId = req.nextUrl.searchParams.get("userId");
-        if (!userId)
-          return createApiResponse(
-            {
-              message:
-                "Forbidden: You do not own this message or are not an admin.",
-            },
-            403,
-          );
-
-        // Tentukan Content-Type berdasarkan nama file dari attachment
         const fileName = sanitized.attachments?.[0]?.filename || "file";
         const mimeType = getMimeType(fileName);
 
         const headers = new Headers();
         headers.set("Content-Type", mimeType);
-        headers.set("Content-Disposition", `inline; filename="${fileName}"`); // Menyarankan browser untuk menampilkan, bukan download paksa
-        headers.set(
-          "Cache-Control",
-          "public, s-maxage=86400, stale-while-revalidate=59",
-        );
-        // 'attachmentData' bisa berupa Buffer atau string (untuk JSON)
+        headers.set("Content-Disposition", `inline; filename="${fileName}"`);
+        headers.set("Cache-Control", "private, max-age=3600");
         return new NextResponse(attachmentData, { status: 200, headers });
       }
 
@@ -215,30 +191,46 @@ export async function GET(
     }
 
     if (channelId) {
-      // --- PERUBAHAN UTAMA DI SINI ---
+      // --- PERBAIKAN UTAMA DI SINI ---
       if (isFullRequest) {
-        const messages = await getMessagesFromChannel(channelId);
-
-        const detailPromises = messages.map((msg) =>
-          discord
-            .get<DiscordMessage>(`/channels/${channelId}/messages/${msg.id}`)
-            .then(async (fullMsg) => {
-              const sanitized = sanitizeMessage(fullMsg);
-              const attachmentData = await loadAttachmentsData(
-                sanitized.attachments,
-              );
-              if (typeof attachmentData !== "string") return null;
-
-              const parsedData = JSON.parse(attachmentData);
-              return { id: sanitized.id, ...parsedData };
-            })
-            .catch(() => null),
+        // 1. Ambil daftar semua pesan dalam satu panggilan API.
+        const messages = await discord.get<DiscordMessage[]>(
+          `/channels/${channelId}/messages`,
         );
 
-        const fullData = (await Promise.all(detailPromises)).filter(Boolean);
+        // 2. Buat array promise untuk mengambil konten setiap attachment secara paralel.
+        const attachmentPromises = messages.map(async (msg) => {
+          const sanitized = sanitizeMessage(msg);
+          if (!sanitized.attachments || sanitized.attachments.length === 0) {
+            return null; // Lewati jika tidak ada attachment.
+          }
+
+          try {
+            // Ambil konten dari URL CDN, bukan API Discord.
+            const attachmentData = await loadAttachmentsData(
+              sanitized.attachments,
+            );
+            if (typeof attachmentData !== "string") return null;
+
+            const parsedData = JSON.parse(attachmentData);
+            return { id: sanitized.id, ...parsedData };
+          } catch (e) {
+            console.warn(
+              `Gagal memproses attachment untuk pesan ${msg.id}:`,
+              (e as Error).message,
+            );
+            return null;
+          }
+        });
+
+        // 3. Tunggu semua proses fetch paralel selesai.
+        const fullData = (await Promise.all(attachmentPromises)).filter(
+          Boolean,
+        );
+
         return createApiResponse({ data: fullData }, 200);
       } else {
-        // Logika lama
+        // Logika lama (tanpa ?full=true) tetap sama.
         const messages = await getMessagesFromChannel(channelId);
         const filteredMessages = isAdmin
           ? messages

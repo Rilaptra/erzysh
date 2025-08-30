@@ -2,7 +2,13 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { BookCheck, PlusCircle, Loader2 } from "lucide-react";
+import {
+  BookCheck,
+  PlusCircle,
+  Loader2,
+  BellRing,
+  BellOff,
+} from "lucide-react"; // <-- Ikon baru: BellOff
 import type { Tugas } from "@/types/tugas";
 import { Button } from "@/components/ui/button";
 import { TugasCard } from "./TugasCard";
@@ -33,13 +39,106 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
   const [editingTugas, setEditingTugas] = useState<Tugas | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("aktif");
   const [sortBy, setSortBy] = useState<SortBy>("deadline");
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [subscriptionObject, setSubscriptionObject] =
+    useState<PushSubscription | null>(null); // State baru untuk menyimpan objek subscription
+
+  // --- LOGIKA NOTIFIKASI YANG DI-UPDATE ---
+  useEffect(() => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          if (sub) {
+            setIsNotificationEnabled(true);
+            setSubscriptionObject(sub); // Simpan objek subscription
+          }
+        });
+      });
+    }
+  }, []);
+
+  const handleSubscribe = async () => {
+    if (!("serviceWorker" in navigator)) {
+      toast.error("Browser tidak mendukung Service Worker.");
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          throw new Error("VAPID public key tidak ditemukan.");
+        }
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidPublicKey,
+        });
+      }
+
+      const res = await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        body: JSON.stringify(subscription),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) throw new Error("Gagal mendaftar notifikasi di server.");
+
+      setIsNotificationEnabled(true);
+      setSubscriptionObject(subscription); // Simpan objek subscription setelah berhasil
+      toast.success("Notifikasi pengingat deadline berhasil diaktifkan!");
+    } catch (error) {
+      console.error("Error subscribing to push notifications", error);
+      toast.error("Gagal mengaktifkan notifikasi.", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    if (!("serviceWorker" in navigator) || !subscriptionObject) {
+      toast.error("Tidak ada notifikasi yang aktif untuk dinonaktifkan.");
+      return;
+    }
+
+    setIsSubscribing(true); // Re-use isSubscribing for loading state
+    try {
+      await subscriptionObject.unsubscribe(); // Hapus dari browser
+
+      const res = await fetch("/api/notifications/unsubscribe", {
+        // <-- Endpoint baru di backend
+        method: "POST",
+        body: JSON.stringify({ endpoint: subscriptionObject.endpoint }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) throw new Error("Gagal menghapus notifikasi di server.");
+
+      setIsNotificationEnabled(false);
+      setSubscriptionObject(null);
+      toast.info("Notifikasi pengingat deadline berhasil dinonaktifkan.");
+    } catch (error) {
+      console.error("Error unsubscribing from push notifications", error);
+      toast.error("Gagal menonaktifkan notifikasi.", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+  // --- END LOGIKA NOTIFIKASI ---
 
   useEffect(() => {
     const loadTugas = async () => {
       try {
         setIsLoading(true);
         const data = await TugasAPI.fetchTugas();
-        console.log(data);
         setTugasList(data);
       } catch (error) {
         toast.error("Gagal memuat data tugas.", {
@@ -51,6 +150,8 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     };
     loadTugas();
   }, []);
+
+  // ... (sisa fungsi handle dan useMemo tetap sama)
 
   const handleOpenForm = (tugas: Tugas | null) => {
     setEditingTugas(tugas);
@@ -149,7 +250,6 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     const updatedTugas = { ...tugas, isCompleted: !currentState };
     setTugasList((prev) => prev.map((t) => (t.id === id ? updatedTugas : t)));
 
-    // Kirim state sebelum diubah ke toast untuk logika undo
     const originalState = { ...tugas };
 
     toast.info(
@@ -168,7 +268,7 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
               toast.error("Gagal membatalkan status.");
               setTugasList((prev) =>
                 prev.map((t) => (t.id === id ? updatedTugas : t)),
-              ); // Rollback ke state yg gagal
+              );
             }
           },
         },
@@ -176,9 +276,7 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
       },
     );
 
-    TugasAPI.updateTugas(updatedTugas).catch(() => {
-      // Rollback sudah dihandle oleh toast undo
-    });
+    TugasAPI.updateTugas(updatedTugas).catch(() => {});
   };
 
   const filteredAndSortedList = useMemo(() => {
@@ -214,14 +312,37 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
           <BookCheck className="text-teal-muted size-9 md:size-10" />
           Manajemen Tugas
         </h1>
-        <Button
-          size="lg"
-          onClick={() => handleOpenForm(null)}
-          className="w-full sm:w-auto"
-        >
-          <PlusCircle className="mr-2" />
-          Tambah Tugas Baru
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant={isNotificationEnabled ? "outline" : "destructive"} // Warna berbeda saat aktif
+            onClick={
+              isNotificationEnabled ? handleUnsubscribe : handleSubscribe
+            } // Pilih fungsi berdasarkan status
+            disabled={isSubscribing} // Hanya disable saat proses subscribe/unsubscribe
+            className="w-full sm:w-auto"
+          >
+            {isSubscribing ? (
+              <Loader2 className="mr-2 animate-spin" />
+            ) : isNotificationEnabled ? (
+              <BellOff className="mr-2" /> // Ikon BellOff saat aktif
+            ) : (
+              <BellRing className="mr-2" /> // Ikon BellRing saat nonaktif
+            )}
+            {isSubscribing
+              ? "Memproses..."
+              : isNotificationEnabled
+                ? "Nonaktifkan Pengingat" // Text berbeda saat aktif
+                : "Aktifkan Pengingat"}
+          </Button>
+          <Button
+            size="lg"
+            onClick={() => handleOpenForm(null)}
+            className="w-full sm:w-auto"
+          >
+            <PlusCircle className="mr-2" />
+            Tambah Tugas Baru
+          </Button>
+        </div>
       </div>
       <div className="bg-card mb-6 flex flex-col gap-4 rounded-lg border p-4 sm:flex-row">
         <div className="flex-1">
