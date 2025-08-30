@@ -26,7 +26,6 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
   }, [tugasList]);
 
   return (
-    // THEME: Menggunakan bg-card yang adaptif
     <Card className="backdrop-blur-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
@@ -43,7 +42,6 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
       <CardContent className="space-y-3">
         {upcomingTugas.length > 0 ? (
           upcomingTugas.map((tugas) => (
-            // THEME: Menggunakan bg-muted yang adaptif
             <div
               key={tugas.id}
               className="bg-muted/50 flex items-center justify-between rounded-md p-3"
@@ -61,12 +59,16 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
                     locale: id,
                   })}
                 </Badge>
+                {/* --- PERUBAHAN DI SINI --- */}
                 <p className="text-muted-foreground/80 text-xs">
                   {new Date(tugas.deadline).toLocaleDateString("id-ID", {
                     day: "2-digit",
                     month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
+                {/* --- AKHIR PERUBAHAN --- */}
               </div>
             </div>
           ))

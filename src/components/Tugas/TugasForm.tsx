@@ -1,7 +1,6 @@
 // src/components/Tugas/TugasForm.tsx
 "use client";
 
-// ... (import tetap sama)
 import { Tugas, TugasKategori } from "@/types/tugas";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +36,15 @@ interface TugasFormProps {
 }
 const kategoriOptions: TugasKategori[] = ["Kuliah", "Tugas Prodi", "Lainnya"];
 
+// Helper untuk memisahkan ISO string menjadi [YYYY-MM-DD, HH:mm]
+const splitISOString = (isoString: string) => {
+  if (!isoString) return ["", ""];
+  const date = new Date(isoString);
+  const datePart = date.toISOString().split("T")[0];
+  const timePart = date.toTimeString().split(" ")[0].substring(0, 5);
+  return [datePart, timePart];
+};
+
 export const TugasForm = ({
   isOpen,
   onClose,
@@ -44,37 +52,42 @@ export const TugasForm = ({
   initialData,
   mataKuliahOptions,
 }: TugasFormProps) => {
-  // ... (state dan logic useEffect tetap sama)
   const [judul, setJudul] = useState("");
   const [mataKuliah, setMataKuliah] = useState("");
   const [kategori, setKategori] = useState<TugasKategori>("Kuliah");
-  const [deadline, setDeadline] = useState("");
+  const [deadlineDate, setDeadlineDate] = useState("");
+  const [deadlineTime, setDeadlineTime] = useState("23:59"); // Default waktu
   const [deskripsi, setDeskripsi] = useState("");
   const isEditing = !!initialData;
+
   useEffect(() => {
     if (initialData) {
       setJudul(initialData.judul);
       setMataKuliah(initialData.mataKuliah);
       setKategori(initialData.kategori);
-      setDeadline(initialData.deadline.split("T")[0]);
+      const [datePart, timePart] = splitISOString(initialData.deadline);
+      setDeadlineDate(datePart);
+      setDeadlineTime(timePart);
       setDeskripsi(initialData.deskripsi);
     } else {
       setJudul("");
       setMataKuliah("");
       setKategori("Kuliah");
-      setDeadline("");
+      setDeadlineDate("");
+      setDeadlineTime("23:59"); // Reset ke default
       setDeskripsi("");
     }
   }, [initialData, isOpen]);
 
   const handleSubmit = () => {
-    if (!judul || !mataKuliah || !deadline) {
-      toast.error("Mohon lengkapi Judul, Mata Kuliah, and Deadline.");
+    if (!judul || !mataKuliah || !deadlineDate) {
+      toast.error("Mohon lengkapi Judul, Mata Kuliah, dan Tanggal Deadline.");
       return;
     }
-    const deadlineISO = new Date(`${deadline}T23:59:59`).toISOString();
+    const deadlineISO = new Date(
+      `${deadlineDate}T${deadlineTime || "00:00"}:00`,
+    ).toISOString();
 
-    // Kirim juga `initialData` sebagai data original untuk fitur Undo
     onSubmit(
       {
         id: initialData?.id,
@@ -92,7 +105,6 @@ export const TugasForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* --- PENAMBAHAN SCROLL DI SINI --- */}
       <DialogContent className="max-h-screen overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
@@ -142,15 +154,28 @@ export const TugasForm = ({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="deadline">Deadline</Label>
-            <Input
-              id="deadline"
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
+          {/* --- PERUBAHAN DI SINI --- */}
+          <div className="grid grid-cols-5 gap-2">
+            <div className="col-span-3 flex flex-col gap-2">
+              <Label htmlFor="deadline-date">Tanggal Deadline</Label>
+              <Input
+                id="deadline-date"
+                type="date"
+                value={deadlineDate}
+                onChange={(e) => setDeadlineDate(e.target.value)}
+              />
+            </div>
+            <div className="col-span-2 flex flex-col gap-2">
+              <Label htmlFor="deadline-time">Waktu</Label>
+              <Input
+                id="deadline-time"
+                type="time"
+                value={deadlineTime}
+                onChange={(e) => setDeadlineTime(e.target.value)}
+              />
+            </div>
           </div>
+          {/* --- AKHIR PERUBAHAN --- */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="deskripsi">Deskripsi</Label>
             <Textarea

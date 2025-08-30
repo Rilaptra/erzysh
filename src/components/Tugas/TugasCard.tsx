@@ -20,10 +20,9 @@ import {
   BookOpen,
   CheckCircle2,
   Circle,
-  CalendarPlus, // <-- Ikon baru
+  CalendarPlus,
 } from "lucide-react";
-import { formatISO } from "date-fns";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { formatDistanceToNow, parseISO, formatISO } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "@/lib/cn";
 
@@ -64,8 +63,8 @@ export const TugasCard = ({
     onToggleComplete(tugas.id, tugas.isCompleted);
   };
 
-  // --- FUNGSI BARU UNTUK GOOGLE CALENDAR ---
   const handleAddToCalendar = () => {
+    // Google Calendar event URL format (all-day event)
     const startTime = formatISO(deadlineDate, {
       representation: "date",
     }).replace(/-/g, "");
@@ -114,7 +113,7 @@ export const TugasCard = ({
               variant="ghost"
               size="icon"
               className="size-8"
-              onClick={handleAddToCalendar} // <-- Panggil fungsi
+              onClick={handleAddToCalendar}
             >
               <CalendarPlus className="size-4" />
             </Button>
@@ -153,13 +152,17 @@ export const TugasCard = ({
           )}
         >
           <Calendar className="text-teal-muted size-4" />
+          {/* --- PERUBAHAN DI SINI --- */}
           <span>
             {new Date(tugas.deadline).toLocaleDateString("id-ID", {
               day: "numeric",
               month: "long",
               year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
             })}
           </span>
+          {/* --- AKHIR PERUBAHAN --- */}
         </div>
         <div className="flex items-center gap-3">
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
