@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
+import { Sparkles, Loader2 } from "lucide-react"; // <-- Import ikon baru
 
 interface TugasFormProps {
   isOpen: boolean;
@@ -58,6 +59,7 @@ export const TugasForm = ({
   const [deadlineDate, setDeadlineDate] = useState("");
   const [deadlineTime, setDeadlineTime] = useState("23:59"); // Default waktu
   const [deskripsi, setDeskripsi] = useState("");
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false); // <-- State loading baru
   const isEditing = !!initialData;
 
   useEffect(() => {
@@ -78,6 +80,40 @@ export const TugasForm = ({
       setDeskripsi("");
     }
   }, [initialData, isOpen]);
+
+  // --- FUNGSI BARU UNTUK GENERATE JUDUL ---
+  const handleGenerateTitle = async () => {
+    if (!mataKuliah || !deskripsi) {
+      toast.error(
+        "Isi Mata Kuliah dan Deskripsi terlebih dahulu untuk membuat judul otomatis.",
+      );
+      return;
+    }
+
+    setIsGeneratingTitle(true);
+    try {
+      const response = await fetch("/api/generate-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mataKuliah, deskripsi }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal mendapatkan respon dari server.");
+      }
+
+      const data = await response.json();
+      setJudul(data.title);
+      toast.success("Judul berhasil dibuat oleh AI!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Gagal membuat judul otomatis.", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (!judul || !mataKuliah || !deadlineDate) {
@@ -113,14 +149,33 @@ export const TugasForm = ({
           <DialogDescription>Isi detail tugas di bawah ini.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
+          {/* --- PERUBAHAN PADA INPUT JUDUL --- */}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="judul">Judul</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="judul">Judul</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGenerateTitle}
+                disabled={isGeneratingTitle}
+                className="text-teal-muted -mr-2 h-auto px-2 py-1 text-xs"
+              >
+                {isGeneratingTitle ? (
+                  <Loader2 className="mr-1.5 size-3 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 size-3" />
+                )}
+                Generate
+              </Button>
+            </div>
             <Input
               id="judul"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
+              placeholder="Akan dibuat otomatis atau isi manual"
             />
           </div>
+          {/* --- AKHIR PERUBAHAN JUDUL --- */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="matkul">Mata Kuliah</Label>
             <Select onValueChange={setMataKuliah} value={mataKuliah}>
@@ -154,7 +209,6 @@ export const TugasForm = ({
               </SelectContent>
             </Select>
           </div>
-          {/* --- PERUBAHAN DI SINI --- */}
           <div className="grid grid-cols-5 gap-2">
             <div className="col-span-3 flex flex-col gap-2">
               <Label htmlFor="deadline-date">Tanggal Deadline</Label>
@@ -175,7 +229,6 @@ export const TugasForm = ({
               />
             </div>
           </div>
-          {/* --- AKHIR PERUBAHAN --- */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="deskripsi">Deskripsi</Label>
             <Textarea
@@ -183,6 +236,7 @@ export const TugasForm = ({
               value={deskripsi}
               onChange={(e) => setDeskripsi(e.target.value)}
               className="min-h-[100px]"
+              placeholder="Jelaskan detail tugas di sini untuk membantu AI membuat judul..."
             />
           </div>
         </div>
