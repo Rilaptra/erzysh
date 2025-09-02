@@ -146,11 +146,7 @@ export async function GET(
       const sanitized = sanitizeMessage(message);
       const processedMessages = processMessage(sanitized);
 
-      if (
-        !isAdmin &&
-        processedMessages.userID !== userID &&
-        channelId !== "1409908859971309681"
-      ) {
+      if (!isAdmin && processedMessages.userID !== userID) {
         return createApiResponse(
           {
             message:
