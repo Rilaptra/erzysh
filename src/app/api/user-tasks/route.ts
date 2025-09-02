@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let { messageId, data } = await findOrCreateUserCompletionDoc(user.userID);
+    const { messageId, data } = await findOrCreateUserCompletionDoc(
+      user.userID,
+    );
 
     if (!data.completedTasks.includes(taskId)) {
       data.completedTasks.push(taskId);
@@ -113,7 +115,9 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    let { messageId, data } = await findOrCreateUserCompletionDoc(user.userID);
+    const { messageId, data } = await findOrCreateUserCompletionDoc(
+      user.userID,
+    );
 
     if (!messageId) {
       return NextResponse.json({ success: true, completedTasks: [] }); // Nothing to delete

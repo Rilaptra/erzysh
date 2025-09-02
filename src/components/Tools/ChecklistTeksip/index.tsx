@@ -42,11 +42,6 @@ const useStudentChecklist = () => {
   );
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [rombelFilter, setRombelFilter] = useState<number | "all">("all");
-  const [, setLastAction] = useState<{
-    id: number;
-    name: string;
-    type: "checked" | "unchecked";
-  } | null>(null);
 
   useEffect(() => {
     try {
@@ -84,7 +79,6 @@ const useStudentChecklist = () => {
         return newItems;
       });
       toast.success(`Aksi untuk "${actionToUndo.name}" dibatalkan.`);
-      setLastAction(null);
     },
     [],
   );
@@ -92,7 +86,6 @@ const useStudentChecklist = () => {
   const handleCheck = useCallback(
     (id: number, isChecked: boolean, name: string) => {
       const type = isChecked ? "checked" : "unchecked";
-      setLastAction({ id, name, type });
 
       setCheckedItems((prev) => {
         const newItems = new Map(prev);
