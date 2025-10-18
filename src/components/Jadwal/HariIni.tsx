@@ -14,6 +14,9 @@ interface HariIniProps {
 }
 
 export function HariIni({ hari, jadwal }: HariIniProps) {
+  const today = new Date();
+  const academicEvents = useAcademicEvents(today);
+
   return (
     <div className="bg-card text-card-foreground rounded-xl p-6 shadow-inner">
       {/* --- PERUBAHAN DI SINI --- */}
