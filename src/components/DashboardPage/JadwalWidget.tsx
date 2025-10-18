@@ -9,6 +9,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useAcademicEvents } from "@/lib/hooks/useAcademicEvents";
+
 interface JadwalWidgetProps {
   fullSchedule: Jadwal;
 }
@@ -17,6 +19,8 @@ export const JadwalWidget = ({ fullSchedule }: JadwalWidgetProps) => {
   const [todaySchedule, setTodaySchedule] = useState<MataKuliah[]>([]);
   const [todayString, setTodayString] = useState("");
 
+  const academicEvents = useAcademicEvents(today);
+  
   useEffect(() => {
     const days = [
       "Minggu",
@@ -35,6 +39,14 @@ export const JadwalWidget = ({ fullSchedule }: JadwalWidgetProps) => {
 
   return (
     <div className="bg-gunmetal/30 border-gunmetal/50 rounded-lg p-6 backdrop-blur-sm">
+      {/* Event Akademik */}
+      {academicEvents.length > 0 && (
+        <div className="mb-4 rounded-md bg-blue-900/20 p-3">
+          <p className="text-blue-300 flex items-center gap-1 text-sm">
+            <Calendar size={14} /> {academicEvents[0].kegiatan}
+          </p>
+        </div>
+      )}
       <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-off-white text-xl font-bold">
           Jadwal Hari Ini ({todayString})
