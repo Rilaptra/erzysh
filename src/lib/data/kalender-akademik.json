@@ -1,0 +1,256 @@
+{
+  "tahun_akademik": "2025/2026",
+  "kalender_akademik": {
+    "semester_gasal": [
+      {
+        "nomor": 1,
+        "kegiatan": "Kuliah Kerja Nyata (KKN) Periode Juli",
+        "tanggal_mulai": "2025-07-05",
+        "tanggal_selesai": "2025-08-03",
+        "keterangan": "Periode pelaksanaan KKN bulan Juli"
+      },
+      {
+        "nomor": 2,
+        "kegiatan": "Pra KRS Mahasiswa",
+        "tanggal_mulai": "2025-07-28",
+        "tanggal_selesai": "2025-07-30",
+        "keterangan": "Periode pra pengisian Kartu Rencana Studi"
+      },
+      {
+        "nomor": 3,
+        "kegiatan": "PKKMB Universitas Tidar",
+        "tanggal_mulai": "2025-08-04",
+        "tanggal_selesai": "2025-08-12",
+        "keterangan": "Pengenalan Kehidupan Kampus Mahasiswa Baru tingkat universitas"
+      },
+      {
+        "nomor": 4,
+        "kegiatan": "KRS dan Pengajuan Cuti Mahasiswa Sebelum Angkatan 2025",
+        "tanggal_mulai": "2025-08-04",
+        "tanggal_selesai": "2025-08-08",
+        "keterangan": "Periode KRS dan pengajuan cuti untuk mahasiswa lama"
+      },
+      {
+        "nomor": 5,
+        "kegiatan": "Placement Test Bahasa Inggris Mahasiswa Baru",
+        "tanggal_mulai": "2025-08-06",
+        "tanggal_selesai": "2025-08-06",
+        "keterangan": "Ujian penempatan level bahasa Inggris"
+      },
+      {
+        "nomor": 6,
+        "kegiatan": "PKKMB Universitas Tidar tingkat Fakultas",
+        "tanggal_mulai": "2025-08-07",
+        "tanggal_selesai": "2025-08-11",
+        "keterangan": "PKKMB tingkat fakultas"
+      },
+      {
+        "nomor": 7,
+        "kegiatan": "KRS Mahasiswa Baru",
+        "tanggal_mulai": "2025-08-08",
+        "tanggal_selesai": "2025-08-12",
+        "keterangan": "Periode KRS khusus mahasiswa baru"
+      },
+      {
+        "nomor": 8,
+        "kegiatan": "Awal Semester Gasal T.A. 2025/2026",
+        "tanggal_mulai": "2025-08-18",
+        "tanggal_selesai": "2025-08-18",
+        "keterangan": "Hari pertama perkuliahan semester gasal"
+      },
+      {
+        "nomor": 9,
+        "kegiatan": "Kegiatan Perkuliahan dan Praktikum (Paruh I)",
+        "tanggal_mulai": "2025-08-18",
+        "tanggal_selesai": "2025-10-03",
+        "keterangan": "Perkuliahan dan praktikum paruh pertama semester gasal"
+      },
+      {
+        "nomor": 10,
+        "kegiatan": "Wisuda ke-71 Tahun 2025",
+        "tanggal_mulai": "2025-09-27",
+        "tanggal_selesai": "2025-09-27",
+        "keterangan": "Pelaksanaan wisuda periode September 2025"
+      },
+      {
+        "nomor": 11,
+        "kegiatan": "Ujian Tengah Semester (UTS)",
+        "tanggal_mulai": "2025-10-06",
+        "tanggal_selesai": "2025-10-17",
+        "keterangan": "Periode ujian tengah semester gasal"
+      },
+      {
+        "nomor": 12,
+        "kegiatan": "Kegiatan Perkuliahan dan Praktikum (Paruh II)",
+        "tanggal_mulai": "2025-10-20",
+        "tanggal_selesai": "2025-12-05",
+        "keterangan": "Perkuliahan dan praktikum paruh kedua semester gasal"
+      },
+      {
+        "nomor": 13,
+        "kegiatan": "Minggu Tenang",
+        "tanggal_mulai": "2025-12-08",
+        "tanggal_selesai": "2025-12-12",
+        "keterangan": "Periode sebelum ujian akhir semester"
+      },
+      {
+        "nomor": 14,
+        "kegiatan": "Wisuda ke-72 Tahun 2025",
+        "tanggal_mulai": "2025-12-13",
+        "tanggal_selesai": "2025-12-13",
+        "keterangan": "Pelaksanaan wisuda periode Desember 2025"
+      },
+      {
+        "nomor": 15,
+        "kegiatan": "Ujian Akhir Semester (UAS)",
+        "tanggal_mulai": "2025-12-15",
+        "tanggal_selesai": "2025-12-31",
+        "keterangan": "Periode ujian akhir semester gasal"
+      },
+      {
+        "nomor": 16,
+        "kegiatan": "Kegiatan Ilmiah Non-Kurikuler dan Evaluasi Akademik",
+        "tanggal_mulai": "2026-01-02",
+        "tanggal_selesai": "2026-01-09",
+        "keterangan": "Evaluasi dan kegiatan non-kurikuler pasca UAS"
+      },
+      {
+        "nomor": 17,
+        "kegiatan": "Pengumuman Hasil Studi",
+        "tanggal_mulai": "2026-01-12",
+        "tanggal_selesai": "2026-01-13",
+        "keterangan": "Pengumuman hasil studi semester gasal"
+      },
+      {
+        "nomor": 18,
+        "kegiatan": "Akhir Semester Gasal T.A. 2025/2026",
+        "tanggal_mulai": "2026-01-13",
+        "tanggal_selesai": "2026-01-13",
+        "keterangan": "Akhir periode semester gasal"
+      }
+    ],
+    "semester_genap": [
+      {
+        "nomor": 1,
+        "kegiatan": "Kuliah Kerja Nyata (KKN) Periode Januari",
+        "tanggal_mulai": "2026-01-05",
+        "tanggal_selesai": "2026-01-31",
+        "keterangan": "Periode pelaksanaan KKN bulan Januari"
+      },
+      {
+        "nomor": 2,
+        "kegiatan": "Pra KRS Mahasiswa",
+        "tanggal_mulai": "2026-01-26",
+        "tanggal_selesai": "2026-01-28",
+        "keterangan": "Periode pra pengisian Kartu Rencana Studi"
+      },
+      {
+        "nomor": 3,
+        "kegiatan": "KRS dan Pengajuan Cuti Mahasiswa",
+        "tanggal_mulai": "2026-02-02",
+        "tanggal_selesai": "2026-02-06",
+        "keterangan": "Periode KRS dan pengajuan cuti"
+      },
+      {
+        "nomor": 4,
+        "kegiatan": "Awal Semester Genap T.A. 2025/2026",
+        "tanggal_mulai": "2026-02-09",
+        "tanggal_selesai": "2026-02-09",
+        "keterangan": "Hari pertama perkuliahan semester genap"
+      },
+      {
+        "nomor": 5,
+        "kegiatan": "Kegiatan Perkuliahan dan Praktikum (Paruh I)",
+        "tanggal_mulai": "2026-02-09",
+        "tanggal_selesai": "2026-04-10",
+        "keterangan": "Perkuliahan dan praktikum paruh pertama semester genap"
+      },
+      {
+        "nomor": 6,
+        "kegiatan": "Wisuda ke-73 Tahun 2026",
+        "tanggal_mulai": "2026-04-11",
+        "tanggal_selesai": "2026-04-11",
+        "keterangan": "Pelaksanaan wisuda periode April 2026"
+      },
+      {
+        "nomor": 7,
+        "kegiatan": "Ujian Tengah Semester (UTS)",
+        "tanggal_mulai": "2026-04-13",
+        "tanggal_selesai": "2026-04-24",
+        "keterangan": "Periode ujian tengah semester genap"
+      },
+      {
+        "nomor": 8,
+        "kegiatan": "Kegiatan Perkuliahan dan Praktikum (Paruh II)",
+        "tanggal_mulai": "2026-04-27",
+        "tanggal_selesai": "2026-06-12",
+        "keterangan": "Perkuliahan dan praktikum paruh kedua semester genap"
+      },
+      {
+        "nomor": 9,
+        "kegiatan": "Dies Natalis ke-46 Universitas Tidar",
+        "tanggal_mulai": "2026-05-02",
+        "tanggal_selesai": "2026-05-02",
+        "keterangan": "Perayaan hari jadi Universitas Tidar"
+      },
+      {
+        "nomor": 10,
+        "kegiatan": "Pelaksanaan Ujian Tulis Berbasis Komputer (UTBK)",
+        "tanggal_mulai": "2026-05-01",
+        "tanggal_selesai": "2026-05-31",
+        "keterangan": "Periode pelaksanaan UTBK",
+        "catatan": "Rentang waktu estimasi berdasarkan kegiatan nasional"
+      },
+      {
+        "nomor": 11,
+        "kegiatan": "Pelaksanaan Seleksi Mandiri Universitas Tidar (SM-UNTIDAR)",
+        "tanggal_mulai": "2026-05-01",
+        "tanggal_selesai": "2026-05-31",
+        "keterangan": "Periode pelaksanaan seleksi mandiri",
+        "catatan": "Rentang waktu estimasi berdasarkan kegiatan tahun sebelumnya"
+      },
+      {
+        "nomor": 12,
+        "kegiatan": "Minggu Tenang",
+        "tanggal_mulai": "2026-06-15",
+        "tanggal_selesai": "2026-06-19",
+        "keterangan": "Periode sebelum ujian akhir semester"
+      },
+      {
+        "nomor": 13,
+        "kegiatan": "Ujian Akhir Semester (UAS)",
+        "tanggal_mulai": "2026-06-22",
+        "tanggal_selesai": "2026-07-03",
+        "keterangan": "Periode ujian akhir semester genap"
+      },
+      {
+        "nomor": 14,
+        "kegiatan": "Wisuda ke-74 Tahun 2026",
+        "tanggal_mulai": "2026-06-27",
+        "tanggal_selesai": "2026-06-27",
+        "keterangan": "[KESALAHAN DATA] Tanggal wisuda di masa lalu untuk tahun 2026. Harus dikonfirmasi ulang."
+      },
+      {
+        "nomor": 15,
+        "kegiatan": "Kegiatan Ilmiah Non-Kurikuler dan Evaluasi Akademik",
+        "tanggal_mulai": "2026-07-06",
+        "tanggal_selesai": "2026-07-10",
+        "keterangan": "Evaluasi dan kegiatan non-kurikuler pasca UAS"
+      },
+      {
+        "nomor": 16,
+        "kegiatan": "Pengumuman Hasil Studi",
+        "tanggal_mulai": "2026-07-13",
+        "tanggal_selesai": "2026-07-14",
+        "keterangan": "Pengumuman hasil studi semester genap"
+      },
+      {
+        "nomor": 17,
+        "kegiatan": "Akhir Semester Genap T.A. 2025/2026",
+        "tanggal_mulai": "2026-07-14",
+        "tanggal_selesai": "2026-07-14",
+        "keterangan": "Akhir periode semester genap"
+      }
+    ]
+  }
+}
