@@ -203,7 +203,7 @@ export default function SurveyDashboardClient() {
     if (savedCoords) {
       try {
         setCoordsMap(JSON.parse(savedCoords));
-      } catch (e) {
+      } catch {
         localStorage.removeItem("savedCoordsData");
       }
     }

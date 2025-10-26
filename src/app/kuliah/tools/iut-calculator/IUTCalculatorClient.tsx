@@ -287,7 +287,7 @@ const PolygonSimulator = () => {
   const getTransformParams = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return { scale: 10, finalOffsetX: 0, finalOffsetY: 0 };
-    let scale = 20 * zoom; // Perbesar skala default agar lebih terlihat
+    const scale = 20 * zoom; // Perbesar skala default agar lebih terlihat
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     return {
