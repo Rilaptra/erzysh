@@ -60,6 +60,8 @@ export const metadata: Metadata = {
     // creator: "@yourtwitterhandle",
     images: [LOGO_URL], // Menggunakan URL logo yang baru
   },
+    manifest: "/manifest.json", // <-- TAMBAHKAN INI
+
 };
 
 export default function RootLayout({
