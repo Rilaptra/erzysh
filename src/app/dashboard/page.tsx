@@ -77,6 +77,7 @@ async function getTugasData(): Promise<Tugas[]> {
     if (!tugasRes.ok) return [];
 
     const { data } = await tugasRes.json();
+    console.log(data);
     return data || [];
   } catch (e) {
     console.error("Failed to fetch tugas for dashboard:", e);
