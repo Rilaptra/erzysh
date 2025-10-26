@@ -86,10 +86,10 @@ export async function sendMessage(
   try {
     const result = await (options.edit
       ? hasFiles
-        ? discord.patch<DiscordPartialMessageResponse>(route, formData, false)
+        ? discord.patch<DiscordPartialMessageResponse>(route, formData, true)
         : discord.patch<DiscordPartialMessageResponse>(route, payload)
       : hasFiles
-        ? discord.post<DiscordPartialMessageResponse>(route, formData, false) // `false` untuk contentType karena FormData otomatis
+        ? discord.post<DiscordPartialMessageResponse>(route, formData, true) 
         : discord.post<DiscordPartialMessageResponse>(route, payload));
 
     if (!result) {

@@ -452,19 +452,14 @@ export async function DELETE(
     }
 
     if (messageId && channelId) {
-      return handleDiscordApiCall<DiscordMessage>(
+      return handleDiscordApiCall<null>(
         // () =>
         //   discord.delete<DiscordMessage>(
         //     `/channels/${channelId}/messages/${messageId}`,
         //   ),
         // "Message deleted successfully",
-        async () => {
-          const data = await discord.delete<DiscordMessage>(
-            `/channels/${channelId}/messages/${messageId}`,
-          );
-          if (!data) throw new Error("Failed to delete message");
-          return data;
-        },
+        async () =>
+          discord.delete<null>(`/channels/${channelId}/messages/${messageId}`),
         "Message deleted successfully",
       );
     }

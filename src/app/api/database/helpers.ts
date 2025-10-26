@@ -68,7 +68,8 @@ export async function handleDiscordApiCall<
     | DiscordMessage
     | DiscordChannel
     | DiscordCategory
-    | DiscordPartialMessageResponse,
+    | DiscordPartialMessageResponse
+    | null,
 >(
   apiCall: () => Promise<T>,
   successMessage: string,
