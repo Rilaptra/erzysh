@@ -96,7 +96,6 @@ const useStudentChecklist = () => {
         }
         return newItems;
       });
-      // eslint-disable-next-line react/no-unescaped-entities
       toast.info(
         `"${name}" ditandai ${isChecked ? "sudah" : "belum"} selesai.`,
         {

@@ -38,8 +38,8 @@ export function JadwalCard({ matkul }: JadwalCardProps) {
           <div className="leading-tight">
             <div className="font-medium">{matkul.ruang_kelas.id_ruang}</div>
             <div className="text-xs">
-              Gedung FT {matkul.ruang_kelas.gedung_ft}, Lantai
-              {matkul.ruang_kelas.lantai}, Ruang
+              Gedung FT {matkul.ruang_kelas.gedung_ft}, Lantai &nbsp;
+              {matkul.ruang_kelas.lantai}, Ruang &nbsp;
               {matkul.ruang_kelas.nomor_ruang}
             </div>
           </div>

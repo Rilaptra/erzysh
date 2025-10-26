@@ -260,10 +260,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { slug: string[] } },
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
-    const [categoryId, channelId] = params.slug;
+    const [categoryId, channelId] = (await params).slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req);
 
@@ -374,10 +374,10 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { slug: string[] } },
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
-    const [categoryId, channelId, messageId] = params.slug;
+    const [categoryId, channelId, messageId] = (await params).slug;
     const { userID } = getAuthInfo(req);
 
     let job: QueueJob;
