@@ -1,5 +1,6 @@
 // /api/database/route.ts
-import { discord, getChannels, getMessagesFromChannel } from "@/lib/utils";
+import { getChannels, getMessagesFromChannel } from "@/lib/utils";
+import { discord } from "@/lib/discord-api-handler";
 import {
   DiscordCategory,
   DiscordPartialChannelResponse,
@@ -117,6 +118,7 @@ async function handleCreateCategory(data: RequestData, userData: UserData) {
           type: CHANNEL_TYPE.GUILD_CATEGORY,
         },
       );
+      if (!category) throw new Error("Failed to create category.");
       const users = await getUsersData();
       if (!users) return category;
       const user = users.get(userData.userID) || users.get(userData.username);

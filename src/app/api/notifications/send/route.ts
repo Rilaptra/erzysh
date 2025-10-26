@@ -2,7 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import webPush from "@/lib/web-push";
-import { discord, getMessagesFromChannel, sanitizeMessage } from "@/lib/utils";
+import { getMessagesFromChannel, sanitizeMessage } from "@/lib/utils";
+import { discord } from "@/lib/discord-api-handler";
 import type { Tugas } from "@/types/tugas";
 import type { DiscordMessage } from "@/types";
 
@@ -59,6 +60,7 @@ export async function GET(req: NextRequest) {
     const subscriptionPromises = subMessages.map(async (msg) => {
       try {
         const fullMsg = await discord.get<DiscordMessage>(`/channels/${SUB_BOX_ID}/messages/${msg.id}`);
+        if (!fullMsg) return null;
         const sanitized = sanitizeMessage(fullMsg);
         if (sanitized.attachments && sanitized.attachments.length > 0) {
           const res = await fetch(sanitized.attachments[0].url);

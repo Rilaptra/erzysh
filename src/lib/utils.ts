@@ -8,8 +8,6 @@ import {
   SendMessageOptions,
 } from "@/types";
 import {
-  BOT_TOKEN,
-  DISCORD_API_BASE,
   FILE_SIZE_LIMIT,
   GUILD_ID,
 } from "./constants";
@@ -17,80 +15,8 @@ import chalk from "chalk";
 import { MessageMetadata } from "@/app/api/database/helpers";
 import { ApiDbProcessedMessage } from "@/types/api-db-response";
 
-/**
- * Fungsi untuk melakukan request ke Discord API.
- * @param route Bagian endpoint API Discord (misal: "/channels/123/messages").
- * @param method Metode HTTP (GET, POST, DELETE, PATCH).
- * @param body Objek data yang akan dikirim (untuk POST/PATCH).
- * @returns Promise yang resolve dengan data JSON dari respons API.
- * @throws Error jika request gagal.
- */
-export async function discordFetch<T>(
-  route: string,
-  method: "GET" | "POST" | "DELETE" | "PATCH" = "GET",
-  body?: Record<string, any>,
-  contentType = true,
-): Promise<T> {
-  const headers: HeadersInit = {
-    Authorization: `Bot ${BOT_TOKEN}`,
-  };
-  if (body && (method === "POST" || method === "PATCH") && contentType) {
-    headers["Content-Type"] = "application/json";
-  }
-  const options: RequestInit = {
-    method,
-    headers,
-    body: !body
-      ? undefined
-      : contentType
-        ? JSON.stringify(body)
-        : (body as any),
-  };
-  console.log(
-    chalk.green(` Fetching from Discord API: ${route}, method: ${method}`),
-  );
-  const res = await fetch(`${DISCORD_API_BASE}${route}`, options);
-  if (!res.ok) {
-    const errorData = await res.json();
-    console.error(
-      `💥 Discord API Fetch Error [${res.status}]: ${errorData.message}`,
-    );
-    throw new Error(`Error (${res.status}): ${errorData.message}`);
-  }
-  if (res.headers.get("content-type")?.includes("application/json"))
-    return await res.json();
-  return null as T;
-}
+import { discord } from "./discord-api-handler";
 
-export const discord = {
-  /**
-   * Melakukan request GET ke Discord API.
-   * @param route Bagian endpoint API Discord.
-   */
-  get: <T>(route: string) => discordFetch<T>(route, "GET"),
-
-  /**
-   * Melakukan request POST ke Discord API.
-   * @param route Bagian endpoint API Discord.
-   * @param data Objek data yang akan dikirim sebagai body.
-   */
-  post: <T>(route: string, data: Record<string, any>, contentType?: boolean) =>
-    discordFetch<T>(route, "POST", data, contentType),
-
-  /**
-   * Melakukan request DELETE ke Discord API.
-   * @param route Bagian endpoint API Discord.
-   */
-  delete: <T>(route: string) => discordFetch<T>(route, "DELETE"),
-
-  /**
-   * Melakukan request PATCH ke Discord API.
-   * @param route Bagian endpoint API Discord.
-   * @param data Objek data yang akan dikirim sebagai body.
-   */
-  patch: <T>(route: string, data: Record<string, any>, contentType?: boolean) =>
-    discordFetch<T>(route, "PATCH", data, contentType),
-};
 
 /**
  * Mengirim pesan ke channel Discord.
@@ -166,6 +92,10 @@ export async function sendMessage(
         ? discord.post<DiscordPartialMessageResponse>(route, formData, false) // `false` untuk contentType karena FormData otomatis
         : discord.post<DiscordPartialMessageResponse>(route, payload));
 
+    if (!result) {
+      throw new Error("Failed to send message to Discord.");
+    }
+
     return result;
   } catch (error) {
     console.error("[Runtime Error] Error sending message to Discord:", error);
@@ -204,6 +134,10 @@ export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
     const channels = await discord.get<
       { parent_id: string; id: string; name: string; type: number }[]
     >(`/guilds/${GUILD_ID}/channels`);
+
+    if (!channels) {
+      throw new Error("Failed to fetch channels from Discord.");
+    }
 
     // Mapping channel biar lebih gampang dibaca
     const formattedChannels = channels.map((channel) => {
@@ -278,13 +212,18 @@ export async function getChannel(
   channelId: string,
 ): Promise<DiscordPartialChannelResponse> {
   try {
-    const { id, name, parent_id, type } = await discord.get<{
+    const getData = await discord.get<{
       parent_id: string;
       id: string;
       name: string;
       type: number;
     }>(`/channels/${channelId}`);
 
+    if (!getData) {
+      throw new Error("Failed to fetch channel from Discord.");
+    }
+
+    const { id, name, parent_id, type } = getData;
     const formattedChannel = {
       id,
       name,
@@ -313,6 +252,10 @@ export async function getMessagesFromChannel(
     const messages = await discord.get<DiscordMessage[]>(
       `/channels/${channelId}/messages`,
     );
+
+    if (!messages) {
+      throw new Error("Failed to fetch messages from Discord.");
+    }
 
     const sanitizedMessages = messages.map((msg) => sanitizeMessage(msg, true));
     const processedMessages = sanitizedMessages.map(processMessage);

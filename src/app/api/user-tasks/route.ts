@@ -5,8 +5,8 @@ import {
   getMessagesFromChannel,
   sendMessage,
   editMessage,
-  discord,
 } from "@/lib/utils";
+import { discord } from "@/lib/discord-api-handler";
 import { USER_TASK_COMPLETIONS_BOX_ID } from "@/lib/constants";
 import { sanitizeMessage } from "@/lib/utils";
 import type { DiscordMessage } from "@/types";
@@ -21,6 +21,7 @@ async function findOrCreateUserCompletionDoc(userId: string) {
     const fullMsg = await discord.get<DiscordMessage>(
       `/channels/${USER_TASK_COMPLETIONS_BOX_ID}/messages/${userMessage.id}`,
     );
+    if (!fullMsg) throw new Error("Failed to fetch message from Discord.");
     const sanitized = sanitizeMessage(fullMsg);
     if (sanitized.attachments && sanitized.attachments.length > 0) {
       const attachmentUrl = sanitized.attachments[0].url;

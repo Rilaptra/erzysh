@@ -1,6 +1,6 @@
 // /api/database/helpers.ts
+import { discord } from "@/lib/discord-api-handler";
 import {
-  discord,
   editMessage,
   sanitizeMessage,
   sendMessage,

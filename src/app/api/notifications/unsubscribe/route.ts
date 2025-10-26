@@ -1,7 +1,8 @@
 // src/app/api/notifications/unsubscribe/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { validateAndGetUser } from "@/lib/authService";
-import { discord, getMessagesFromChannel } from "@/lib/utils"; // Impor discord helper
+import { getMessagesFromChannel } from "@/lib/utils"; // Impor discord helper
+import { discord } from "@/lib/discord-api-handler";
 import { sanitizeMessage } from "@/lib/utils";
 // Ganti dengan ID Container dan Box khusus untuk menyimpan subscription
 const SUB_BOX_ID = "1411367472791158898"; // Box "push-subscriptions"

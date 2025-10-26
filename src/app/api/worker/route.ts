@@ -1,8 +1,8 @@
 // src/app/api/worker/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import type { QueueJob } from "@/types";
+import { discord } from "@/lib/discord-api-handler";
 import {
-  discord,
   sendMessage,
   editMessage,
   fileAttachmentsBuilder,
