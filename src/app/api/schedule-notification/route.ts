@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
     };
     // --- AKHIR PERBAIKAN ---
 
+console.log(JSON.stringify(qstashPayload))
+
     const res = await fetch(QSTASH_URL, {
       method: "POST",
       headers: {
