@@ -43,21 +43,23 @@ const AzimuthVisualizer = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = Math.min(canvas.width, canvas.height) / 2 - 20;
-    if (!ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Lingkaran luar & garis kardinal
-    ctx.strokeStyle = "#333";
+    const isDark = document.documentElement.classList.contains("dark");
+    const primaryTextColor = isDark ? "#E2E8F0" : "#1F2937";
+
+    ctx.strokeStyle = primaryTextColor;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
     ctx.stroke();
 
-    ctx.strokeStyle = "#ccc";
+    ctx.strokeStyle = isDark ? "#4A5568" : "#E5E7EB";
     ctx.lineWidth = 1;
     ["N", "E", "S", "W"].forEach((_, i) => {
       ctx.beginPath();
@@ -69,7 +71,6 @@ const AzimuthVisualizer = () => {
       ctx.stroke();
     });
 
-    // Gambar sektor
     const colors = [
       "#FF6B6B",
       "#4ECDC4",
@@ -93,14 +94,13 @@ const AzimuthVisualizer = () => {
       ctx.globalAlpha = 0.7;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = "#333";
+      ctx.strokeStyle = primaryTextColor;
       ctx.stroke();
     });
 
-    // Titik tengah
     ctx.beginPath();
     ctx.arc(centerX, centerY, 3, 0, 2 * Math.PI);
-    ctx.fillStyle = "#333";
+    ctx.fillStyle = primaryTextColor;
     ctx.fill();
   }, [sectors]);
 
@@ -151,13 +151,8 @@ const AzimuthVisualizer = () => {
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-6">
         <div className="relative">
-          <canvas
-            ref={canvasRef}
-            width="400"
-            height="400"
-            className="rounded-full border-2 border-gray-200 bg-white shadow-md"
-          ></canvas>
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <canvas ref={canvasRef} width="400" height="400"></canvas>
+          <div className="text-foreground pointer-events-none absolute inset-0 flex items-center justify-center">
             {["N 0°", "E 90°", "S 180°", "W 270°"].map((text, i) => {
               const angle = i * 90;
               const style = {
@@ -246,23 +241,53 @@ const AzimuthVisualizer = () => {
 
 // --- Komponen #2: Simulasi Poligon Terbuka ---
 const PolygonSimulator = () => {
-  // ... (Implementasi lengkap di bawah) ...
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
   const [textareaValue, setTextareaValue] = useState(
     "0,0\n5.125,6.112\n7.095,-1.617\n8.979,6.134\n18.773,8.027\n24.934,2.956",
   );
 
-  // Refs for interaction state to avoid re-renders on every mouse move
   const isDraggingPoint = useRef<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
 
+  // ✅ PERBAIKAN: State untuk menyimpan warna tema
+  const [themeColors, setThemeColors] = useState({
+    grid: "#34495e",
+    axes: "#ffffff",
+    text: "#ffffff",
+  });
+
+  useEffect(() => {
+    // ✅ PERBAIKAN: Fungsi untuk mengambil warna dari CSS Variables
+    const updateThemeColors = () => {
+      const styles = getComputedStyle(document.documentElement);
+      setThemeColors({
+        grid: styles.getPropertyValue("--color-border").trim() || "#34495e",
+        axes: styles.getPropertyValue("--color-foreground").trim() || "#ffffff",
+        text: styles.getPropertyValue("--color-foreground").trim() || "#ffffff",
+      });
+    };
+
+    updateThemeColors(); // Panggil saat mount
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.attributeName === "class" &&
+          (mutation.target as HTMLElement).tagName === "HTML"
+        ) {
+          updateThemeColors();
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+
   const getTransformParams = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return { scale: 10, finalOffsetX: 0, finalOffsetY: 0 };
-
-    let scale = 10 * zoom;
+    let scale = 20 * zoom; // Perbesar skala default agar lebih terlihat
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     return {
@@ -284,10 +309,48 @@ const PolygonSimulator = () => {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Grid & Axes logic here... (disingkat untuk keringkasan)
+    const params = getTransformParams();
+
+    // ✅ PERBAIKAN: Menggunakan warna dari state themeColors
+    ctx.strokeStyle = themeColors.grid;
+    ctx.lineWidth = 0.5;
+    const gridSize = 50 * zoom;
+    for (
+      let x = params.finalOffsetX % gridSize;
+      x < canvas.width;
+      x += gridSize
+    ) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
+    for (
+      let y = params.finalOffsetY % gridSize;
+      y < canvas.height;
+      y += gridSize
+    ) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = themeColors.axes;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, params.finalOffsetY);
+    ctx.lineTo(canvas.width, params.finalOffsetY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(params.finalOffsetX, 0);
+    ctx.lineTo(params.finalOffsetX, canvas.height);
+    ctx.stroke();
+
+    if (coordinates.length === 0) return;
+
     const drawnCoords = coordinates.map((c) => worldToScreen(c.x, c.y));
 
-    // Draw polygon lines
     ctx.strokeStyle = "#e74c3c";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -296,13 +359,13 @@ const PolygonSimulator = () => {
     );
     ctx.stroke();
 
-    // Draw points and labels
     drawnCoords.forEach((p, i) => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
       ctx.fillStyle = isDraggingPoint.current === i ? "#f39c12" : "#3498db";
       ctx.fill();
-      ctx.fillStyle = "#ffffff";
+
+      ctx.fillStyle = themeColors.text;
       ctx.font = "12px Inter";
       ctx.textAlign = "center";
       ctx.fillText(
@@ -311,7 +374,7 @@ const PolygonSimulator = () => {
         p.y - 15,
       );
     });
-  }, [coordinates, getTransformParams]);
+  }, [coordinates, getTransformParams, zoom, themeColors]);
 
   useEffect(() => {
     redrawCanvas();
@@ -320,7 +383,6 @@ const PolygonSimulator = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const handleResize = () => {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
@@ -328,7 +390,21 @@ const PolygonSimulator = () => {
     };
     handleResize();
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+
+    // ✅ PERBAIKAN: Menambahkan event listener untuk zoom
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // <-- INI KUNCINYA!
+      const scaleFactor = 1.1;
+      setZoom((prevZoom) =>
+        e.deltaY > 0 ? prevZoom / scaleFactor : prevZoom * scaleFactor,
+      );
+    };
+    canvas.addEventListener("wheel", handleWheel);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      canvas.removeEventListener("wheel", handleWheel);
+    };
   }, [redrawCanvas]);
 
   const handleDraw = () => {
@@ -349,17 +425,16 @@ const PolygonSimulator = () => {
     setCoordinates(newCoords);
     setZoom(1);
     setOffset({ x: 0, y: 0 });
+    toast.success("Poligon berhasil digambar!");
   };
-
-  // Mouse event handlers (mousedown, mousemove, mouseup, wheel)
-  // ... (Logika sama seperti di HTML, tapi menggunakan state dan ref React)
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Simulasi Poligon Terbuka</CardTitle>
         <CardDescription>
-          Masukkan data `x,y` per baris atau geser titik di kanvas.
+          Masukkan data `x,y` per baris. Gunakan scroll mouse di kanvas untuk
+          zoom.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -387,9 +462,8 @@ const PolygonSimulator = () => {
         </div>
         <canvas
           ref={canvasRef}
-          className="h-[400px] w-full cursor-crosshair rounded-lg border-2 border-[#34495e] bg-[#2c3e50] md:h-[500px]"
+          className="border-border h-[400px] w-full cursor-crosshair rounded-lg border-2 bg-[#2c3e50] md:h-[500px]"
         />
-        {/* Message Box bisa diganti dengan toast atau komponen terpisah */}
       </CardContent>
     </Card>
   );
@@ -398,13 +472,13 @@ const PolygonSimulator = () => {
 // --- Komponen Utama Halaman ---
 export default function IUTIntegratedToolClient() {
   return (
-    <div className="min-h-screen bg-gray-100 py-10 dark:bg-gray-950">
+    <div className="bg-background min-h-screen py-10">
       <div className="container mx-auto max-w-5xl px-4">
         <header className="mb-8 text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white">
+          <h1 className="text-foreground text-4xl font-extrabold">
             Alat Survei Terintegrasi 📐
           </h1>
-          <p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground mt-2 text-lg">
             Visualisasi Azimuth dan Simulasi Poligon untuk IUT.
           </p>
         </header>

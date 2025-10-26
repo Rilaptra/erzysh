@@ -7,7 +7,7 @@ import randomColor from "randomcolor";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"; // Gunakan komponen tabel dari shadcn/ui
+} from "@/components/ui/table";
 import {
   FileUp,
   RotateCcw,
@@ -30,11 +30,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
+import { useTheme } from "@/components/ThemeProvider";
 
-// Daftarkan semua komponen Chart.js
 Chart.register(...registerables);
 
-// --- DATA AWAL & KONSTANTA (Sama seperti di file HTML) ---
+// --- DATA AWAL & KONSTANTA (Sama seperti sebelumnya) ---
 const defaultCsvData = `"Cap waktu","Total skor","Nama","Nama [Skor]","Nama [Masukan]","Domisili (sertakan link gmaps domisili anda)","Moda yang digunakan sehari-hari","Senin (berapa kali berangkat ke kampus)","Selasa (berapa kali berangkat ke kampus)","Rabu (berapa kali berangkat ke kampus)","Kamis (berapa kali berangkat ke kampus)","Jumat (berapa kali berangkat ke kampus)"
 "2025/10/24 6:46:43 PM GMT+7","0.00 / 0","Rizqi Lasheva","https://maps.app.goo.gl/QdR88QYhnTWzueG37","Motor",1,1,1,1,1
 "2025/10/24 6:49:54 PM GMT+7","0.00 / 0","Korindo Chaesa","https://maps.app.goo.gl/J6ZKGSUKEwVdzFJf9","Mobil",1,1,1,1,1
@@ -51,10 +51,8 @@ const TRAVEL_MODE_CODES: { [key: string]: string } = {
   "transportasi umum": "3",
 };
 
-// --- FUNGSI HELPER (Bisa dipindah ke file terpisah jika mau) ---
-
+// --- FUNGSI HELPER (Tidak berubah) ---
 function parseCSV(csvText: string) {
-  // Logika parsing CSV tetap sama
   if (!csvText) return [];
   const lines = csvText.trim().split("\n");
   if (lines.length < 2) return [];
@@ -74,18 +72,14 @@ function parseCSV(csvText: string) {
     return rowObject;
   });
 }
-
 async function fetchCoordinates(url: string) {
-  // Logika fetch koordinat tetap sama
   if (!url || !url.startsWith("http")) return null;
   const COORD_PATTERNS = [
     /@(-?\d+\.\d+),(-?\d+\.\d+)/,
     /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
     /\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/,
   ];
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(
-    url,
-  )}`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
   const maxRetries = 3;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -107,21 +101,18 @@ async function fetchCoordinates(url: string) {
         const delay = Math.pow(2, attempt) * 1000;
         await new Promise((resolve) => setTimeout(resolve, delay));
       } else {
-        console.error(
-          `Gagal mengambil ${url} setelah ${maxRetries} percobaan:`,
-          error,
-        );
+        console.error(`Failed to fetch ${url}:`, error);
         return null;
       }
     }
   }
 }
 
-// --- SUB-KOMPONEN UNTUK UI YANG LEBIH CLEAN ---
+// --- SUB-KOMPONEN ---
 interface DataTableRowProps {
   rowData: { [key: string]: string };
   headers: string[];
-  savedCoord: string;
+  savedCoord: string | null;
   onCoordUpdate: (coord: string) => void;
 }
 const DataTableRow = ({
@@ -136,7 +127,6 @@ const DataTableRow = ({
   useEffect(() => {
     let isMounted = true;
     const domisiliUrl = rowData["Domisili"];
-
     if (coordinate === "..." && domisiliUrl && domisiliUrl !== "N/A") {
       setIsLoading(true);
       fetchCoordinates(domisiliUrl).then((coords) => {
@@ -144,14 +134,10 @@ const DataTableRow = ({
           const finalCoord = coords || "❌";
           setCoordinate(finalCoord);
           setIsLoading(false);
-          if (finalCoord !== "❌") {
-            onCoordUpdate(finalCoord);
-          }
+          if (finalCoord !== "❌") onCoordUpdate(finalCoord);
         }
       });
-    } else if (!domisiliUrl || domisiliUrl === "N/A") {
-      setCoordinate("N/A");
-    }
+    } else if (!domisiliUrl || domisiliUrl === "N/A") setCoordinate("N/A");
     return () => {
       isMounted = false;
     };
@@ -161,9 +147,7 @@ const DataTableRow = ({
     if (coordinate && !["...", "❌", "N/A"].includes(coordinate)) {
       const moda = (rowData["Moda"] || "").toLowerCase();
       const travelModeCode = TRAVEL_MODE_CODES[moda] || "0";
-      const url = `https://www.google.com/maps/dir/${coordinate}/${encodeURIComponent(
-        DESTINATION,
-      )}/data=!4m2!4m1!3e${travelModeCode}`;
+      const url = `https://www.google.com/maps/dir/${coordinate}/${encodeURIComponent(DESTINATION)}/data=!4m2!4m1!3e${travelModeCode}`;
       window.open(url, "_blank");
     }
   };
@@ -203,20 +187,13 @@ const DataTableRow = ({
   );
 };
 
-// ... (Komponen lain seperti Chart bisa dibuat terpisah juga)
-
 // --- KOMPONEN UTAMA ---
 export default function SurveyDashboardClient() {
-  const [rawData, setRawData] = useState<
-    {
-      [key: string]: string;
-    }[]
-  >([]);
+  const [rawData, setRawData] = useState<{ [key: string]: string }[]>([]);
   const [coordsMap, setCoordsMap] = useState<{ [key: string]: string }>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [isTableVisible, setTableVisible] = useState(true);
   const [isChartsVisible, setChartsVisible] = useState(true);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -264,14 +241,13 @@ export default function SurveyDashboardClient() {
     ];
     const cleanRows = rawData
       .map((row) => {
-        const newRow: any = {};
+        const newRow: { [key: string]: string } = {};
         headersToKeep.forEach((h, i) => {
           newRow[cleanHeaders[i]] = (row[h] || "").replace(/"/g, "").trim();
         });
         return newRow;
       })
       .filter((row) => row.Nama && row.Domisili);
-
     return { headers: cleanHeaders, rows: cleanRows };
   }, [rawData]);
 
@@ -290,7 +266,7 @@ export default function SurveyDashboardClient() {
     if (file) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        if (!ev.target) return;
+        if (!ev.target?.result) return;
         const content = ev.target.result as string;
         localStorage.setItem("savedCsvData", content);
         setRawData(parseCSV(content));
@@ -319,7 +295,6 @@ export default function SurveyDashboardClient() {
       localStorage.removeItem("savedCoordsData");
       setCoordsMap({});
       toast.info("Cache koordinat dihapus. Akan di-fetch ulang.");
-      // Force re-render/re-fetch
       setRawData((prev) => [...prev]);
     }
   };
@@ -350,16 +325,19 @@ export default function SurveyDashboardClient() {
     toast.success("Data berhasil diekspor ke XLSX!");
   };
 
-  // Chart Component
-  const Charts = ({ rows }: { rows: any[] }) => {
+  const Charts = ({ rows }: any) => {
     const modeChartRef = useRef(null);
     const daysChartRef = useRef(null);
+    const { theme } = useTheme();
 
     useEffect(() => {
       if (rows.length === 0) return;
 
-      if (!modeChartRef.current || !daysChartRef.current) return;
+      const chartTextColor =
+        theme === "dark" ? "hsl(210 40% 98%)" : "hsl(222.2 84% 4.9%)";
+      Chart.defaults.color = chartTextColor;
 
+      if (!modeChartRef.current || !daysChartRef.current) return;
       Chart.getChart(modeChartRef.current)?.destroy();
       Chart.getChart(daysChartRef.current)?.destroy();
 
@@ -368,26 +346,31 @@ export default function SurveyDashboardClient() {
         acc[mode] = (acc[mode] || 0) + 1;
         return acc;
       }, {});
-
       const days = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat"];
       const dayTotals = days.map((day) =>
-        rows.reduce((sum: number, row: any) => sum + (parseInt(row[day], 10) || 0), 0),
+        rows.reduce(
+          (sum: number, row: any) => sum + (parseInt(row[day], 10) || 0),
+          0,
+        ),
       );
 
-      const pieColors = randomColor({
-        count: Object.keys(modeCounts).length,
-        luminosity: "light",
-        hue: "purple",
-      });
       new Chart(modeChartRef.current, {
         type: "pie",
         data: {
           labels: Object.keys(modeCounts),
           datasets: [
-            { data: Object.values(modeCounts), backgroundColor: pieColors },
+            {
+              data: Object.values(modeCounts),
+              backgroundColor: randomColor({
+                count: Object.keys(modeCounts).length,
+                luminosity: "light",
+                hue: "purple",
+              }),
+            },
           ],
         },
         options: {
+          responsive: true,
           plugins: {
             title: { display: true, text: "Distribusi Moda Transportasi" },
           },
@@ -402,18 +385,19 @@ export default function SurveyDashboardClient() {
             {
               label: "Total Perjalanan",
               data: dayTotals,
-              backgroundColor: "rgba(76, 45, 115, 0.6)",
+              backgroundColor: "hsl(262.1 83.3% 57.8%)",
             },
           ],
         },
         options: {
+          responsive: true,
           plugins: {
             title: { display: true, text: "Total Perjalanan per Hari" },
           },
           scales: { y: { beginAtZero: true } },
         },
       });
-    }, [rows]);
+    }, [rows, theme]);
 
     return (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -432,7 +416,7 @@ export default function SurveyDashboardClient() {
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6">
+    <div className="bg-background text-foreground container mx-auto p-4 sm:p-6">
       <header className="mb-8 text-center">
         <h1 className="text-4xl font-extrabold">Dashboard Survey Perjalanan</h1>
         <p className="text-muted-foreground mt-2">
@@ -443,7 +427,7 @@ export default function SurveyDashboardClient() {
       <Card className="mb-8 p-6">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <p className="text-lg font-bold">Manajemen Data</p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="file"
               ref={fileInputRef}
@@ -527,25 +511,33 @@ export default function SurveyDashboardClient() {
       )}
 
       <div className="mt-8">
-        <Button
-          onClick={() => setChartsVisible(!isChartsVisible)}
-          variant="ghost"
-          className="mb-4 w-full text-lg"
-        >
-          {isChartsVisible ? (
-            <BarChart className="mr-2" />
-          ) : (
-            <AreaChart className="mr-2" />
+        <Card>
+          <CardHeader>
+            <Button
+              onClick={() => setChartsVisible(!isChartsVisible)}
+              variant="ghost"
+              className="w-full text-lg"
+            >
+              {isChartsVisible ? (
+                <BarChart className="mr-2" />
+              ) : (
+                <AreaChart className="mr-2" />
+              )}
+              Visualisasi Data
+              <ChevronDown
+                className={cn(
+                  "ml-2 h-4 w-4 transition-transform",
+                  isChartsVisible && "rotate-180",
+                )}
+              />
+            </Button>
+          </CardHeader>
+          {isChartsVisible && (
+            <CardContent>
+              <Charts rows={processedData.rows} />
+            </CardContent>
           )}
-          Visualisasi Data
-          <ChevronDown
-            className={cn(
-              "ml-2 h-4 w-4 transition-transform",
-              isChartsVisible && "rotate-180",
-            )}
-          />
-        </Button>
-        {isChartsVisible && <Charts rows={processedData.rows} />}
+        </Card>
       </div>
     </div>
   );
