@@ -8,74 +8,47 @@ const CONTAINER_ID = "1409908765074919585";
 const BOX_ID = "1409908859971309681";
 const API_BASE_URL = `/api/database/${CONTAINER_ID}/${BOX_ID}`;
 
-// Fungsi helper baru untuk menjadwalkan notifikasi via QStash
+// Fungsi ini sekarang memanggil API BROKER kita, bukan QStash langsung
 async function scheduleNotification(taskId: string, deadline: string) {
-  console.log(deadline)
-  const deadlineDate = new Date(deadline);
-  // Jadwalkan 1 jam sebelum deadline
-  const notifyAt = new Date(deadlineDate.getTime() - 60 * 60 * 1000);
-
-  console.log(notifyAt.getTime() - Date.now())
-  // Jangan jadwalkan jika waktunya sudah lewat
-  if (notifyAt.getTime() < Date.now()) {
-    console.log("Waktu notifikasi sudah lewat, tidak dijadwalkan.");
-    return null;
-  }
-
   try {
-    console.log("request qstash")
-    const res = await fetch(process.env.NEXT_PUBLIC_QSTASH_URL!, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_QSTASH_TOKEN!}`,
-        "Content-Type": "application/json",
-        // Tentukan waktu eksekusi dalam UNIX epoch (detik)
-        "Upstash-Not-Before": Math.floor(notifyAt.getTime() / 1000).toString(),
-      },
-      body: JSON.stringify({
-        // URL lengkap dari endpoint yang kita buat di Langkah 1
-        destination: `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/send-specific`,
-        body: JSON.stringify({ taskId }),
-      }),
+    const res = await fetch('/api/schedule-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, deadline }),
     });
 
     if (!res.ok) {
-      const error = await res.json();
-      throw new Error(`QStash scheduling failed: ${JSON.stringify(error)}`);
+      throw new Error('Failed to schedule notification via backend.');
     }
 
-    const data = await res.json();
-    console.log(data)
-    return data.messageId; // Ini adalah ID yang kita butuhkan untuk membatalkan
+    const { messageId } = await res.json();
+    return messageId || null;
   } catch (error) {
     console.error("Error scheduling notification:", error);
     return null;
   }
 }
 
-// Fungsi helper baru untuk membatalkan notifikasi
+// Fungsi ini juga memanggil API BROKER kita
 async function cancelNotification(qstashMessageId: string) {
   if (!qstashMessageId) return;
 
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_QSTASH_URL}/messages/${qstashMessageId}`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_QSTASH_TOKEN!}`,
-      },
+    await fetch('/api/schedule-notification', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ qstashMessageId }),
     });
   } catch (error) {
     console.error("Error canceling notification:", error);
   }
 }
 
-
 export const fetchTugas = async (): Promise<Tugas[]> => {
   const res = await fetch(`${API_BASE_URL}?full=true`);
   if (!res.ok) throw new Error("Gagal mengambil daftar tugas dari server.");
   const { data } = (await res.json()) as { data: (Omit<Tugas, "id"> & { id: string })[] };
   
-  // Pastikan setiap item memiliki properti 'id' yang benar
   return data ? data.map(item => ({...item, id: item.id})) : [];
 };
 
@@ -97,16 +70,15 @@ export const createTugas = async (
   const createdMessage: { details: { id: string } } = await res.json();
   const newTaskId = createdMessage.details.id;
   
-  // Jadwalkan notifikasi setelah tugas berhasil dibuat
   const qstashMessageId = await scheduleNotification(newTaskId, tugasData.deadline);
-  console.log("QStash message ID:", qstashMessageId);
+  
   const finalTugasData: Tugas = {
     ...tugasData,
     id: newTaskId,
     qstashMessageId: qstashMessageId || undefined,
   };
   
-  // Update sekali lagi untuk menyimpan qstashMessageId ke dalam data tugas
+  // Update sekali lagi untuk menyimpan qstashMessageId
   await updateTugas(finalTugasData);
 
   return finalTugasData;
@@ -115,15 +87,11 @@ export const createTugas = async (
 export const updateTugas = async (tugas: Tugas): Promise<Tugas> => {
   const { id, ...content } = tugas;
 
-  // Jika tugas yang diupdate punya jadwal notifikasi lama, batalkan dulu
   if (tugas.qstashMessageId) {
     await cancelNotification(tugas.qstashMessageId);
   }
   
-  // Jadwalkan notifikasi baru dengan deadline yang baru
-  console.log('add request')
   const newQstashMessageId = await scheduleNotification(id, tugas.deadline);
-  console.log("QStash message ID:", newQstashMessageId);
   
   const updatedContent = {
     ...content,
@@ -146,7 +114,6 @@ export const updateTugas = async (tugas: Tugas): Promise<Tugas> => {
 };
 
 export const deleteTugas = async (id: string, qstashMessageId?: string): Promise<void> => {
-  // Batalkan notifikasi terjadwal sebelum menghapus tugas
   if (qstashMessageId) {
     await cancelNotification(qstashMessageId);
   }
