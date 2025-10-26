@@ -304,10 +304,10 @@ export async function POST(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { slug: string[] } },
+  { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
-    const [categoryId, channelId, messageId] = params.slug;
+    const [categoryId, channelId, messageId] = (await params).slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req);
 

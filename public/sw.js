@@ -1,4 +1,4 @@
-// public/sw.js
+// File: public/sw.js
 
 self.addEventListener("push", (event) => {
   const data = event.data.json();

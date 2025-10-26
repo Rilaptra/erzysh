@@ -93,12 +93,12 @@ export const TugasCard = ({
       )}
     >
       <CardHeader>
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start w-full relative justify-between gap-4">
           <div className="flex-1">
             <Badge variant={getCategoryVariant()}>{tugas.kategori}</Badge>
             <CardTitle
               className={cn(
-                "mt-2",
+                "mt-2 min-h-[32px] max-w-full",
                 tugas.isCompleted && "text-muted-foreground line-through",
               )}
             >
@@ -108,7 +108,7 @@ export const TugasCard = ({
               <BookOpen className="text-teal-muted size-4" /> {tugas.mataKuliah}
             </CardDescription>
           </div>
-          <div className="flex flex-shrink-0 items-center space-x-1">
+          <div className="flex flex-shrink-0 absolute right-0 items-center space-x-1">
             <Button
               variant="ghost"
               size="icon"
@@ -138,11 +138,11 @@ export const TugasCard = ({
         </div>
       </CardHeader>
       <CardContent className="flex-1">
-        <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+        <p className="text-muted-foreground bg-muted/55 max-h-[250px] overflow-y-auto p-2 rounded-lg text-sm whitespace-pre-wrap">
           {tugas.deskripsi}
         </p>
       </CardContent>
-      <CardFooter className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <CardFooter className="flex flex-wrap w-full gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div
           className={cn(
             "flex items-center gap-2 text-sm font-semibold",
@@ -156,33 +156,35 @@ export const TugasCard = ({
           <span>
             {new Date(tugas.deadline).toLocaleDateString("id-ID", {
               day: "numeric",
-              month: "long",
+              month: "short",
               year: "numeric",
               hour: "2-digit",
               minute: "2-digit",
             })}
           </span>
-          {/* --- AKHIR PERUBAHAN --- */}
-        </div>
-        <div className="flex items-center gap-3">
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Clock className="text-teal-muted size-4" />
             <span className="font-medium">{getTimeRemaining()}</span>
           </div>
+          {/* --- AKHIR PERUBAHAN --- */}
+        </div>
+        <div className="flex items-center gap-3 w-full">
           <Button
             variant={tugas.isCompleted ? "outline" : "default"}
             size="sm"
             onClick={handleToggleClick}
-            className={cn(
+            className={cn("w-full",
               tugas.isCompleted ? "border-green-500/50 text-green-500" : "",
             )}
           >
+            <span className="flex justify-center w-full">
             {tugas.isCompleted ? (
               <Circle className="mr-2 size-4" />
             ) : (
               <CheckCircle2 className="mr-2 size-4" />
             )}
             {tugas.isCompleted ? "Belum Selesai" : "Selesaikan"}
+            </span>
           </Button>
         </div>
       </CardFooter>
