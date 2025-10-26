@@ -40,32 +40,30 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // --- PERBAIKAN DI SINI ---
-    // 'body' harus berisi string JSON, bukan string yang di-stringify dua kali.
-    const qstashPayload = {
-      destination: `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/send-specific`,
-      body: JSON.stringify({ taskId }), // Cukup stringify payload bagian dalam saja
-    };
-    // --- AKHIR PERBAIKAN ---
-const destinationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/send-specific`;
+    const destinationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/notifications/send-specific`;
 
-    const res = await fetch(`https://qstash.upstash.io/v2/publish/${destinationUrl}`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${QSTASH_TOKEN}`,
-    "Content-Type": "application/json",
-    "Upstash-Not-Before": Math.floor(notifyAt.getTime() / 1000).toString(),
-  },
-  body: JSON.stringify({ taskId }), // Just the payload
-});
+    const res = await fetch(
+      `https://qstash.upstash.io/v2/publish/${destinationUrl}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${QSTASH_TOKEN}`,
+          "Content-Type": "application/json",
+          "Upstash-Not-Before": Math.floor(
+            notifyAt.getTime() / 1000,
+          ).toString(),
+        },
+        body: JSON.stringify({ taskId }), // Just the payload
+      },
+    );
 
     if (!res.ok) {
-      console.log(await res.text())
+      console.log(await res.text());
       throw new Error(`QStash scheduling failed: (error)`);
     }
 
     const { messageId } = await res.json();
-console.log(messageId)
+    console.log(messageId);
     return NextResponse.json({ messageId });
   } catch (error: any) {
     if (error.message === "UNAUTHORIZED") {
