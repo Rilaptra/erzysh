@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const expiresInSeconds = 60 * 60 * 24 * 7;
+
     const token = jwt.sign(
       {
         userID: user.userID,
@@ -49,7 +51,7 @@ export async function POST(req: NextRequest) {
         messageId: user.message_id,
       },
       JWT_SECRET,
-      { expiresIn: `${24 * 7}h` }, // Token berlaku selama 1 jam
+      { expiresIn: `${expiresInSeconds}s` }, // Token berlaku selama 1 jam
     );
 
     const response = NextResponse.json(
@@ -65,14 +67,14 @@ export async function POST(req: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         path: "/",
-        maxAge: 60 * 60, // 1 jam
+        maxAge: expiresInSeconds, // 1 jam
         sameSite: "lax",
       })
       .set("x-user-id", user.userID, {
         path: "/",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60, // 1 jam
+        maxAge: expiresInSeconds, // 1 jam
         sameSite: "lax",
       });
 
