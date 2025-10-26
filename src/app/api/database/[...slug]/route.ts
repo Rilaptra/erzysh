@@ -458,8 +458,11 @@ export async function DELETE(
         //     `/channels/${channelId}/messages/${messageId}`,
         //   ),
         // "Message deleted successfully",
-        async () =>
-          discord.delete<null>(`/channels/${channelId}/messages/${messageId}`),
+        async () => {
+          const data = await discord.delete<null>(`/channels/${channelId}/messages/${messageId}`)
+          console.log("deleted message", messageId, "data", data)
+          return data
+        },
         "Message deleted successfully",
       );
     }

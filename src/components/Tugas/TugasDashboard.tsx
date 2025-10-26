@@ -1,3 +1,6 @@
+// ================================================
+// FILE: src/components/Tugas/TugasDashboard.tsx
+// ================================================
 // File: src/components/Tugas/TugasDashboard.tsx
 
 "use client";
@@ -9,6 +12,7 @@ import {
   Loader2,
   BellRing,
   BellOff,
+  TestTube, // <-- TAMBAHKAN IMPORT INI
 } from "lucide-react";
 import type { Tugas } from "@/types/tugas";
 import { Button } from "@/components/ui/button";
@@ -33,7 +37,6 @@ interface TugasDashboardProps {
   mataKuliahOptions: string[];
 }
 
-// <-- BARU: Helper function untuk konversi VAPID key
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -52,12 +55,11 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
   const [editingTugas, setEditingTugas] = useState<Tugas | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("aktif");
   const [sortBy, setSortBy] = useState<SortBy>("deadline");
-
-  // --- State Notifikasi Baru ---
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  // <-- TAMBAHKAN STATE BARU UNTUK LOADING TEST -->
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
 
-  // Cek status subscription saat komponen pertama kali render
   useEffect(() => {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker.ready.then((reg) => {
@@ -70,7 +72,6 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     }
   }, []);
 
-  // --- Fungsi untuk Subscribe Notifikasi ---
   const handleSubscribe = async () => {
     if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
       toast.error("VAPID public key tidak terkonfigurasi.");
@@ -111,7 +112,6 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     }
   };
 
-  // --- Fungsi untuk Unsubscribe Notifikasi ---
   const handleUnsubscribe = async () => {
     setIsSubscribing(true);
     try {
@@ -137,6 +137,49 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     }
   };
 
+  // <-- TAMBAHKAN FUNGSI BARU UNTUK MENANGANI TOMBOL TES -->
+  const handleTestNotification = async () => {
+    setIsTestingNotification(true);
+    const toastId = toast.loading("Mengirim notifikasi dalam 5 detik...", {
+      description: "Tunggu sebentar, sistem sedang menyiapkan roketnya... 🚀",
+    });
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        throw new Error("Subscription tidak ditemukan. Aktifkan notifikasi terlebih dahulu.");
+      }
+
+      // Tunda pengiriman selama 5 detik untuk animasi
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      const res = await fetch("/api/notifications/send-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Server gagal mengirim notifikasi tes.");
+      }
+
+      toast.success("Permintaan terkirim!", {
+        id: toastId,
+        description: "Cek notifikasi di perangkatmu sekarang.",
+      });
+
+    } catch (error) {
+      toast.error("Gagal mengirim notifikasi tes.", {
+        id: toastId,
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsTestingNotification(false);
+    }
+  };
+
   useEffect(() => {
     const loadTugas = async () => {
       try {
@@ -154,8 +197,6 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     loadTugas();
   }, []);
 
-  // ... (sisa fungsi handle dan useMemo tetap sama)
-
   const handleOpenForm = (tugas: Tugas | null) => {
     setEditingTugas(tugas);
     setIsFormOpen(true);
@@ -165,19 +206,21 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     setEditingTugas(null);
     setIsFormOpen(false);
   };
-
+  
   const handleCrudSubmit = async (
     data: Omit<Tugas, "id" | "isCompleted"> & { id?: string },
     originalData?: Tugas,
   ) => {
     if (data.id && originalData) {
-      // Update
-      const optimisticUpdate = { ...originalData, ...data };
+      const optimisticUpdate = { ...originalData, ...data, isCompleted: originalData.isCompleted };
       setTugasList((prev) =>
         prev.map((t) => (t.id === data.id ? optimisticUpdate : t)),
       );
       try {
-        await TugasAPI.updateTugas(optimisticUpdate);
+        const updatedTugas = await TugasAPI.updateTugas(optimisticUpdate);
+         setTugasList((prev) =>
+            prev.map((t) => (t.id === updatedTugas.id ? updatedTugas : t)),
+          );
         toast.success(`Tugas "${data.judul}" berhasil diperbarui!`, {
           action: {
             label: "Undo",
@@ -194,7 +237,6 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
         );
       }
     } else {
-      // Create
       const newTugasData: Omit<Tugas, "id"> = {
         ...data,
         isCompleted: false,
@@ -210,20 +252,19 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
       }
     }
   };
-
+  
   const handleUndoUpdate = async (originalTugas: Tugas) => {
     setTugasList((prev) =>
       prev.map((t) => (t.id === originalTugas.id ? originalTugas : t)),
     );
     try {
-      await TugasAPI.updateTugas(originalTugas);
+      const revertedTugas = await TugasAPI.updateTugas(originalTugas);
+      setTugasList((prev) =>
+        prev.map((t) => (t.id === revertedTugas.id ? revertedTugas : t)),
+      );
       toast.info("Perubahan telah dibatalkan.");
     } catch {
       toast.error("Gagal membatalkan perubahan.");
-      // Rollback UI jika undo di server gagal
-      setTugasList((prev) =>
-        prev.map((t) => (t.id === originalTugas.id ? originalTugas : t)),
-      );
     }
   };
 
@@ -234,9 +275,9 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
     setTugasList((prev) => prev.filter((t) => t.id !== id));
 
     const deletePromise = () =>
-      TugasAPI.deleteTugas(id).catch((err) => {
-        setTugasList((prev) => [...prev, tugasToDelete]); // Rollback on error
-        throw err; // Lemparkan error agar toast bisa menanganinya
+      TugasAPI.deleteTugas(id, tugasToDelete.qstashMessageId).catch((err) => {
+        setTugasList((prev) => [...prev, tugasToDelete]);
+        throw err;
       });
 
     toast.promise(deletePromise, {
@@ -296,7 +337,7 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
             new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
           );
         }
-        return new Date(b.id).getTime() - new Date(a.id).getTime();
+        return Number(b.id) - Number(a.id);
       });
   }, [tugasList, filterStatus, sortBy]);
 
@@ -314,30 +355,42 @@ export function TugasDashboard({ mataKuliahOptions }: TugasDashboardProps) {
           <BookCheck className="text-primary size-8" />
           <h1 className="text-3xl font-bold">Manajemen Tugas Kuliah</h1>
         </div>
-        <div className="flex items-center gap-2">
-          {/* <-- TOMBOL NOTIFIKASI BARU --> */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={
-              isNotificationEnabled ? handleUnsubscribe : handleSubscribe
-            }
-            disabled={isSubscribing}
-            className="w-[180px]"
-          >
-            {isSubscribing ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : isNotificationEnabled ? (
-              <BellOff className="mr-2 size-4" />
-            ) : (
-              <BellRing className="mr-2 size-4" />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* <-- WRAP TOMBOL DALAM DIV AGAR KONSISTEN --> */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isNotificationEnabled ? handleUnsubscribe : handleSubscribe}
+              disabled={isSubscribing || isTestingNotification}
+            >
+              {isSubscribing ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : isNotificationEnabled ? (
+                <BellOff className="mr-2 size-4" />
+              ) : (
+                <BellRing className="mr-2 size-4" />
+              )}
+              {isNotificationEnabled ? "Matikan Notif" : "Aktifkan Notif"}
+            </Button>
+
+            {/* <-- TAMBAHKAN TOMBOL TEST DI SINI --> */}
+            {isNotificationEnabled && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleTestNotification}
+                disabled={isSubscribing || isTestingNotification}
+                title="Test Notifikasi"
+              >
+                {isTestingNotification ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <TestTube className="size-4" />
+                )}
+              </Button>
             )}
-            {isSubscribing
-              ? "Processing..."
-              : isNotificationEnabled
-                ? "Matikan Notifikasi"
-                : "Aktifkan Notifikasi"}
-          </Button>
+          </div>
           <Button onClick={() => setIsFormOpen(true)}>
             <PlusCircle className="mr-2 size-4" /> Tugas Baru
           </Button>
