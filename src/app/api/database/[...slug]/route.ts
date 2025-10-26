@@ -1,33 +1,17 @@
 // /api/database/[...slug]/route.ts
-import { GUILD_ID, SUPPORTED_TYPES } from "@/lib/constants";
 import {
-  editMessage,
-  fileAttachmentsBuilder,
   getMessagesFromChannel,
-  sendMessage,
-  discord,
   sanitizeMessage,
   getChannelsFromParentId,
   processMessage,
+  discord,
 } from "@/lib/utils";
-import type {
-  RequestData,
-  DiscordMessage,
-  DiscordChannel,
-  UserData,
-  DiscordCategory,
-  DiscordPartialMessageResponse,
-} from "@/types";
+import type { DiscordMessage, QueueJob } from "@/types";
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
 import {
   createApiResponse,
-  handleDiscordApiCall,
   loadBodyRequest,
-  slugify,
-  updateActivityLog,
-  CHANNEL_TYPE,
-  updateUserData,
   getUsersData,
   getMimeType,
   MessageMetadata,
@@ -39,6 +23,8 @@ import {
   GetApiDatabaseMessageResponse,
 } from "@/types/api-db-response";
 import { verifyAuth } from "@/lib/authUtils";
+import { publishToQueue } from "@/lib/queue"; // <-- Import baru
+// import { getAuthInfo } from "../helpers"; // <-- Pastikan getAuthInfo di-export dari helpers
 
 // --- Helper to get user info from headers ---
 function getAuthInfo(req: NextRequest) {
@@ -274,47 +260,41 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> },
+  { params }: { params: { slug: string[] } },
 ) {
   try {
-    const [categoryId, channelId, messageId] = (await params).slug;
+    const [categoryId, channelId] = params.slug;
     const data = await loadBodyRequest(req);
     const { userID } = getAuthInfo(req);
-    const users = await getUsersData();
 
     if (!data)
       return createApiResponse({ message: "Invalid request body" }, 400);
 
-    if (!userID) {
-      return createApiResponse({ message: "User ID not found" }, 401);
-    }
-
-    if (!users) {
-      return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
-      );
-    }
-
-    const user = users.get(userID);
-    if (!user) {
-      return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
-      );
-    }
+    let job: QueueJob;
 
     if (categoryId && !channelId) {
-      return handleCreateChannel(categoryId, data, user);
+      // Create Channel
+      job = {
+        operation: "CREATE_CHANNEL",
+        payload: { parentId: categoryId, data, userId: userID },
+      };
+    } else if (channelId) {
+      // Send Message
+      job = {
+        operation: "SEND_MESSAGE",
+        payload: { targetId: channelId, data, userId: userID },
+      };
+    } else {
+      return createApiResponse(
+        { message: "Invalid POST request parameters." },
+        400,
+      );
     }
 
-    if (channelId && !messageId) {
-      return handleSendMessage(categoryId, channelId, data, userID);
-    }
-
+    await publishToQueue(job);
     return createApiResponse(
-      { message: "Invalid POST request or Message ID must not be provided" },
-      400,
+      { message: "Request has been accepted for processing." },
+      202,
     );
   } catch (error) {
     console.error(chalk.red("Error in POST handler:"), error);
@@ -324,82 +304,68 @@ export async function POST(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> },
+  { params }: { params: { slug: string[] } },
 ) {
   try {
-    const [categoryId, channelId, messageId] = (await params).slug;
+    const [categoryId, channelId, messageId] = params.slug;
     const data = await loadBodyRequest(req);
-    const { userID } = getAuthInfo(req); // PATCH harus selalu terautentikasi
-    const isAdmin = (await getUsersData()).get(userID || "")?.is_admin;
+    const { userID } = getAuthInfo(req);
 
-    if (
-      (!data || !data.name) &&
-      (data?.isPublic === undefined || data?.isPublic === null)
-    ) {
-      return createApiResponse(
-        { message: "Invalid request body, name is required" },
-        400,
-      );
-    }
+    if (!data)
+      return createApiResponse({ message: "Invalid request body" }, 400);
 
-    const slugifiedName = slugify(data.name);
+    let job: QueueJob;
 
-    if (messageId && channelId) {
-      // --- BARU: Logika untuk toggle isPublic ---
-      // Jika request hanya berisi 'isPublic', ini adalah operasi ringan.
+    if (messageId) {
+      // Update Message or Toggle Public
       if (
         typeof data.isPublic === "boolean" &&
         Object.keys(data).length === 1
       ) {
-        return handleTogglePublic(
-          channelId,
-          messageId,
-          data.isPublic,
-          userID,
-          isAdmin,
-        );
+        job = {
+          operation: "TOGGLE_PUBLIC",
+          payload: {
+            targetId: messageId,
+            parentId: channelId,
+            isPublic: data.isPublic,
+            userId: userID,
+          },
+        };
+      } else {
+        job = {
+          operation: "UPDATE_MESSAGE",
+          payload: {
+            targetId: messageId,
+            parentId: channelId,
+            data,
+            userId: userID,
+          },
+        };
       }
-      // Jika tidak, ini adalah update konten penuh (logika lama)
-      return handleUpdateMessage(
-        categoryId,
-        channelId,
-        messageId,
-        data,
-        userID,
+    } else if (channelId) {
+      // Update Channel
+      job = {
+        operation: "UPDATE_CHANNEL",
+        payload: { targetId: channelId, data, userId: userID },
+      };
+    } else if (categoryId) {
+      // Update Category
+      job = {
+        operation: "UPDATE_CATEGORY",
+        payload: { targetId: categoryId, data, userId: userID },
+      };
+    } else {
+      return createApiResponse(
+        { message: "Invalid PATCH request parameters." },
+        400,
       );
     }
 
-    if (channelId) {
-      if (data.content) {
-        return createApiResponse(
-          { message: "Cannot update content for a channel, only a message" },
-          400,
-        );
-      }
-      return handleDiscordApiCall<DiscordChannel>(
-        () =>
-          discord.patch<DiscordChannel>(
-            `/channels/${channelId}`,
-            { name: slugifiedName },
-            true,
-          ),
-        "Channel updated successfully",
-      );
-    }
-
-    if (categoryId) {
-      return handleDiscordApiCall<DiscordCategory>(
-        () =>
-          discord.patch<DiscordCategory>(
-            `/channels/${categoryId}`,
-            { name: slugifiedName, type: CHANNEL_TYPE.GUILD_CATEGORY },
-            true,
-          ),
-        "Category updated successfully",
-      );
-    }
-
-    return createApiResponse({ message: "Invalid PATCH request" }, 400);
+    await publishToQueue(job);
+    return createApiResponse(
+      { message: "Update request has been accepted." },
+      202,
+    );
   } catch (error) {
     console.error(chalk.red("Error in PATCH handler:"), error);
     return createApiResponse({ error: "Internal Server Error" }, 500);
@@ -408,272 +374,48 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ slug: string[] }> },
+  { params }: { params: { slug: string[] } },
 ) {
   try {
-    const [categoryId, channelId, messageId] = (await params).slug;
+    const [categoryId, channelId, messageId] = params.slug;
     const { userID } = getAuthInfo(req);
-    const users = await getUsersData();
 
-    if (!userID) {
-      return createApiResponse({ message: "User ID not found" }, 401);
-    }
+    let job: QueueJob;
 
-    if (!users) {
+    if (messageId) {
+      // Delete Message
+      job = {
+        operation: "DELETE_MESSAGE",
+        payload: { targetId: messageId, parentId: channelId, userId: userID },
+      };
+    } else if (channelId) {
+      // Delete Channel
+      job = {
+        operation: "DELETE_CHANNEL",
+        payload: { targetId: channelId, parentId: categoryId, userId: userID },
+      };
+    } else if (categoryId) {
+      // Delete Category
+      job = {
+        operation: "DELETE_CATEGORY",
+        payload: { targetId: categoryId, userId: userID },
+      };
+    } else {
       return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
+        { message: "Invalid DELETE request parameters." },
+        400,
       );
     }
 
-    const user = users.get(userID);
-    if (!user) {
-      return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
-      );
-    }
-
-    if (messageId && channelId) {
-      return handleDiscordApiCall<DiscordMessage>(
-        () =>
-          discord.delete<DiscordMessage>(
-            `/channels/${channelId}/messages/${messageId}`,
-          ),
-        "Message deleted successfully",
-      );
-    }
-
-    if (channelId) {
-      return handleDiscordApiCall<DiscordChannel>(async () => {
-        const channel = await discord.delete<DiscordChannel>(
-          `/channels/${channelId}`,
-        );
-        user.databases[categoryId] = user.databases[categoryId].filter(
-          (channelID) => channelID !== channelId,
-        );
-
-        await updateUserData(userID, user, user.message_id);
-        return channel;
-      }, "Channel deleted successfully");
-    }
-
-    if (categoryId) {
-      console.log(
-        chalk.yellow(`Deleting category ${categoryId} and its children...`),
-      );
-      const channelsToDelete = await getChannelsFromParentId(categoryId);
-      console.log(
-        chalk.blue(`Found ${channelsToDelete.length} channels to delete.`),
-      );
-
-      const deletePromises = channelsToDelete.map((ch) =>
-        discord.delete(`/channels/${ch.id}`),
-      );
-      deletePromises.push(discord.delete(`/channels/${categoryId}`));
-
-      await Promise.all(deletePromises);
-      delete user.databases[categoryId];
-      await updateUserData(userID, user, user.message_id);
-
-      return createApiResponse(
-        { message: "Category and all its channels deleted successfully" },
-        200,
-      );
-    }
-
-    return createApiResponse({ message: "Invalid DELETE request" }, 400);
+    await publishToQueue(job);
+    return createApiResponse(
+      { message: "Deletion request has been accepted." },
+      202,
+    );
   } catch (error) {
     console.error(chalk.red("Error in DELETE handler:"), error);
-    return createApiResponse(
-      {
-        message: "Failed to delete resources.",
-        error: (error as Error).message,
-      },
-      500,
-    );
+    return createApiResponse({ error: "Internal Server Error" }, 500);
   }
-}
-
-// --- Logic Handlers ---
-
-async function handleCreateChannel(
-  categoryId: string,
-  data: RequestData,
-  userData: UserData,
-) {
-  if (!data.name || typeof data.name !== "string" || data.name.length > 100) {
-    return createApiResponse({ message: "Invalid channel name" }, 400);
-  }
-
-  return handleDiscordApiCall<DiscordChannel>(
-    async () => {
-      const channel = await discord.post<DiscordChannel>(
-        `/guilds/${GUILD_ID}/channels`,
-        {
-          name: slugify(data.name),
-          parent_id: categoryId,
-          type: CHANNEL_TYPE.GUILD_TEXT,
-        },
-        true,
-      );
-      userData.databases[categoryId].push(channel.id);
-      updateUserData(userData.userID, userData, userData.message_id);
-      return channel;
-    },
-    "Channel created successfully",
-    201,
-  );
-}
-
-async function handleSendMessage(
-  categoryId: string,
-  channelId: string,
-  data: RequestData,
-  userID: string,
-) {
-  if (
-    !data.content ||
-    !data.name ||
-    !SUPPORTED_TYPES.includes(typeof data.content)
-  ) {
-    return createApiResponse({ message: "Invalid request body" }, 400);
-  }
-
-  const { attachments, dataSize } = fileAttachmentsBuilder({
-    fileName: data.name,
-    data: data.content,
-  }) || { attachments: [], dataSize: null };
-
-  const collectionMetadata = {
-    lastUpdate: new Date().toISOString(),
-    name: data.name,
-    size: dataSize,
-    userID,
-    isPublic: data.isPublic || false, // Set default ke false
-  };
-
-  if (!attachments)
-    return createApiResponse({ message: "Invalid attachments" }, 400);
-
-  const messagePayload = {
-    content: `\`\`\`json\n${JSON.stringify(collectionMetadata, null, 2)}\n\`\`\``,
-    files: attachments,
-  };
-
-  const response = await handleDiscordApiCall<DiscordMessage>(
-    async () => {
-      const res = await sendMessage(channelId, messagePayload);
-      if (!res) throw new Error("Failed to send message");
-      return {
-        id: res.id,
-        content: res.content.replace(/`/g, "").trim(),
-      } as DiscordMessage;
-    },
-    "Message sent successfully",
-    201,
-  );
-
-  updateActivityLog(data.name, dataSize || 0, categoryId, channelId).catch(
-    (err) => {
-      console.error(chalk.yellow("Failed to update activity log:"), err);
-    },
-  );
-
-  return response;
-}
-
-async function handleUpdateMessage(
-  categoryId: string,
-  channelId: string,
-  messageId: string,
-  data: RequestData,
-  userID: string,
-) {
-  if (
-    typeof data.content !== "undefined" &&
-    !SUPPORTED_TYPES.includes(typeof data.content)
-  ) {
-    return createApiResponse({ message: "Invalid content type" }, 400);
-  }
-
-  const { attachments, dataSize } = fileAttachmentsBuilder({
-    fileName: data.name,
-    data: data.content,
-  }) || { attachments: [], dataSize: null };
-
-  if (!attachments)
-    return createApiResponse({ message: "Invalid attachments" }, 400);
-
-  const dataExtension = data.name.match(/.*\.([^.]+)$/)?.[1];
-  const dataName = dataExtension ? data.name : `${data.name}.json`;
-  const options = {
-    content: `\`\`\`json\n${JSON.stringify(
-      {
-        lastUpdate: new Date().toISOString(),
-        name: dataName,
-        size: dataSize,
-        userID,
-        isPublic: data.isPublic || false, // Set default ke false
-      },
-      null,
-      2,
-    )}\n\`\`\``,
-    files: attachments,
-  };
-
-  const response = await handleDiscordApiCall<DiscordPartialMessageResponse>(
-    async () => {
-      const message = await editMessage(channelId, messageId, options);
-      if (!message) throw new Error("Failed to update message");
-      return message;
-    },
-    "Message updated successfully",
-  );
-
-  updateActivityLog(data.name, dataSize || 0, categoryId, channelId).catch(
-    (err) => {
-      console.error(chalk.yellow("Failed to update activity log:"), err);
-    },
-  );
-
-  return response;
-}
-
-// --- Helper Baru untuk PATCH (tambahkan di dalam file yang sama) ---
-async function handleTogglePublic(
-  channelId: string,
-  messageId: string,
-  isPublic: boolean,
-  userID: string,
-  isAdmin?: boolean,
-) {
-  const originalMessage = await discord.get<DiscordMessage>(
-    `/channels/${channelId}/messages/${messageId}`,
-  );
-  const sanitized = sanitizeMessage(originalMessage);
-  const metadata = sanitized.content as MessageMetadata;
-
-  // Pastikan hanya pemilik yang bisa mengubah status publik
-  if (metadata.userID !== userID && !isAdmin) {
-    return createApiResponse(
-      { error: "Forbidden: You do not own this resource." },
-      403,
-    );
-  }
-
-  // Update metadata
-  const updatedMetadata: MessageMetadata = { ...metadata, isPublic };
-
-  const options = {
-    content: `\`\`\`json\n${JSON.stringify(updatedMetadata, null, 2)}\n\`\`\``,
-    // Tidak perlu menyertakan 'files' karena kita hanya mengedit teks metadata
-  };
-
-  return handleDiscordApiCall(
-    () => editMessage(channelId, messageId, options),
-    "Public status updated successfully",
-  );
 }
 
 /**

@@ -1,5 +1,5 @@
 // src/lib/hooks/useAcademicEvents.ts
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Kegiatan } from "@/types/kalender-akademik";
 import kalenderData from "@/lib/data/kalender-akademik.json";
 import { cariKegiatan } from "@/lib/utils/academic-search";

@@ -53,3 +53,33 @@ export interface GeneratedDoc {
   blob: Blob;
   fileName: string;
 }
+
+/**
+ * Tipe untuk operasi yang didukung oleh worker.
+ */
+export type QueueOperation =
+  | "CREATE_CATEGORY"
+  | "CREATE_CHANNEL"
+  | "SEND_MESSAGE"
+  | "UPDATE_MESSAGE"
+  | "UPDATE_CHANNEL"
+  | "UPDATE_CATEGORY"
+  | "DELETE_MESSAGE"
+  | "DELETE_CHANNEL"
+  | "DELETE_CATEGORY"
+  | "TOGGLE_PUBLIC";
+
+/**
+ * Struktur job yang akan dikirim ke QStash.
+ */
+export interface QueueJob {
+  operation: QueueOperation;
+  payload: {
+    // ID bisa berupa categoryId, channelId, atau messageId tergantung operasi
+    targetId?: string;
+    parentId?: string; // Digunakan untuk create/delete channel (categoryId)
+    data?: any; // Konten untuk create/update
+    userId?: string; // Untuk validasi & logging
+    isPublic?: boolean; // Untuk toggle public
+  };
+}

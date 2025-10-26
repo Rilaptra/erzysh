@@ -6,7 +6,7 @@ import { LiveClock } from "@/components/Jadwal/LiveClock";
 import type { Jadwal, MataKuliah } from "@/lib/data/jadwal-types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useAcademicEvents } from "@/lib/hooks/useAcademicEvents";
@@ -18,7 +18,7 @@ interface JadwalWidgetProps {
 export const JadwalWidget = ({ fullSchedule }: JadwalWidgetProps) => {
   const [todaySchedule, setTodaySchedule] = useState<MataKuliah[]>([]);
   const [todayString, setTodayString] = useState("");
-
+  const today = new Date();
   const academicEvents = useAcademicEvents(today);
   
   useEffect(() => {
