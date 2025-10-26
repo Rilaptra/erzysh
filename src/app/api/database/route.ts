@@ -1,17 +1,29 @@
 // /api/database/route.ts
-import { getChannels, getMessagesFromChannel } from "@/lib/utils";
-import { DiscordPartialChannelResponse, UserData } from "@/types";
+import { discord, getChannels, getMessagesFromChannel } from "@/lib/utils";
+import {
+  DiscordCategory,
+  DiscordPartialChannelResponse,
+  RequestData,
+  UserData,
+} from "@/types";
 import chalk from "chalk";
-import { NextRequest } from "next/server";
-import { createApiResponse } from "./helpers";
+import { NextRequest, NextResponse } from "next/server";
+import {
+  createApiResponse,
+  handleDiscordApiCall,
+  slugify,
+  CHANNEL_TYPE,
+  updateUserData,
+  getUsersData,
+} from "./helpers";
+import { GUILD_ID } from "@/lib/constants";
 import {
   ApiDbCategory,
   ApiDbCategoryChannel,
+  ApiDbCreateCategoryResponse,
   GetApiDatabaseResponse,
 } from "@/types/api-db-response";
-import { publishToQueue } from "@/lib/queue"; // <-- Import baru
 import { validateAndGetUser } from "@/lib/authService";
-
 // --- Main HTTP Handlers ---
 
 export async function GET(req: NextRequest) {
@@ -28,38 +40,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+): Promise<NextResponse<ApiDbCreateCategoryResponse>> {
   try {
     const userData = await validateAndGetUser(req);
-    const { data } = await req.json();
+    const data = (await req.json())?.data;
 
-    if (
-      !data?.name ||
-      typeof data.name !== "string" ||
-      data.name.length > 100
-    ) {
-      return createApiResponse({ message: "Invalid category name" }, 400);
-    }
-
-    // Mengirim job ke antrean
-    await publishToQueue({
-      operation: "CREATE_CATEGORY",
-      payload: {
-        data: { name: data.name },
-        userId: userData.userID,
-      },
-    });
-
-    // Langsung kembalikan 202 Accepted
-    return createApiResponse(
-      { message: "Category creation has been queued." },
-      202,
-    );
+    return await handleCreateCategory(data, userData);
   } catch (error) {
-    console.error(chalk.red("Error in POST /api/database:"), error);
-    const errMessage =
-      error instanceof Error ? error.message : "Internal Server Error";
-    return createApiResponse({ error: errMessage }, 500);
+    console.error(chalk.red("Error in POST handler:"), error);
+    return createApiResponse<ApiDbCreateCategoryResponse>(
+      { error: "Internal Server Error" },
+      500,
+    );
   }
 }
 
@@ -104,4 +98,34 @@ async function handleGetAllStructuredData(userData: UserData) {
 
   const data = Object.fromEntries(categories);
   return createApiResponse<GetApiDatabaseResponse>({ data }, 200);
+}
+
+async function handleCreateCategory(data: RequestData, userData: UserData) {
+  if (!data.name || typeof data.name !== "string" || data.name.length > 100) {
+    return createApiResponse<ApiDbCreateCategoryResponse>(
+      { message: "Invalid category name" },
+      400,
+    );
+  }
+
+  return handleDiscordApiCall<DiscordCategory>(
+    async () => {
+      const category = await discord.post<DiscordCategory>(
+        `/guilds/${GUILD_ID}/channels`,
+        {
+          name: slugify(data.name),
+          type: CHANNEL_TYPE.GUILD_CATEGORY,
+        },
+      );
+      const users = await getUsersData();
+      if (!users) return category;
+      const user = users.get(userData.userID) || users.get(userData.username);
+      if (!user) return category;
+      user.databases[category.id] = [];
+      updateUserData(userData.userID, user, userData.message_id);
+      return category;
+    },
+    "Category created successfully",
+    201,
+  );
 }
