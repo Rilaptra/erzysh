@@ -38,12 +38,6 @@ function ToolButtons() {
       label: "Checklist Nama Teksip 25 (Tugas Foto)",
       icon: <FileInput className="mr-2 h-4 w-4" />,
       adminOnly: false,
-    },
-    {
-      href: "/kuliah/tools/sipadu-leaked",
-      label: "Sipadu Leaked",
-      icon: <GraduationCap className="mr-2 h-4 w-4" />,
-      adminOnly: false
     }
   ];
 
