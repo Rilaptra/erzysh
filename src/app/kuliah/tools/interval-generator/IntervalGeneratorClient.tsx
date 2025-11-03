@@ -54,7 +54,7 @@ export default function IntervalGeneratorClient() {
     const distanceDenominator = Math.abs(c - b);
     
     // Logika pembulatan aneh dari kode asli, diterjemahkan langsung
-    const startReal = b % 5 !== 0 ? b + ((b % 10 > 5) ? - (b % 5) : 5 - (b % 5)) : b;
+    const startReal = Math.floor(b/5)*5
 
     for (let current = startReal + a; current < c; current += a) {
       if (current <= b || current >= c) {
