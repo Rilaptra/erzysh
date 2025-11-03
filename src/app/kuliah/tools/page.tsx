@@ -13,11 +13,22 @@ function ToolButtons() {
 
   // Daftar tools agar lebih mudah dikelola
   const toolList = [
-    // --- TAMBAHKAN TOOLS BARU DI SINI ---
+    {
+      href: "/kuliah/tools/checklist-teksip",
+      label: "Checklist Nama Teksip 25 (Tugas Foto)",
+      icon: <FileInput className="mr-2 h-4 w-4" />,
+      adminOnly: false,
+    },
     {
       href: "/kuliah/tools/survey-dashboard",
       label: "Dashboard Survey",
       icon: <ClipboardCheck className="mr-2 h-4 w-4" />,
+      adminOnly: false,
+    },
+    {
+      href: "/kuliah/tools/interval-generator", // <-- LINK BARU
+      label: "Generator Interval",
+      icon: <BetweenHorizontalStart className="mr-2 h-4 w-4" />, // <-- IKON BARU
       adminOnly: false,
     },
     {
@@ -26,19 +37,12 @@ function ToolButtons() {
       icon: <Calculator className="mr-2 h-4 w-4" />,
       adminOnly: false,
     },
-    // --- TOOLS LAMA ---
     {
       href: "/kuliah/tools/photo-formatter",
       label: "Photo to Docs Formatter (Tugas Prodi)",
       icon: <Camera className="mr-2 h-4 w-4" />,
       adminOnly: true, // Ini adalah contoh tool admin
     },
-    {
-      href: "/kuliah/tools/checklist-teksip",
-      label: "Checklist Nama Teksip 25 (Tugas Foto)",
-      icon: <FileInput className="mr-2 h-4 w-4" />,
-      adminOnly: false,
-    }
   ];
 
   return (
