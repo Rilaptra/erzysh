@@ -82,9 +82,9 @@ function calculateIntervals(b: number, c: number, a: number, dimension: number):
 
     newResults.push({
       p: p.toLocaleString('id-ID', { maximumFractionDigits: 4 }),
-      distanceFromStart: distanceFromStart.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
+      distanceFromStart: Math.abs(distanceFromStart).toLocaleString('id-ID', { maximumFractionDigits: 8 }),
       formulaFromStart: `(${p.toFixed(2)} - ${b.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
-      distanceFromEnd: distanceFromEnd.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
+      distanceFromEnd: Math.abs(distanceFromEnd).toLocaleString('id-ID', { maximumFractionDigits: 8 }),
       formulaFromEnd: `(${c.toFixed(2)} - ${p.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
     });
   }
@@ -110,8 +110,8 @@ export default function IntervalGeneratorClient() {
   
   const handleGenerate = useCallback(() => {
     try {
-      const b = parseFloat(startNum);
-      const c = parseFloat(endNum);
+      const bT = parseFloat(startNum);
+      const cT = parseFloat(endNum);
       const a = parseFloat(intervalNum);
       const dimension = parseFloat(dimensi);
 
