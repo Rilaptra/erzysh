@@ -19,7 +19,7 @@ export default function IntervalGeneratorClient() {
   const [startNum, setStartNum] = useState("");
   const [endNum, setEndNum] = useState("");
   const [intervalNum, setIntervalNum] = useState("");
-  const [dimensi, setDimensi] = useState("")
+  const [dimensi, setDimensi] = useState(""); // <-- State baru lo
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Result[]>([]);
 
@@ -27,14 +27,16 @@ export default function IntervalGeneratorClient() {
     // 1. Reset
     setError(null);
     setResults([]);
-    // 2. Parse & Validate
-    const b = parseFloat(startNum); // Angka Awal (b)
-    const c = parseFloat(endNum);   // Angka Akhir (c)
-    const a = parseFloat(intervalNum); // Interval (a)
-    const dimension = parseFloat(dimensi)
 
+    // 2. Parse & Validate
+    const b = parseFloat(startNum);
+    const c = parseFloat(endNum);
+    const a = parseFloat(intervalNum);
+    const dimension = parseFloat(dimensi);
+
+    // --- 👇 PERBAIKAN #2: Pesan Error Lebih Akurat ---
     if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimension)) {
-      setError("Semua field (b, c, a) harus diisi dengan angka.");
+      setError("Semua field (b, c, a, dimensi) harus diisi dengan angka.");
       return;
     }
     if (a <= 0) {
@@ -49,19 +51,21 @@ export default function IntervalGeneratorClient() {
       setError("Angka Awal (b) tidak boleh sama dengan Interval (a) karena menyebabkan pembagi nol.");
       return;
     }
-    if (dimension == 0) {
-      setError("Dimensi tidak boleh 0!")
+    if (dimension === 0) {
+      setError("Dimensi tidak boleh 0!");
+      return;
     }
+
     // 3. Generate points & calculate distance
     const newResults: Result[] = [];
     const distanceDenominator = Math.abs(c - b);
     
-    // Logika pembulatan aneh dari kode asli, diterjemahkan langsung
-    const startReal = Math.floor(b/5)*5
+    // Logika pembulatan ke kelipatan 5 terdekat di bawahnya
+    const startReal = Math.floor(b / 5) * 5;
 
     for (let current = startReal + a; current < c; current += a) {
-      if (current <= b || current >= c) {
-        continue; // Hanya ambil titik di dalam rentang (b, c)
+      if (current <= b) {
+        continue; // Hanya ambil titik yang LEBIH BESAR dari b
       }
 
       const p = current;
@@ -71,7 +75,8 @@ export default function IntervalGeneratorClient() {
       newResults.push({
         p: p.toLocaleString('id-ID', { maximumFractionDigits: 4 }),
         distance: distance.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
-        formula: `(${p} - ${b}) / (${c} - ${b}) * ${dimension}`,
+        // --- 👇 PERBAIKAN #3: Formula Dinamis ---
+        formula: `(${p.toFixed(2)} - ${b.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
       });
     }
 
@@ -81,7 +86,8 @@ export default function IntervalGeneratorClient() {
     } else {
       toast.info("Tidak ada titik yang ditemukan dalam rentang tersebut.");
     }
-  }, [startNum, endNum, intervalNum]);
+    // --- 👇 PERBAIKAN #1 (UTAMA): Tambahkan 'dimensi' di sini ---
+  }, [startNum, endNum, intervalNum, dimensi]);
 
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
@@ -90,27 +96,28 @@ export default function IntervalGeneratorClient() {
           <CardTitle className="text-2xl font-bold">
             🚀 Generator Interval & Jarak Khusus
           </CardTitle>
+          {/* --- 👇 PERBAIKAN #4: Deskripsi Dinamis --- */}
           <CardDescription>
-            Hasil Titik Kontur di antara Ketinggian {startNum} dan Ketinggian {endNum} dengan interval {intervalNum} dan dimensi {dimensi}.
+            Hasil titik kontur di antara {startNum || 'b'} dan {endNum || 'c'} dengan interval {intervalNum || 'a'} & dimensi {dimensi || 'd'}.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="startNum">Angka Awal (b)</Label>
+              <Label htmlFor="startNum">Ketinggian Awal (b)</Label>
               <Input type="number" id="startNum" placeholder="Contoh: 125" value={startNum} onChange={(e) => setStartNum(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="endNum">Angka Akhir (c)</Label>
+              <Label htmlFor="endNum">Ketinggian Akhir (c)</Label>
               <Input type="number" id="endNum" placeholder="Contoh: 129" value={endNum} onChange={(e) => setEndNum(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="intervalNum">Interval (a)</Label>
+              <Label htmlFor="intervalNum">Interval Kontur (a)</Label>
               <Input type="number" step="any" id="intervalNum" placeholder="Contoh: 2.5" value={intervalNum} onChange={(e) => setIntervalNum(e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="dimensionNum">Dimensi Kotak Grid (panjang garis grid)</Label>
-              <Input type="number" step="any" id="dimensionNum" placeholder="Contoh: 3 (3cm)" value={dimensi} onChange={(e) => setDimensi(e.target.value)} />
+              <Label htmlFor="dimensionNum">Dimensi Peta (d)</Label>
+              <Input type="number" step="any" id="dimensionNum" placeholder="Contoh: 3 (cm)" value={dimensi} onChange={(e) => setDimensi(e.target.value)} />
             </div>
           </div>
 
@@ -125,14 +132,14 @@ export default function IntervalGeneratorClient() {
             <div className="mt-6 pt-4 border-t">
               <h2 className="text-lg font-semibold mb-3">Hasil Titik dan Informasi Jarak:</h2>
               <p className="text-muted-foreground text-xs mb-4">
-                Jarak dihitung dengan formula: {`{ (p - b) / (c - b) * 3 }`}
+                Jarak dihitung dengan formula: {`{ (p - b) / (c - b) * d }`}
               </p>
               <div className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto pr-2">
                 {results.map((item, index) => (
                   <div key={index} className="bg-muted border-l-4 border-primary p-4 rounded-r-lg">
-                    <p className="font-bold">Titik (p): <span className="font-mono text-primary">{item.p}</span></p>
+                    <p className="font-bold">Titik Kontur (p): <span className="font-mono text-primary">{item.p}</span></p>
                     <hr className="my-2 border-border/50" />
-                    <p className="text-sm text-muted-foreground">Jarak Khusus:</p>
+                    <p className="text-sm text-muted-foreground">Jarak di Peta:</p>
                     <p className="font-mono text-foreground break-words">{item.distance}</p>
                     <p className="text-xs text-muted-foreground/70 mt-1 break-words">Formula: {item.formula}</p>
                   </div>
