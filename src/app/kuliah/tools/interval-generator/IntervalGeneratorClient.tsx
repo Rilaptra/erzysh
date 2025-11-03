@@ -110,8 +110,8 @@ export default function IntervalGeneratorClient() {
   
   const handleGenerate = useCallback(() => {
     try {
-      const bT = parseFloat(startNum);
-      const cT = parseFloat(endNum);
+      const b = parseFloat(startNum);
+      const c = parseFloat(endNum);
       const a = parseFloat(intervalNum);
       const dimension = parseFloat(dimensi);
 
