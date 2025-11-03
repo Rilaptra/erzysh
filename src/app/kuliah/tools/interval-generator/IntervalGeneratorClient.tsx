@@ -22,17 +22,16 @@ export default function IntervalGeneratorClient() {
   const [dimensi, setDimensi] = useState("")
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Result[]>([]);
-
-  const handleGenerate = useCallback(() => {
-    // 1. Reset
-    setError(null);
-    setResults([]);
-
     // 2. Parse & Validate
     const b = parseFloat(startNum); // Angka Awal (b)
     const c = parseFloat(endNum);   // Angka Akhir (c)
     const a = parseFloat(intervalNum); // Interval (a)
     const dimension = parseFloat(dimensi)
+
+  const handleGenerate = useCallback(() => {
+    // 1. Reset
+    setError(null);
+    setResults([]);
 
     if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimension)) {
       setError("Semua field (b, c, a) harus diisi dengan angka.");
