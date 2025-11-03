@@ -19,6 +19,7 @@ export default function IntervalGeneratorClient() {
   const [startNum, setStartNum] = useState("");
   const [endNum, setEndNum] = useState("");
   const [intervalNum, setIntervalNum] = useState("");
+  const [dimensi, setDimensi] = useState("")
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Result[]>([]);
 
@@ -31,8 +32,9 @@ export default function IntervalGeneratorClient() {
     const b = parseFloat(startNum); // Angka Awal (b)
     const c = parseFloat(endNum);   // Angka Akhir (c)
     const a = parseFloat(intervalNum); // Interval (a)
+    const dimension = parseFloat(dimensi)
 
-    if (isNaN(b) || isNaN(c) || isNaN(a)) {
+    if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimensi)) {
       setError("Semua field (b, c, a) harus diisi dengan angka.");
       return;
     }
@@ -48,7 +50,9 @@ export default function IntervalGeneratorClient() {
       setError("Angka Awal (b) tidak boleh sama dengan Interval (a) karena menyebabkan pembagi nol.");
       return;
     }
-
+    if (dimensi == 0) {
+      setError("Dimensi tidak boleh 0!")
+    }
     // 3. Generate points & calculate distance
     const newResults: Result[] = [];
     const distanceDenominator = Math.abs(c - b);
@@ -63,12 +67,12 @@ export default function IntervalGeneratorClient() {
 
       const p = current;
       const distanceNumerator = p - b;
-      const distance = (distanceNumerator / distanceDenominator) * 3;
+      const distance = (distanceNumerator / distanceDenominator) * dimension;
 
       newResults.push({
         p: p.toLocaleString('id-ID', { maximumFractionDigits: 4 }),
         distance: distance.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
-        formula: `(${(p - b).toFixed(2)}) / (${distanceDenominator.toFixed(2)}) * 3`,
+        formula: `(${p} - ${b}) / (${c} - ${b}) * ${dimension}`,
       });
     }
 
@@ -88,7 +92,7 @@ export default function IntervalGeneratorClient() {
             🚀 Generator Interval & Jarak Khusus
           </CardTitle>
           <CardDescription>
-            Hasil $p$ di antara $b$ dan $c$ dengan interval $a$.
+            Hasil Titik Kontur di antara Ketinggian {b} dan Ketinggian {c} dengan interval {a} dan dimensi {dimension}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,6 +108,10 @@ export default function IntervalGeneratorClient() {
             <div>
               <Label htmlFor="intervalNum">Interval (a)</Label>
               <Input type="number" step="any" id="intervalNum" placeholder="Contoh: 2.5" value={intervalNum} onChange={(e) => setIntervalNum(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="dimensionNum">Dimensi Kotak Grid (panjang garis grid)</Label>
+              <Input type="number" step="any" id="dimensionNum" placeholder="Contoh: 3 (3cm)" value={dimensi} onChange={(e) => setDimensi(e.target.value)} />
             </div>
           </div>
 
