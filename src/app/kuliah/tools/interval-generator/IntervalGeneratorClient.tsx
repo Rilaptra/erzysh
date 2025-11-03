@@ -50,7 +50,7 @@ export default function IntervalGeneratorClient() {
       setError("Angka Awal (b) tidak boleh sama dengan Interval (a) karena menyebabkan pembagi nol.");
       return;
     }
-    if (dimensions == 0) {
+    if (dimension == 0) {
       setError("Dimensi tidak boleh 0!")
     }
     // 3. Generate points & calculate distance
