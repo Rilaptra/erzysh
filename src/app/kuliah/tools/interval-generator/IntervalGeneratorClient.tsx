@@ -34,7 +34,7 @@ export default function IntervalGeneratorClient() {
     const a = parseFloat(intervalNum); // Interval (a)
     const dimension = parseFloat(dimensi)
 
-    if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimensi)) {
+    if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimension)) {
       setError("Semua field (b, c, a) harus diisi dengan angka.");
       return;
     }
@@ -50,7 +50,7 @@ export default function IntervalGeneratorClient() {
       setError("Angka Awal (b) tidak boleh sama dengan Interval (a) karena menyebabkan pembagi nol.");
       return;
     }
-    if (dimensi == 0) {
+    if (dimensions == 0) {
       setError("Dimensi tidak boleh 0!")
     }
     // 3. Generate points & calculate distance
