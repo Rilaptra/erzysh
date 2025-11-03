@@ -7,34 +7,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Rocket } from "lucide-react";
+import { Rocket, MoveHorizontal } from "lucide-react"; // <-- Tambah ikon baru
 
+// --- 👇 PERBAIKAN #1: Interface Result di-update ---
 interface Result {
   p: string;
-  distance: string;
-  formula: string;
+  distanceFromStart: string;
+  formulaFromStart: string;
+  distanceFromEnd: string;
+  formulaFromEnd: string;
 }
 
 export default function IntervalGeneratorClient() {
   const [startNum, setStartNum] = useState("");
   const [endNum, setEndNum] = useState("");
   const [intervalNum, setIntervalNum] = useState("");
-  const [dimensi, setDimensi] = useState(""); // <-- State baru lo
+  const [dimensi, setDimensi] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Result[]>([]);
 
   const handleGenerate = useCallback(() => {
-    // 1. Reset
+    // Reset
     setError(null);
     setResults([]);
 
-    // 2. Parse & Validate
+    // Parse & Validate
     const b = parseFloat(startNum);
     const c = parseFloat(endNum);
     const a = parseFloat(intervalNum);
     const dimension = parseFloat(dimensi);
 
-    // --- 👇 PERBAIKAN #2: Pesan Error Lebih Akurat ---
     if (isNaN(b) || isNaN(c) || isNaN(a) || isNaN(dimension)) {
       setError("Semua field (b, c, a, dimensi) harus diisi dengan angka.");
       return;
@@ -47,36 +49,39 @@ export default function IntervalGeneratorClient() {
       setError("Angka Awal (b) harus lebih kecil dari Angka Akhir (c).");
       return;
     }
-    if (b === a) {
-      setError("Angka Awal (b) tidak boleh sama dengan Interval (a) karena menyebabkan pembagi nol.");
-      return;
-    }
     if (dimension === 0) {
       setError("Dimensi tidak boleh 0!");
       return;
     }
 
-    // 3. Generate points & calculate distance
+    // Generate points & calculate distances
     const newResults: Result[] = [];
     const distanceDenominator = Math.abs(c - b);
     
-    // Logika pembulatan ke kelipatan 5 terdekat di bawahnya
     const startReal = Math.floor(b / 5) * 5;
 
     for (let current = startReal + a; current < c; current += a) {
       if (current <= b) {
-        continue; // Hanya ambil titik yang LEBIH BESAR dari b
+        continue;
       }
 
       const p = current;
-      const distanceNumerator = p - b;
-      const distance = (distanceNumerator / distanceDenominator) * dimension;
+
+      // --- 👇 PERBAIKAN #2: Hitung kedua jarak ---
+      // Jarak dari titik awal (b)
+      const distanceNumeratorFromStart = p - b;
+      const distanceFromStart = (distanceNumeratorFromStart / distanceDenominator) * dimension;
+
+      // Jarak dari titik akhir (c)
+      const distanceNumeratorFromEnd = c - p;
+      const distanceFromEnd = (distanceNumeratorFromEnd / distanceDenominator) * dimension;
 
       newResults.push({
         p: p.toLocaleString('id-ID', { maximumFractionDigits: 4 }),
-        distance: distance.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
-        // --- 👇 PERBAIKAN #3: Formula Dinamis ---
-        formula: `(${p.toFixed(2)} - ${b.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
+        distanceFromStart: distanceFromStart.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
+        formulaFromStart: `(${p.toFixed(2)} - ${b.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
+        distanceFromEnd: distanceFromEnd.toLocaleString('id-ID', { maximumFractionDigits: 8 }),
+        formulaFromEnd: `(${c.toFixed(2)} - ${p.toFixed(2)}) / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
       });
     }
 
@@ -86,7 +91,6 @@ export default function IntervalGeneratorClient() {
     } else {
       toast.info("Tidak ada titik yang ditemukan dalam rentang tersebut.");
     }
-    // --- 👇 PERBAIKAN #1 (UTAMA): Tambahkan 'dimensi' di sini ---
   }, [startNum, endNum, intervalNum, dimensi]);
 
   return (
@@ -96,7 +100,6 @@ export default function IntervalGeneratorClient() {
           <CardTitle className="text-2xl font-bold">
             🚀 Generator Interval & Jarak Khusus
           </CardTitle>
-          {/* --- 👇 PERBAIKAN #4: Deskripsi Dinamis --- */}
           <CardDescription>
             Hasil titik kontur di antara {startNum || 'b'} dan {endNum || 'c'} dengan interval {intervalNum || 'a'} & dimensi {dimensi || 'd'}.
           </CardDescription>
@@ -132,16 +135,40 @@ export default function IntervalGeneratorClient() {
             <div className="mt-6 pt-4 border-t">
               <h2 className="text-lg font-semibold mb-3">Hasil Titik dan Informasi Jarak:</h2>
               <p className="text-muted-foreground text-xs mb-4">
-                Jarak dihitung dengan formula: {`{ (p - b) / (c - b) * d }`}
+                Jarak dihitung dengan interpolasi linear terhadap dimensi peta (d).
               </p>
-              <div className="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto pr-2">
+              <div className="grid grid-cols-1 gap-4 max-h-[28rem] overflow-y-auto pr-2">
                 {results.map((item, index) => (
+                  // --- 👇 PERBAIKAN #3: Tampilan Kartu Hasil di-update ---
                   <div key={index} className="bg-muted border-l-4 border-primary p-4 rounded-r-lg">
-                    <p className="font-bold">Titik Kontur (p): <span className="font-mono text-primary">{item.p}</span></p>
+                    <p className="font-bold">
+                      Titik Kontur (p): <span className="font-mono text-primary">{item.p}</span>
+                    </p>
                     <hr className="my-2 border-border/50" />
-                    <p className="text-sm text-muted-foreground">Jarak di Peta:</p>
-                    <p className="font-mono text-foreground break-words">{item.distance}</p>
-                    <p className="text-xs text-muted-foreground/70 mt-1 break-words">Formula: {item.formula}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Jarak dari Titik Awal */}
+                      <div>
+                        <p className="text-sm text-muted-foreground">Jarak dari Awal (b):</p>
+                        <p className="font-mono text-foreground break-words">{item.distanceFromStart}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1 break-words">
+                          Formula: {item.formulaFromStart}
+                        </p>
+                      </div>
+                      {/* Jarak dari Titik Akhir */}
+                      <div>
+                        <p className="text-sm text-muted-foreground">Jarak dari Akhir (c):</p>
+                        <p className="font-mono text-foreground break-words">{item.distanceFromEnd}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1 break-words">
+                          Formula: {item.formulaFromEnd}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Total Dimensi */}
+                    <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground/80">
+                      <span>Jarak dari Awal</span>
+                      <MoveHorizontal className="h-4 w-4" />
+                      <span>Jarak dari Akhir = {dimensi}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -151,4 +178,4 @@ export default function IntervalGeneratorClient() {
       </Card>
     </main>
   );
-}
+      }
