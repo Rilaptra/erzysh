@@ -55,7 +55,7 @@ function ToolButtons() {
       href: "/kuliah/tools/sipadu-leaked",
       label: "Sipadu Leaked",
       icon: <GraduationCap className="mr-2 h-4 w-4" />, // Pastikan ini ada jika tool-nya ada
-      adminOnly: false,
+      adminOnly: true,
     },
   ];
 
