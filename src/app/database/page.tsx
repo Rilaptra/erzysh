@@ -20,6 +20,7 @@ async function getDashboardData() {
   }
 
   try {
+    console.log(process.env.NEXT_PUBLIC_APP_URL);
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
       {

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         { status: 401 },
       );
     }
-
+    //                       1m   1h   1d   1w
     const expiresInSeconds = 60 * 60 * 24 * 7;
 
     const token = jwt.sign(
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         messageId: user.message_id,
       },
       JWT_SECRET,
-      { expiresIn: `${expiresInSeconds}s` }, // Token berlaku selama 1 jam
+      { expiresIn: `${expiresInSeconds}s` },
     );
 
     const response = NextResponse.json(

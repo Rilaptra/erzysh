@@ -88,7 +88,7 @@ export default function Home() {
       {/* Konten Utama */}
       <div className="z-10 flex flex-col items-center justify-center px-4 text-center">
         <div className="overflow-hidden pb-4">
-          <h1 className="gsap-reveal-text from-off-white bg-gradient-to-b to-gray-400 bg-clip-text text-5xl font-bold tracking-tighter text-transparent md:text-7xl">
+          <h1 className="gsap-reveal-text from-off-white bg-linear-to-b to-gray-400 bg-clip-text text-5xl font-bold tracking-tighter text-transparent md:text-7xl">
             Erzysh
           </h1>
         </div>
