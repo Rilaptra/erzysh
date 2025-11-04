@@ -231,7 +231,7 @@ export default function IntervalGeneratorClient() {
               />
             </div>
             <div>
-              <Label htmlFor="dimensionNum">Dimensi Peta</Label>
+              <Label htmlFor="dimensionNum">Dimensi Kotak Grid</Label>
               <Input
                 type="number"
                 step="any"

@@ -103,7 +103,7 @@ export default function KuliahPage() {
       <h1 className="text-primary mb-8 text-4xl font-bold">Tools Kuliah</h1>
       <Suspense
         fallback={
-          <div className="h-12 w-64 animate-pulse rounded-md bg-muted" />
+          <div className="bg-muted h-12 w-64 animate-pulse rounded-md" />
         }
       >
         <ToolButtons />
