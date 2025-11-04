@@ -29,7 +29,6 @@ async function getDashboardData() {
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
       {
         headers: { Cookie: `token=${token.value}` },
-        cache: "no-store",
       },
     );
     if (!res.ok) {
@@ -53,7 +52,6 @@ async function getUserData(): Promise<UserPayload> {
     `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/me`,
     {
       headers: { Cookie: `token=${token.value}` },
-      cache: "no-store",
     },
   );
   if (!res.ok) redirect("/login");
@@ -71,7 +69,6 @@ async function getTugasData(): Promise<Tugas[]> {
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database/1409908765074919585/1409908859971309681?full=true`,
       {
         headers: { Cookie: `token=${token.value}; x-user-id=${userID?.value}` },
-        cache: "no-store",
       },
     );
     if (!tugasRes.ok) return [];

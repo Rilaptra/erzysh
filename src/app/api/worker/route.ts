@@ -6,11 +6,11 @@ import {
   sendMessage,
   editMessage,
   fileAttachmentsBuilder,
+  slugify,
 } from "@/lib/utils";
 import { GUILD_ID } from "@/lib/constants";
 import {
   CHANNEL_TYPE,
-  slugify,
   updateUserData,
   getUsersData,
   MessageMetadata,

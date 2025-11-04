@@ -7,16 +7,21 @@ import {
   DiscordPartialMessageResponse,
   SendMessageOptions,
 } from "@/types";
-import {
-  FILE_SIZE_LIMIT,
-  GUILD_ID,
-} from "./constants";
+import { FILE_SIZE_LIMIT, GUILD_ID } from "./constants";
 import chalk from "chalk";
 import { MessageMetadata } from "@/app/api/database/helpers";
-import { ApiDbProcessedMessage } from "@/types/api-db-response";
+import {
+  ApiDbErrorResponse,
+  ApiDbProcessedMessage,
+  GetApiDatabaseCategoryMessagesResponse,
+  GetApiDatabaseChannelMessagesResponse,
+  GetApiDatabaseMessageResponse,
+  GetApiDatabaseResponse,
+} from "@/types/api-db-response";
 
 import { discord } from "./discord-api-handler";
-
+import { cache } from "react";
+import { NextResponse } from "next/server";
 
 /**
  * Mengirim pesan ke channel Discord.
@@ -89,7 +94,7 @@ export async function sendMessage(
         ? discord.patch<DiscordPartialMessageResponse>(route, formData, true)
         : discord.patch<DiscordPartialMessageResponse>(route, payload)
       : hasFiles
-        ? discord.post<DiscordPartialMessageResponse>(route, formData, true) 
+        ? discord.post<DiscordPartialMessageResponse>(route, formData, true)
         : discord.post<DiscordPartialMessageResponse>(route, payload));
 
     if (!result) {
@@ -129,41 +134,45 @@ export async function editMessage(
  * @returns Array of DiscordPartialChannelResponse.
  * @throws Error jika gagal mengambil channel.
  */
-export async function getChannels(): Promise<DiscordPartialChannelResponse[]> {
-  try {
-    const channels = await discord.get<
-      { parent_id: string; id: string; name: string; type: number }[]
-    >(`/guilds/${GUILD_ID}/channels`);
+export const getChannels = cache(
+  async (): Promise<DiscordPartialChannelResponse[]> => {
+    try {
+      const channels = await discord.get<
+        { parent_id: string; id: string; name: string; type: number }[]
+      >(`/guilds/${GUILD_ID}/channels`);
 
-    if (!channels) {
-      throw new Error("Failed to fetch channels from Discord.");
-    }
-
-    // Mapping channel biar lebih gampang dibaca
-    const formattedChannels = channels.map((channel) => {
-      let parentName = "No Category";
-      if (channel.parent_id) {
-        const parentChannel = channels.find((c) => c.id === channel.parent_id);
-        if (parentChannel) {
-          parentName = parentChannel.name;
-        }
+      if (!channels) {
+        throw new Error("Failed to fetch channels from Discord.");
       }
-      return {
-        id: channel.id,
-        name: channel.name,
-        isCategory: channel.type === 4,
-        type: channel.type,
-        categoryId: channel.parent_id || null,
-        category: parentName,
-      };
-    });
 
-    return formattedChannels;
-  } catch (error) {
-    console.error("Error fetching channels:", error);
-    throw error; // Propagate error
-  }
-}
+      // Mapping channel biar lebih gampang dibaca
+      const formattedChannels = channels.map((channel) => {
+        let parentName = "No Category";
+        if (channel.parent_id) {
+          const parentChannel = channels.find(
+            (c) => c.id === channel.parent_id,
+          );
+          if (parentChannel) {
+            parentName = parentChannel.name;
+          }
+        }
+        return {
+          id: channel.id,
+          name: channel.name,
+          isCategory: channel.type === 4,
+          type: channel.type,
+          categoryId: channel.parent_id || null,
+          category: parentName,
+        };
+      });
+
+      return formattedChannels;
+    } catch (error) {
+      console.error("Error fetching channels:", error);
+      throw error; // Propagate error
+    }
+  },
+);
 
 /**
  * Mendapatkan semua channel yang berada di bawah satu kategori (parent).
@@ -245,26 +254,28 @@ export async function getChannel(
  * @returns Array of DiscordPartialMessageResponse atau null jika error.
  * @throws Error jika gagal mengambil pesan.
  */
-export async function getMessagesFromChannel(
-  channelId: string,
-): Promise<ApiDbProcessedMessage[]> {
-  try {
-    const messages = await discord.get<DiscordMessage[]>(
-      `/channels/${channelId}/messages`,
-    );
+export const getMessagesFromChannel = cache(
+  async (channelId: string): Promise<ApiDbProcessedMessage[]> => {
+    try {
+      const messages = await discord.get<DiscordMessage[]>(
+        `/channels/${channelId}/messages`,
+      );
 
-    if (!messages) {
-      throw new Error("Failed to fetch messages from Discord.");
+      if (!messages) {
+        throw new Error("Failed to fetch messages from Discord.");
+      }
+
+      const sanitizedMessages = messages.map((msg) =>
+        sanitizeMessage(msg, true),
+      );
+      const processedMessages = sanitizedMessages.map(processMessage);
+      return processedMessages;
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      throw error;
     }
-
-    const sanitizedMessages = messages.map((msg) => sanitizeMessage(msg, true));
-    const processedMessages = sanitizedMessages.map(processMessage);
-    return processedMessages;
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    throw error;
-  }
-}
+  },
+);
 
 export function processMessage(
   messages: SanitizedMessage,
@@ -380,3 +391,29 @@ export function sanitizeMessage(
     };
   }
 }
+
+export function createApiResponse<
+  T extends
+    | ApiDbErrorResponse
+    | GetApiDatabaseResponse
+    | GetApiDatabaseCategoryMessagesResponse
+    | GetApiDatabaseChannelMessagesResponse
+    | GetApiDatabaseMessageResponse,
+>(data: T, status: number): NextResponse<T> {
+  return NextResponse.json(data, {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export function slugify(text: string): string {
+  if (typeof text !== "string") return "";
+  return text
+    .toString() // Ensure it's a string
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/[^\w-]+/g, "") // Remove all non-word chars
+    .replace(/--+/g, "-"); // Replace multiple - with single -
+}
+

@@ -5,7 +5,7 @@ import { useState } from "react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import imageCompression from "browser-image-compression";
-import { arrayBufferToBase64, getMimeType } from "../utils/file-utils";
+import { arrayBufferToBase64 } from "../utils/file-utils";
 import {
   createContentTypes,
   createMainRels,
@@ -15,6 +15,7 @@ import {
   appendToRels,
 } from "../utils/docx-generator";
 import type { SelectedImage, UserInfo, ProgressStatus } from "@/types";
+import { getMimeType } from "@/lib/utils.client";
 
 export const useDocxGenerator = () => {
   const [progress, setProgress] = useState<ProgressStatus>({

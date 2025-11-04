@@ -64,12 +64,12 @@ const DocxGeneratorPage = ({ admin }: { admin: boolean }) => {
 
   return (
     <>
-      <div className="dark:to-dark-shale fixed inset-0 -z-10 bg-gradient-to-br from-purple-200 via-indigo-200 to-blue-200 dark:from-gray-900" />
+      <div className="dark:to-dark-shale fixed inset-0 -z-10 bg-linear-to-br from-purple-200 via-indigo-200 to-blue-200 dark:from-gray-900" />
 
       <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-6 md:p-8">
         <div className="ring-opacity-5 dark:bg-dark-shale/80 w-full max-w-2xl space-y-6 rounded-2xl bg-white/70 p-8 shadow-2xl ring-1 ring-black backdrop-blur-xl dark:ring-white/10">
           <div className="text-center">
-            <h1 className="bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl">
+            <h1 className="bg-linear-to-r from-indigo-500 to-purple-600 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl">
               Photo to DOCX
             </h1>
             <p className="dark:text-off-white/70 mt-2 text-gray-600">

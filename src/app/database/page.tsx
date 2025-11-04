@@ -25,7 +25,6 @@ async function getDashboardData() {
       `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/database`,
       {
         headers: { Cookie: `token=${token.value}` },
-        cache: "no-store",
       },
     );
 
@@ -51,7 +50,6 @@ async function getUserData(): Promise<UserPayload> {
     `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/auth/me`,
     {
       headers: { Cookie: `token=${token.value}` },
-      cache: "no-store",
     },
   );
 

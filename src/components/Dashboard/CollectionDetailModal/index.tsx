@@ -36,6 +36,7 @@ import {
 } from "../Helper/cache";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { getMimeType } from "@/lib/utils.client";
 
 interface CollectionDetailsModalProps {
   isOpen: boolean;
@@ -56,29 +57,6 @@ const getFileType = (fileName: string) => {
   return "other";
 };
 
-// --- BARU: Helper untuk mendapatkan MIME type dari ekstensi file ---
-const getMimeType = (fileName: string): string => {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-  switch (extension) {
-    case "png":
-      return "image/png";
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "gif":
-      return "image/gif";
-    case "webp":
-      return "image/webp"; // Buffer 'RIFF' biasanya adalah WEBP
-    case "mp4":
-      return "video/mp4";
-    case "webm":
-      return "video/webm";
-    case "ogg":
-      return "video/ogg";
-    default:
-      return "application/octet-stream"; // Tipe default
-  }
-};
 
 export function CollectionDetailsModal({
   isOpen,

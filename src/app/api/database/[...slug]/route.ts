@@ -20,15 +20,12 @@ import type {
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createApiResponse,
   handleDiscordApiCall,
   loadBodyRequest,
-  slugify,
   updateActivityLog,
   CHANNEL_TYPE,
   updateUserData,
   getUsersData,
-  getMimeType,
   MessageMetadata,
 } from "../helpers";
 import {
@@ -39,6 +36,9 @@ import {
 } from "@/types/api-db-response";
 import { verifyAuth } from "@/lib/authUtils";
 import { discord } from "@/lib/discord-api-handler";
+
+import { slugify, createApiResponse } from "@/lib/utils";
+import { getMimeType } from "@/lib/utils.client";
 // --- Helper to get user info from headers ---
 function getAuthInfo(req: NextRequest) {
   const userID = req.cookies.get("x-user-id")?.value;
@@ -459,9 +459,11 @@ export async function DELETE(
         //   ),
         // "Message deleted successfully",
         async () => {
-          const data = await discord.delete<null>(`/channels/${channelId}/messages/${messageId}`)
-          console.log("deleted message", messageId, "data", data)
-          return data
+          const data = await discord.delete<null>(
+            `/channels/${channelId}/messages/${messageId}`,
+          );
+          console.log("deleted message", messageId, "data", data);
+          return data;
         },
         "Message deleted successfully",
       );

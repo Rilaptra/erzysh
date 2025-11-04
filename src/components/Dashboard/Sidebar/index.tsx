@@ -1,6 +1,7 @@
-// src/components/Dashboard/Sidebar/index.tsx
 "use client";
+
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,33 +23,29 @@ import {
   Check,
   X,
 } from "lucide-react";
-import type {
-  ApiDbCreateCategoryRequest,
-  ApiDbUpdateCategoryRequest,
-  DiscordCategory,
-} from "@/types";
 import { cn } from "@/lib/cn";
+import type { DiscordCategory } from "@/types";
+
+import {
+  createCategoryAction,
+  updateCategoryAction,
+  deleteCategoryAction,
+} from "@/lib/actions";
 
 interface CategorySidebarProps {
   categories: DiscordCategory[];
   activeCategoryId: string | null;
   onSelectCategory: (id: string) => void;
-  onCategoryCreated: () => void;
-  onCategoryDeleted: () => void;
-  onCategoryUpdated: () => void;
-  isOpen: boolean; // <-- PROP BARU
-  onClose: () => void; // <-- PROP BARU
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export function CategorySidebar({
   categories,
   activeCategoryId,
   onSelectCategory,
-  onCategoryCreated,
-  onCategoryDeleted,
-  onCategoryUpdated,
-  isOpen, // <-- PROP BARU
-  onClose, // <-- PROP BARU
+  isOpen,
+  onClose,
 }: CategorySidebarProps) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -64,24 +61,32 @@ export function CategorySidebar({
   const handleCreateCategory = async () => {
     if (!newCategoryName) return;
     setIsCreating(true);
-    await fetch("/api/database", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        data: { name: newCategoryName },
-      } as ApiDbCreateCategoryRequest),
-    });
-    setIsCreating(false);
-    setNewCategoryName("");
-    setOpen(false);
-    onCategoryCreated();
+    try {
+      await createCategoryAction(newCategoryName);
+      toast.success(`Container "${newCategoryName}" created!`);
+      setNewCategoryName("");
+      setOpen(false);
+    } catch (error) {
+      toast.error("Failed to create container", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
     setIsDeleting(id);
-    await fetch(`/api/database/${id}`, { method: "DELETE" });
-    setIsDeleting(null);
-    onCategoryDeleted();
+    try {
+      await deleteCategoryAction(id);
+      toast.success("Container deleted.");
+    } catch (error) {
+      toast.error("Failed to delete container", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const handleStartEdit = (cat: DiscordCategory) => {
@@ -93,25 +98,25 @@ export function CategorySidebar({
   const handleUpdateCategoryName = async (id: string) => {
     if (!editingCategoryName || isUpdating) return;
     setIsUpdating(true);
-    await fetch(`/api/database/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        data: { name: editingCategoryName },
-      } as ApiDbUpdateCategoryRequest),
-    });
-    setIsUpdating(false);
-    setEditingCategoryId(null);
-    setEditingCategoryName("");
-    onCategoryUpdated();
+    try {
+      await updateCategoryAction(id, editingCategoryName);
+      toast.success("Container updated.");
+    } catch (error) {
+      toast.error("Failed to update container", {
+        description: (error as Error).message,
+      });
+    } finally {
+      setIsUpdating(false);
+      setEditingCategoryId(null);
+      setEditingCategoryName("");
+    }
   };
 
   return (
     <aside
       className={cn(
-        "bg-dark-shale/20 border-gunmetal/50 z-20 flex w-52 flex-shrink-0 transform flex-col space-y-4 border-r p-4 backdrop-blur-sm transition-transform duration-300 ease-in-out md:w-64",
-        // Logika untuk mobile vs desktop
-        "fixed top-16 bottom-0 left-0 lg:static lg:translate-x-0", // <-- INI SOLUSINYA
+        "bg-dark-shale/20 border-gunmetal/50 z-20 flex w-52 shrink-0 transform flex-col space-y-4 border-r p-4 backdrop-blur-sm transition-transform duration-300 ease-in-out md:w-64",
+        "fixed top-16 bottom-0 left-0 lg:static lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full",
       )}
     >
@@ -119,7 +124,6 @@ export function CategorySidebar({
         <h2 className="text-off-white flex items-center gap-2 text-lg font-bold">
           <Database size={20} /> Containers
         </h2>
-        {/* Ganti DialogTrigger dengan tombol + biasa, lalu tombol X untuk mobile */}
         <div className="flex items-center">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>

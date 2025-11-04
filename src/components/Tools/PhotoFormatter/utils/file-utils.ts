@@ -67,26 +67,3 @@ export const processZipFile = async (file: File): Promise<SelectedImage[]> => {
 
   return processedImages;
 };
-
-/**
- * Mendapatkan tipe MIME dari ekstensi nama file.
- */
-export const getMimeType = (filename: string): string => {
-  const extension = filename.split(".").pop()?.toLowerCase();
-  switch (extension) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "gif":
-      return "image/gif";
-    case "bmp":
-      return "image/bmp";
-    case "webp":
-      return "image/webp";
-    default:
-      // Fallback jika tipe tidak diketahui
-      return "application/octet-stream";
-  }
-};

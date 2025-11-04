@@ -1,5 +1,8 @@
 // /api/database/route.ts
-import { getChannels, getMessagesFromChannel } from "@/lib/utils";
+import {
+  createApiResponse,
+  slugify,
+   getChannels, getMessagesFromChannel } from "@/lib/utils";
 import { discord } from "@/lib/discord-api-handler";
 import {
   DiscordCategory,
@@ -10,9 +13,7 @@ import {
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createApiResponse,
   handleDiscordApiCall,
-  slugify,
   CHANNEL_TYPE,
   updateUserData,
   getUsersData,
