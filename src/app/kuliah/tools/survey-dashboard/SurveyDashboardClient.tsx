@@ -34,7 +34,7 @@ import { useTheme } from "@/components/ThemeProvider";
 
 Chart.register(...registerables);
 
-// --- DATA AWAL & KONSTANTA (Sama seperti sebelumnya) ---
+// --- DATA AWAL & KONSTANTA (Tidak berubah) ---
 const defaultCsvData = `"Cap waktu","Total skor","Nama","Nama [Skor]","Nama [Masukan]","Domisili (sertakan link gmaps domisili anda)","Moda yang digunakan sehari-hari","Senin (berapa kali berangkat ke kampus)","Selasa (berapa kali berangkat ke kampus)","Rabu (berapa kali berangkat ke kampus)","Kamis (berapa kali berangkat ke kampus)","Jumat (berapa kali berangkat ke kampus)"
 "2025/10/24 6:46:43 PM GMT+7","0.00 / 0","Rizqi Lasheva","https://maps.app.goo.gl/QdR88QYhnTWzueG37","Motor",1,1,1,1,1
 "2025/10/24 6:49:54 PM GMT+7","0.00 / 0","Korindo Chaesa","https://maps.app.goo.gl/J6ZKGSUKEwVdzFJf9","Mobil",1,1,1,1,1
@@ -51,7 +51,7 @@ const TRAVEL_MODE_CODES: { [key: string]: string } = {
   "transportasi umum": "3",
 };
 
-// --- FUNGSI HELPER (Tidak berubah) ---
+// --- FUNGSI HELPER (parseCSV tidak berubah) ---
 function parseCSV(csvText: string) {
   if (!csvText) return [];
   const lines = csvText.trim().split("\n");
@@ -72,43 +72,33 @@ function parseCSV(csvText: string) {
     return rowObject;
   });
 }
-async function fetchCoordinates(url: string) {
+
+// --- 👇 PERUBAHAN DI SINI: FUNGSI HELPER FETCH KOORDINAT ---
+// Fungsi ini sekarang manggil API Route internal kita, bukan proxy eksternal.
+async function fetchCoordinates(url: string): Promise<string | null> {
   if (!url || !url.startsWith("http")) return null;
-  const COORD_PATTERNS = [
-    /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-    /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
-    /\[null,null,(-?\d+\.\d+),(-?\d+\.\d+)\]/,
-  ];
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-  const maxRetries = 3;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(proxyUrl);
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-      const text = await response.text();
-      for (const pattern of COORD_PATTERNS) {
-        const match = text.match(pattern);
-        if (match) {
-          const lat = parseFloat(match[1] || match[3]).toFixed(6);
-          const lon = parseFloat(match[2] || match[4]).toFixed(6);
-          return `${lat}, ${lon}`;
-        }
-      }
-      return null;
-    } catch (error) {
-      if (attempt < maxRetries - 1) {
-        const delay = Math.pow(2, attempt) * 1000;
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      } else {
-        console.error(`Failed to fetch ${url}:`, error);
-        return null;
-      }
+
+  try {
+    const response = await fetch(
+      `/api/get-coordinates?url=${encodeURIComponent(url)}`,
+    );
+    if (!response.ok) {
+      // Jika status 404, artinya server sudah cari tapi nggak nemu.
+      if (response.status === 404) return null;
+      // Error lain dianggap masalah server
+      throw new Error(`Server error! status: ${response.status}`);
     }
+
+    const data = await response.json();
+    return data.coordinate || null; // API kita ngirim balik { coordinate: "..." }
+  } catch (error) {
+    console.error(`Gagal mengambil koordinat untuk ${url}:`, error);
+    return null; // Return null jika ada error network atau parsing
   }
 }
+// --- 🔼 AKHIR PERUBAHAN ---
 
-// --- SUB-KOMPONEN ---
+// --- SUB-KOMPONEN DataTableRow (Tidak berubah) ---
 interface DataTableRowProps {
   rowData: { [key: string]: string };
   headers: string[];
@@ -137,7 +127,9 @@ const DataTableRow = ({
           if (finalCoord !== "❌") onCoordUpdate(finalCoord);
         }
       });
-    } else if (!domisiliUrl || domisiliUrl === "N/A") setCoordinate("N/A");
+    } else if (!domisiliUrl || domisiliUrl === "N/A") {
+      setCoordinate("N/A");
+    }
     return () => {
       isMounted = false;
     };
@@ -187,7 +179,7 @@ const DataTableRow = ({
   );
 };
 
-// --- KOMPONEN UTAMA ---
+// --- KOMPONEN UTAMA (Sisa kode tidak ada perubahan signifikan) ---
 export default function SurveyDashboardClient() {
   const [rawData, setRawData] = useState<{ [key: string]: string }[]>([]);
   const [coordsMap, setCoordsMap] = useState<{ [key: string]: string }>({});
@@ -452,7 +444,7 @@ export default function SurveyDashboardClient() {
       </Card>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-grow">
+        <div className="relative grow">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Cari Nama, Domisili, Moda..."
