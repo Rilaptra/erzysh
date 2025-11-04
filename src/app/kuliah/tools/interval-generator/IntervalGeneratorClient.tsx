@@ -51,9 +51,9 @@ function usePersistentState<T>(
 // Tipe untuk hasil perhitungan
 interface Result {
   p: string;
-  distanceFromStart: string;
+  distanceFromStart: number;
   formulaFromStart: string;
-  distanceFromEnd: string;
+  distanceFromEnd: number;
   formulaFromEnd: string;
 }
 
@@ -108,19 +108,16 @@ function calculateIntervals(
     const deltaCP = selisihKontur(c, p);
 
     // Jarak dari titik b (bisa positif/negatif tergantung urutan)
-    const distanceFromStart = (deltaPB.result / distanceDenominator) * dimension;
+    const distanceFromStart =
+      (deltaPB.result / distanceDenominator) * dimension;
     // Jarak dari titik c
     const distanceFromEnd = (deltaCP.result / distanceDenominator) * dimension;
 
     newResults.push({
       p: p.toLocaleString("id-ID", { maximumFractionDigits: 4 }),
-      distanceFromStart: distanceFromStart.toLocaleString("id-ID", {
-        maximumFractionDigits: 8,
-      }),
+      distanceFromStart: distanceFromStart,
       formulaFromStart: `${deltaPB.format} / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
-      distanceFromEnd: distanceFromEnd.toLocaleString("id-ID", {
-        maximumFractionDigits: 8,
-      }),
+      distanceFromEnd: distanceFromEnd,
       formulaFromEnd: `${deltaCP.format} / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
     });
   }
@@ -190,7 +187,7 @@ export default function IntervalGeneratorClient() {
           <div className="space-y-4">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Label htmlFor="startNum">Ketinggian Awal </Label>
+                <Label htmlFor="startNum">Ketinggian Awal</Label>
                 <Input
                   type="number"
                   id="startNum"
@@ -260,7 +257,7 @@ export default function IntervalGeneratorClient() {
               <h2 className="mb-3 text-lg font-semibold">
                 Hasil Titik dan Informasi Jarak:
               </h2>
-              <div className="grid max-h-[28rem] grid-cols-1 gap-4 overflow-y-auto pr-2">
+              <div className="grid grid-cols-1 gap-4 pr-2">
                 {results.map((item, index) => (
                   <div
                     key={index}
@@ -276,10 +273,16 @@ export default function IntervalGeneratorClient() {
                         <p className="text-muted-foreground text-sm">
                           Jarak dari {startNum} ke {endNum}:
                         </p>
-                        <p className="text-foreground font-mono break-words">
-                          {item.distanceFromStart}
+                        <p className="text-foreground font-mono wrap-break-word">
+                          {item.distanceFromStart.toLocaleString("id-ID", {
+                            maximumFractionDigits: 4,
+                          })}
+                          {" ≈ "}
+                          {item.distanceFromStart.toLocaleString("id-ID", {
+                            maximumFractionDigits: 2,
+                          })}
                         </p>
-                        <p className="text-muted-foreground/70 mt-1 text-xs break-words">
+                        <p className="text-muted-foreground/70 mt-1 text-xs wrap-break-word">
                           Rumus: {item.formulaFromStart}
                         </p>
                       </div>
@@ -287,10 +290,15 @@ export default function IntervalGeneratorClient() {
                         <p className="text-muted-foreground text-sm">
                           Jarak dari {endNum} ke {startNum}:
                         </p>
-                        <p className="text-foreground font-mono break-words">
-                          {item.distanceFromEnd}
+                        <p className="text-foreground font-mono wrap-break-word">
+                          {item.distanceFromEnd.toLocaleString("id-ID", {
+                            maximumFractionDigits: 4,
+                          })}
+                          {` ≈ ${item.distanceFromEnd.toLocaleString("id-ID", {
+                            maximumFractionDigits: 2,
+                          })}`}
                         </p>
-                        <p className="text-muted-foreground/70 mt-1 text-xs break-words">
+                        <p className="text-muted-foreground/70 mt-1 text-xs wrap-break-word">
                           Rumus: {item.formulaFromEnd}
                         </p>
                       </div>
