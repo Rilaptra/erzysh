@@ -221,9 +221,6 @@ export function DashboardContent({
             categories={simplifiedCategories}
             activeCategoryId={activeCategoryId}
             onSelectCategory={handleSelectCategory}
-            onCategoryCreated={handleDataChange}
-            onCategoryDeleted={handleDataChange}
-            onCategoryUpdated={handleDataChange}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
           />
