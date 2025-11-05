@@ -14,6 +14,7 @@ import {
   Camera,
   GraduationCap,
   BetweenHorizontalStart,
+  Map,
 } from "lucide-react";
 
 function ToolButtons() {
@@ -56,6 +57,12 @@ function ToolButtons() {
       label: "Sipadu Leaked",
       icon: <GraduationCap className="mr-2 h-4 w-4 text-teal-muted" />, // Pastikan ini ada jika tool-nya ada
       adminOnly: true,
+    },
+    {
+      href: "/kuliah/tools/kontur-trase-jalan",
+      label: "Visualisasi Kontur & Trase",
+      icon: <Map className="mr-2 h-4 w-4 text-teal-muted" />,
+      adminOnly: false, // Atau true jika ini tool admin
     },
   ];
 
