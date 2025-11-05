@@ -189,6 +189,13 @@ export default function IntervalGeneratorClient() {
   const nextId = useRef(2);
 
   const endInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  useEffect(() => {
+    const lastPair = pairs[pairs.length - 1];
+    if (lastPair) {
+      const lastInput = endInputRefs.current[lastPair.id];
+      lastInput?.focus();
+    }
+  }, [pairs.length]);
 
   useEffect(() => {
     setIsMounted(true);
