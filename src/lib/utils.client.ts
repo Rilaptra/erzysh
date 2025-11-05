@@ -1,4 +1,3 @@
-
 export const getMimeType = (fileName: string): string => {
   const extension = fileName.split(".").pop()?.toLowerCase();
   switch (extension) {
@@ -25,3 +24,11 @@ export const getMimeType = (fileName: string): string => {
       return "application/octet-stream";
   }
 };
+
+export const softColors = [
+  "border-amber-500",
+  "border-rose-500",
+  "border-emerald-400",
+  "border-sky-600",
+  "border-violet-500",
+];

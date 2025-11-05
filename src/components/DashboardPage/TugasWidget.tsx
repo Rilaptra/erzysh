@@ -52,7 +52,7 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
                   {tugas.mataKuliah}
                 </p>
               </div>
-              <div className="ml-4 flex-shrink-0 text-right">
+              <div className="ml-4 shrink-0 text-right">
                 <Badge variant="destructive" className="mb-1">
                   {formatDistanceToNow(parseISO(tugas.deadline), {
                     addSuffix: true,

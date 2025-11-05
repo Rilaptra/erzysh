@@ -24,37 +24,37 @@ function ToolButtons() {
     {
       href: "/kuliah/tools/interval-generator",
       label: "Generator Interval",
-      icon: <BetweenHorizontalStart className="mr-2 h-4 w-4" />,
+      icon: <BetweenHorizontalStart className="mr-2 h-4 w-4 text-teal-muted" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/survey-dashboard",
       label: "Dashboard Survey",
-      icon: <ClipboardCheck className="mr-2 h-4 w-4" />,
+      icon: <ClipboardCheck className="mr-2 h-4 w-4 text-teal-muted" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/iut-calculator",
       label: "Kalkulator IUT",
-      icon: <Calculator className="mr-2 h-4 w-4" />,
+      icon: <Calculator className="mr-2 h-4 w-4 text-teal-muted" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/photo-formatter",
       label: "Photo to Docs Formatter (Tugas Prodi)",
-      icon: <Camera className="mr-2 h-4 w-4" />,
+      icon: <Camera className="mr-2 h-4 w-4 text-teal-muted" />,
       adminOnly: true,
     },
     {
       href: "/kuliah/tools/checklist-teksip",
       label: "Checklist Nama Teksip 25 (Tugas Foto)",
-      icon: <FileInput className="mr-2 h-4 w-4" />,
+      icon: <FileInput className="mr-2 h-4 w-4 text-teal-muted" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/sipadu-leaked",
       label: "Sipadu Leaked",
-      icon: <GraduationCap className="mr-2 h-4 w-4" />, // Pastikan ini ada jika tool-nya ada
+      icon: <GraduationCap className="mr-2 h-4 w-4 text-teal-muted" />, // Pastikan ini ada jika tool-nya ada
       adminOnly: true,
     },
   ];
