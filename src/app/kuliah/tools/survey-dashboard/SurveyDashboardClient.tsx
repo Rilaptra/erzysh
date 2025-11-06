@@ -72,7 +72,7 @@ const defaultCsvData = `"Cap waktu","Total skor","Nama","Nama [Skor]","Nama [Mas
 "2025/11/04 9:01:30 PM GMT+7","0.00 / 0","zahra v","-- / 0","","https://maps.app.goo.gl/VzYio5qUWwZoVrrS7","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","1","-- / 0",""
 "2025/11/04 9:26:26 PM GMT+7","0.00 / 0","Farrel Widyatna Nugraha ","-- / 0","","https://maps.app.goo.gl/ruLaWKXjHy8YTkMY6?g_st=aw","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0",""
 "2025/11/05 2:53:36 PM GMT+7","0.00 / 0","MELVINA ELIRIKA ALIAH ","-- / 0","","https://maps.app.goo.gl/C88oKHJXS8wewvhq5","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
-"2025/11/05 4:31:38 PM GMT+7","0.00 / 0","diraa","-- / 0","","magelang utara","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""`;
+"2025/11/05 4:31:38 PM GMT+7","0.00 / 0","diraa","-- / 0","","https://maps.app.goo.gl/JCEiE7T5j4jXHs5fA?g_st=aw","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""`;
 
 const DESTINATION = "Universitas Tidar Kampus Tuguran";
 const TRAVEL_MODE_CODES: { [key: string]: string } = {
