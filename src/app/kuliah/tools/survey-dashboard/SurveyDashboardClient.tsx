@@ -35,12 +35,44 @@ import { useTheme } from "@/components/ThemeProvider";
 Chart.register(...registerables);
 
 // --- DATA AWAL & KONSTANTA (Tidak berubah) ---
-const defaultCsvData = `"Cap waktu","Total skor","Nama","Nama [Skor]","Nama [Masukan]","Domisili (sertakan link gmaps domisili anda)","Moda yang digunakan sehari-hari","Senin (berapa kali berangkat ke kampus)","Selasa (berapa kali berangkat ke kampus)","Rabu (berapa kali berangkat ke kampus)","Kamis (berapa kali berangkat ke kampus)","Jumat (berapa kali berangkat ke kampus)"
-"2025/10/24 6:46:43 PM GMT+7","0.00 / 0","Rizqi Lasheva","https://maps.app.goo.gl/QdR88QYhnTWzueG37","Motor",1,1,1,1,1
-"2025/10/24 6:49:54 PM GMT+7","0.00 / 0","Korindo Chaesa","https://maps.app.goo.gl/J6ZKGSUKEwVdzFJf9","Mobil",1,1,1,1,1
-"2025/10/24 6:52:11 PM GMT+7","0.00 / 0","John Doe","https://maps.app.goo.gl/An1MVhUL5o2BWQPU8","Jalan Kaki",1,1,1,1,1
-"2025/10/24 7:01:00 PM GMT+7","0.00 / 0","Aisha Novianty","https://maps.app.goo.gl/G7f8oWkX9y2sA7yJ6","Motor",0,1,0,1,0
-"2025/10/24 7:05:30 PM GMT+7","0.00 / 0","Budi Santoso","https://maps.app.goo.gl/P4rLmM2qQv9wXv4T7","Transportasi Umum",1,0,1,0,1`;
+const defaultCsvData = `"Cap waktu","Total skor","Nama","Nama [Skor]","Nama [Masukan]","Domisili (sertakan link gmaps domisili anda)","Domisili (sertakan link gmaps domisili anda) [Skor]","Domisili (sertakan link gmaps domisili anda) [Masukan]","Moda yang digunakan sehari-hari","Moda yang digunakan sehari-hari [Skor]","Moda yang digunakan sehari-hari [Masukan]","Senin (berapa kali berangkat ke kampus)","Senin (berapa kali berangkat ke kampus) [Skor]","Senin (berapa kali berangkat ke kampus) [Masukan]","Selasa (berapa kali berangkat ke kampus)","Selasa (berapa kali berangkat ke kampus) [Skor]","Selasa (berapa kali berangkat ke kampus) [Masukan]","Rabu (berapa kali berangkat ke kampus)","Rabu (berapa kali berangkat ke kampus) [Skor]","Rabu (berapa kali berangkat ke kampus) [Masukan]","Kamis (berapa kali berangkat ke kampus)","Kamis (berapa kali berangkat ke kampus) [Skor]","Kamis (berapa kali berangkat ke kampus) [Masukan]","Jumat (berapa kali berangkat ke kampus)","Jumat (berapa kali berangkat ke kampus) [Skor]","Jumat (berapa kali berangkat ke kampus) [Masukan]"
+"2025/10/24 10:16:02 AM GMT+7","0.00 / 0","Rizqi Lasheva Purnama Putra","-- / 0","","https://maps.app.goo.gl/QdR88QYhnTWzueG37?g_st=aw","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/28 5:52:50 PM GMT+7","0.00 / 0","Rahmatika Sandy Aulia ","-- / 0","","https://maps.app.goo.gl/sZdUf96wXQ3iFrTG7","-- / 0","","angkutan umum","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/28 6:27:10 PM GMT+7","0.00 / 0","Rheza Maulana Putra","-- / 0","","https://maps.app.goo.gl/g3hvaaarLAa3S1px8","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","Libur","-- / 0","","1","-- / 0",""
+"2025/10/28 6:28:53 PM GMT+7","0.00 / 0","Farrell Shareef Ghandi","-- / 0","","https://maps.app.goo.gl/oDRQ7NEhEPvJECRP9","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/28 6:29:10 PM GMT+7","0.00 / 0","Gita kartika dewi","-- / 0","","https://maps.app.goo.gl/Nb2hbG5X4FwTq5QJ7","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/28 6:32:54 PM GMT+7","0.00 / 0","Flashsena Dharma Nusa ","-- / 0","","https://maps.app.goo.gl/HfTr1wd9tuQsY1RZ6?g_st=ac","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","Tidak berangkat ","-- / 0","","1","-- / 0",""
+"2025/10/28 6:35:09 PM GMT+7","0.00 / 0","Adi Prabowo ","-- / 0","","https://maps.app.goo.gl/4znNzFx4e27gUL82A","-- / 0","","motor","-- / 0","","2","-- / 0","","2","-- / 0","","3","-- / 0","","0","-- / 0","","2","-- / 0",""
+"2025/10/29 6:41:47 PM GMT+7","0.00 / 0","Dama Rizky Astawa","-- / 0","","https://maps.app.goo.gl/DyV1UzL1haaJMdD48?g_st=aw","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","ngga ada matkul","-- / 0","","2","-- / 0",""
+"2025/10/30 5:37:04 PM GMT+7","0.00 / 0","Siti Zulaikah","-- / 0","","https://maps.app.goo.gl/zcaVxiJr57evAtLH9","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/30 9:44:27 PM GMT+7","0.00 / 0","Koko","-- / 0","","https://goo.gl/maps/KWyXk39QNKWPDDg27","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 7:21:04 AM GMT+7","0.00 / 0","Aliya Putri Kumalasari ","-- / 0","","https://maps.app.goo.gl/Ymox5bpkWnahDTK19","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:12:36 AM GMT+7","0.00 / 0","Mikael Cristian Oktavio ","-- / 0","","https://maps.app.goo.gl/1e8Y7tPG5vHo9eCy8","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:20:52 AM GMT+7","0.00 / 0","Aura Pramudya","-- / 0","","https://maps.app.goo.gl/evMwpbeeUejaKmzH6","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","libur","-- / 0","","2","-- / 0",""
+"2025/10/31 9:21:07 AM GMT+7","0.00 / 0","ifada shofi amalia","-- / 0","","https://maps.app.goo.gl/PfriFYycqoCsngHT7?g_st=ipc","-- / 0","","sepeda/jalan kaki","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","libur","-- / 0","","2","-- / 0",""
+"2025/10/31 9:21:11 AM GMT+7","0.00 / 0","Zhafirah Elmassetyo Hartini","-- / 0","","https://maps.app.goo.gl/sej3spPHfizcbxd7A?g_st=ac","-- / 0","","sepeda/jalan kaki","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","libur","-- / 0","","2","-- / 0",""
+"2025/10/31 9:25:27 AM GMT+7","0.00 / 0","Rafa Nafisa Azkiya ","-- / 0","","https://maps.app.goo.gl/jWR5RQTsMxsYr2LB6","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","2","-- / 0",""
+"2025/10/31 9:27:05 AM GMT+7","0.00 / 0","hepi","-- / 0","","https://maps.app.goo.gl/8DjTJRuSpaegGaYu7?g_st=ac","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0","","Libur","-- / 0","","2","-- / 0",""
+"2025/10/31 9:33:34 AM GMT+7","0.00 / 0","Neo ","-- / 0","","https://maps.app.goo.gl/LuJuxDyoEDsUVmVv5","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:33:40 AM GMT+7","0.00 / 0","Ja'far Aziz Arifuddin ","-- / 0","","https://maps.app.goo.gl/p18ruz9ijyABVW1z5?g_st=aw","-- / 0","","angkutan umum","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","1","-- / 0",""
+"2025/10/31 9:34:03 AM GMT+7","0.00 / 0","kintan","-- / 0","","https://maps.app.goo.gl/JdBdcs1cpnvYcssGA","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:36:57 AM GMT+7","0.00 / 0","Bagus Wahyu Nugroho","-- / 0","","https://maps.app.goo.gl/nMzDJWdMDzUX3Eky9","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","2","-- / 0",""
+"2025/10/31 9:38:07 AM GMT+7","0.00 / 0","Zek","-- / 0","","https://maps.app.goo.gl/pySKW9iWswQarTKbA","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:38:08 AM GMT+7","0.00 / 0","Ja'far Aziz Arifuddin ","-- / 0","","https://maps.app.goo.gl/teBhjTMu1JhKVXGN9?g_st=aw","-- / 0","","angkutan umum","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","1","-- / 0",""
+"2025/10/31 9:41:34 AM GMT+7","0.00 / 0","Kinanti Ayu Ratri ","-- / 0","","https://maps.app.goo.gl/jtiLrkhnmSo1xQ4L8?g_st=ipc","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","Libur ","-- / 0","","1","-- / 0",""
+"2025/10/31 9:46:57 AM GMT+7","0.00 / 0","Helen Ivana","-- / 0","","https://maps.app.goo.gl/LoHH41HD7MfjtAho8","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:52:34 AM GMT+7","0.00 / 0","aqila","-- / 0","","https://maps.app.goo.gl/x3s1mX4UZVwB4x2h7?g_st=ac","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/10/31 9:57:00 AM GMT+7","0.00 / 0","fransiska cindy widyastuti","-- / 0","","https://maps.app.goo.gl/7HXuN3FtQdShh7VB8","-- / 0","","sepeda/jalan kaki","-- / 0","","1","-- / 0","","1","-- / 0","","2","-- / 0","","kamis libur","-- / 0","","1","-- / 0",""
+"2025/10/31 10:02:02 AM GMT+7","0.00 / 0","ahmd","-- / 0","","https://maps.app.goo.gl/a1Vjd23a3hAJ986j6","-- / 0","","motor","-- / 0","","3","-- / 0","","3","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0",""
+"2025/10/31 10:02:21 AM GMT+7","0.00 / 0","Alvin Dienova","-- / 0","","https://goo.gl/maps/ZgJV7eHMcS9vLbhe9","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","1","-- / 0",""
+"2025/10/31 10:11:52 AM GMT+7","0.00 / 0","Rifqi Irfan Prayitno","-- / 0","","https://goo.gl/maps/SB5Rr6tw94Lnxn7j8","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","ramangkat","-- / 0","","2","-- / 0",""
+"2025/10/31 11:12:29 AM GMT+7","0.00 / 0","Diasti","-- / 0","","https://maps.app.goo.gl/X5USSxn7bxyZyjhT8","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/11/04 8:47:17 PM GMT+7","0.00 / 0","Husain Faishal Nizam","-- / 0","","https://maps.app.goo.gl/LCEdSo93kHMPXNPE6","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","2","-- / 0",""
+"2025/11/04 8:49:10 PM GMT+7","0.00 / 0","Bambang wahyu wijaya","-- / 0","","https://maps.app.goo.gl/uUxrhno4ZJtfEUn28","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","Liburr gankk","-- / 0","","1","-- / 0",""
+"2025/11/04 9:01:30 PM GMT+7","0.00 / 0","zahra v","-- / 0","","https://maps.app.goo.gl/VzYio5qUWwZoVrrS7","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","0","-- / 0","","1","-- / 0",""
+"2025/11/04 9:26:26 PM GMT+7","0.00 / 0","Farrel Widyatna Nugraha ","-- / 0","","https://maps.app.goo.gl/ruLaWKXjHy8YTkMY6?g_st=aw","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0","","1","-- / 0","","2","-- / 0",""
+"2025/11/05 2:53:36 PM GMT+7","0.00 / 0","MELVINA ELIRIKA ALIAH ","-- / 0","","https://maps.app.goo.gl/C88oKHJXS8wewvhq5","-- / 0","","motor","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""
+"2025/11/05 4:31:38 PM GMT+7","0.00 / 0","diraa","-- / 0","","magelang utara","-- / 0","","motor","-- / 0","","2","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0","","1","-- / 0",""`;
 
 const DESTINATION = "Universitas Tidar Kampus Tuguran";
 const TRAVEL_MODE_CODES: { [key: string]: string } = {
@@ -178,6 +210,7 @@ const DataTableRow = ({
     </TableRow>
   );
 };
+
 
 // --- KOMPONEN UTAMA (Sisa kode tidak ada perubahan signifikan) ---
 export default function SurveyDashboardClient() {
