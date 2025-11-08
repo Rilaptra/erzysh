@@ -115,7 +115,19 @@ export function InterpolationResults({
   const hasHorizontalResults = Object.keys(results.horizontal).length > 0;
 
   if (!hasVerticalResults && !hasHorizontalResults) {
-    return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="text-primary h-5 w-5" />
+            Detail Titik Interval Kontur per Segmen
+          </CardTitle>
+          <CardDescription>
+            Klik Tombol Hitung & Gambar Kontur untuk menampilkan data
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
   }
 
   return (
