@@ -1,6 +1,9 @@
+// src/app/kuliah/tools/interval-generator/IntervalGeneratorClient.tsx
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+// +++ LANGKAH 1: IMPORT KOMPONEN LATEX +++
+import { InlineMath } from "react-katex";
 import {
   Card,
   CardContent,
@@ -44,18 +47,7 @@ interface ResultGroup {
   results: Result[];
 }
 
-function selisihKontur(titikA: number, titikB: number) {
-  return titikA > titikB
-    ? {
-        result: titikA - titikB,
-        format: `(${titikA.toFixed(2)} - ${titikB.toFixed(2)})`,
-      }
-    : {
-        result: titikB - titikA,
-        format: `(${titikB.toFixed(2)} - ${titikA.toFixed(2)})`,
-      };
-}
-
+// +++ LANGKAH 2: UPDATE FUNGSI KALKULASI UNTUK MENGHASILKAN LATEX +++
 function calculateIntervals(
   b: number,
   c: number,
@@ -73,26 +65,30 @@ function calculateIntervals(
   const distanceDenominator = Math.abs(c - b);
   const minHeight = Math.min(b, c);
   const maxHeight = Math.max(b, c);
-  const startReal = Math.floor(minHeight / 5) * 5;
+  // Mulai dari kelipatan interval terdekat di bawah nilai minimum
+  const startReal = Math.floor(minHeight / a) * a;
 
   for (let current = startReal + a; current < maxHeight; current += a) {
     if (current <= minHeight) continue;
 
     const p = current;
-    const deltaPB = selisihKontur(p, b);
-    const deltaCP = selisihKontur(c, p);
+
+    // String formula dalam format LaTeX. Double backslash (\\) diperlukan.
+    const formulaStartLatex = `\\frac{${p.toLocaleString("id-ID", { maximumFractionDigits: 2 })} - ${b.toLocaleString("id-ID", { maximumFractionDigits: 2 })}}{${(c - b).toLocaleString("id-ID", { maximumFractionDigits: 2 })} } \\times ${dimension}`;
+    const formulaEndLatex = `\\frac{${c.toLocaleString("id-ID", { maximumFractionDigits: 2 })} - ${p.toLocaleString("id-ID", { maximumFractionDigits: 2 })}}{${(c - b).toLocaleString("id-ID", { maximumFractionDigits: 2 })}}\\times ${dimension}`;
 
     newResults.push({
       p: p.toLocaleString("id-ID", { maximumFractionDigits: 4 }),
-      distanceFromStart: (deltaPB.result / distanceDenominator) * dimension,
-      formulaFromStart: `${deltaPB.format} / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
-      distanceFromEnd: (deltaCP.result / distanceDenominator) * dimension,
-      formulaFromEnd: `${deltaCP.format} / (${c.toFixed(2)} - ${b.toFixed(2)}) * ${dimension}`,
+      distanceFromStart: (Math.abs(p - b) / distanceDenominator) * dimension,
+      formulaFromStart: formulaStartLatex, // Simpan string LaTeX
+      distanceFromEnd: (Math.abs(c - p) / distanceDenominator) * dimension,
+      formulaFromEnd: formulaEndLatex, // Simpan string LaTeX
     });
   }
   return newResults;
 }
 
+// +++ LANGKAH 3: UPDATE KOMPONEN UI UNTUK MERENDER LATEX +++
 const ResultCard = ({
   group,
   colorsIndex,
@@ -134,37 +130,39 @@ const ResultCard = ({
             >
               <p className="font-bold">
                 Titik Kontur:{" "}
-                <span className="text-primary font-mono">{item.p}</span>
+                <span className="text-primary font-mono">{item.p}</span> m
               </p>
               <hr className="my-2" />
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <p className="text-muted-foreground text-sm">
-                    Jarak dari {group.pair.start}:
+                    Jarak dari titik awal ({group.pair.start}):
                   </p>
-                  <p className="wrap-break-words text-foreground font-mono">
+                  <p className="text-foreground font-mono text-lg">
                     {item.distanceFromStart.toLocaleString("id-ID", {
-                      maximumFractionDigits: 4,
-                    })}
-                    &nbsp; &asymp; &nbsp;
-                    {item.distanceFromStart.toLocaleString("id-ID", {
-                      maximumFractionDigits: 1,
-                    })}
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    cm
                   </p>
+                  {/* Tampilkan rumus LaTeX di sini */}
+                  <div className="text-muted-foreground mt-1 text-lg">
+                    <InlineMath math={item.formulaFromStart} />
+                  </div>
                 </div>
                 <div>
                   <p className="text-muted-foreground text-sm">
-                    Jarak dari {group.pair.end}:
+                    Jarak dari titik akhir ({group.pair.end}):
                   </p>
-                  <p className="wrap-break-words text-foreground font-mono">
+                  <p className="text-foreground font-mono text-lg">
                     {item.distanceFromEnd.toLocaleString("id-ID", {
-                      maximumFractionDigits: 4,
-                    })}
-                    &nbsp; &asymp; &nbsp;
-                    {item.distanceFromEnd.toLocaleString("id-ID", {
-                      maximumFractionDigits: 1,
-                    })}
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    cm
                   </p>
+                  {/* Tampilkan rumus LaTeX di sini */}
+                  <div className="text-muted-foreground mt-1 text-lg">
+                    <InlineMath math={item.formulaFromEnd} />
+                  </div>
                 </div>
               </div>
             </div>
