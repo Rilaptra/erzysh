@@ -1,16 +1,15 @@
 // src/app/kuliah/tools/kontur-trase-jalan/KonturTraseClient.tsx
 "use client";
 
+import { Map, Loader2 } from "lucide-react";
 import { useKonturProject } from "@/lib/hooks/useKonturProject";
 import { useHasMounted } from "@/lib/hooks/useHasMounted";
 import { GridSettingsPanel } from "@/components/Tools/KonturTraseJalan/GridSettingsPanel";
 import { VisualizationSettingsPanel } from "@/components/Tools/KonturTraseJalan/VisualizationSettingsPanel";
 import { KonturCanvas } from "@/components/Tools/KonturTraseJalan/KonturCanvas";
 import { InterpolationResults } from "@/components/Tools/KonturTraseJalan/InterpolationResults";
-// +++ Import Komponen Baru +++
 import { CrossSectionChart } from "@/components/Tools/KonturTraseJalan/CrossSectionChart";
 import { CELL_SIZE } from "@/lib/utils/drawing";
-import { Loader2 } from "lucide-react";
 
 const KonturTraseSkeleton = () => (
   <main className="container mx-auto flex h-[80vh] max-w-7xl items-center justify-center px-4 py-8">
@@ -28,13 +27,15 @@ export default function KonturTraseClient() {
   const {
     project,
     settings,
-    setProject, // Ambil setter utama
+    contourData,
+    setProject,
     setSettings,
     handleGridDataChange,
     adjustGrid,
     clearAllPoints,
-    nestedInterpolationResults,
     profileData,
+    handleCalculateContours,
+    resetCrossSectionLine, // +++ Ambil fungsi baru
   } = useKonturProject();
 
   if (!hasMounted) {
@@ -51,7 +52,13 @@ export default function KonturTraseClient() {
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
       <header className="mb-8 text-center">
-        {/* ... (header tidak berubah) ... */}
+        <h1 className="flex items-center justify-center gap-3 text-3xl font-bold">
+          <Map className="text-primary" /> Visualisasi Kontur & Potongan
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Input data ketinggian, hitung kontur, dan analisis potongan memanjang
+          secara interaktif.
+        </p>
       </header>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -64,7 +71,6 @@ export default function KonturTraseClient() {
             clearAllPoints={clearAllPoints}
           />
         </div>
-
         <div className="space-y-6 lg:col-span-1">
           <VisualizationSettingsPanel
             settings={settings}
@@ -72,6 +78,8 @@ export default function KonturTraseClient() {
             crossSectionLine={project.crossSectionLine}
             setProject={setProject}
             canvasSize={canvasSize}
+            onCalculateContours={handleCalculateContours}
+            onResetCrossSection={resetCrossSectionLine} // +++ Kirim handler ke tombol
           />
         </div>
 
@@ -79,7 +87,7 @@ export default function KonturTraseClient() {
           <KonturCanvas
             gridSize={project.gridSize}
             gridData={project.gridData}
-            contourInterval={settings.contourInterval}
+            contourPaths={contourData.paths}
             crossSectionLine={project.crossSectionLine}
             setProject={setProject}
           />
@@ -93,7 +101,7 @@ export default function KonturTraseClient() {
 
         <div className="space-y-6 lg:col-span-3">
           <InterpolationResults
-            results={nestedInterpolationResults}
+            results={contourData.interpolationResults}
             gridDimension={settings.gridDimension}
           />
         </div>

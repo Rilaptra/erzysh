@@ -4,8 +4,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { RotateCw, MoveHorizontal, Maximize } from "lucide-react";
+import {
+  RotateCw,
+  MoveHorizontal,
+  Sparkles,
+  Maximize,
+  RotateCcw,
+} from "lucide-react"; // Import ikon RotateCcw
 import { Point } from "@/lib/utils/marching-squares";
 
 type SettingsState = {
@@ -19,6 +26,8 @@ type VisualizationSettingsPanelProps = {
   crossSectionLine: { p1: Point; p2: Point };
   setProject: (updater: (prev: any) => any) => void;
   canvasSize: { width: number; height: number };
+  onCalculateContours: () => void;
+  onResetCrossSection: () => void; // +++ PROP BARU +++
 };
 
 export function VisualizationSettingsPanel({
@@ -27,6 +36,8 @@ export function VisualizationSettingsPanel({
   crossSectionLine,
   setProject,
   canvasSize,
+  onCalculateContours,
+  onResetCrossSection, // +++ PROP BARU +++
 }: VisualizationSettingsPanelProps) {
   const { p1, p2 } = crossSectionLine;
   const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
@@ -88,11 +99,27 @@ export function VisualizationSettingsPanel({
           </div>
         </div>
 
+        <Button className="w-full" onClick={onCalculateContours}>
+          <Sparkles className="mr-2 h-4 w-4" />
+          Hitung & Gambar Kontur
+        </Button>
+
         <div className="space-y-4 rounded-md border p-4">
-          <Label className="flex items-center gap-2 font-semibold">
-            <Maximize className="text-primary h-4 w-4" />
-            Kontrol Garis Potongan
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2 font-semibold">
+              <Maximize className="text-primary h-4 w-4" />
+              Kontrol Garis Potongan
+            </Label>
+            {/* +++ TOMBOL RESET BARU DI SINI +++ */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onResetCrossSection}
+            >
+              <RotateCcw className="text-muted-foreground h-4 w-4" />
+            </Button>
+          </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <Label htmlFor="angle-slider" className="flex items-center gap-1">

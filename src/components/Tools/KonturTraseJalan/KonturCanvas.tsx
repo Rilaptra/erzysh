@@ -3,11 +3,7 @@
 import { useRef, useEffect, useCallback, useMemo, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Point,
-  marchingSquares,
-  connectLines,
-} from "@/lib/utils/marching-squares";
+import { Point } from "@/lib/utils/marching-squares";
 import { drawCatmullRom, CELL_SIZE } from "@/lib/utils/drawing";
 
 type ProjectState = {
@@ -19,7 +15,7 @@ type ProjectState = {
 type KonturCanvasProps = {
   gridSize: { rows: number; cols: number };
   gridData: (number | null)[][];
-  contourInterval: number;
+  contourPaths: Point[][];
   crossSectionLine: { p1: Point; p2: Point };
   setProject: React.Dispatch<React.SetStateAction<ProjectState>>;
 };
@@ -35,7 +31,6 @@ const darkColors = {
   otherHandleBorder: "#d97706",
   draggingHandle: "#f59e0b",
 };
-
 const lightColors = {
   grid: "#cbd5e1",
   text: "#334155",
@@ -51,11 +46,12 @@ const lightColors = {
 export function KonturCanvas({
   gridSize,
   gridData,
-  contourInterval,
+  contourPaths,
   crossSectionLine,
   setProject,
 }: KonturCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { theme: resolvedTheme } = useTheme();
   const colors = useMemo(
     () => (resolvedTheme === "dark" ? darkColors : lightColors),
@@ -71,9 +67,8 @@ export function KonturCanvas({
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext("2d")!;
 
     canvas.width = (gridSize.cols - 1) * CELL_SIZE;
     canvas.height = (gridSize.rows - 1) * CELL_SIZE;
@@ -111,24 +106,11 @@ export function KonturCanvas({
       }
     }
 
-    if (contourInterval > 0) {
-      const allValues = gridData.flat().filter((v) => v !== null) as number[];
-      if (allValues.length > 0) {
-        const minElev = Math.min(...allValues);
-        const maxElev = Math.max(...allValues);
-        ctx.strokeStyle = colors.contour;
-        ctx.lineWidth = 1.5;
-        for (
-          let level = Math.ceil(minElev / contourInterval) * contourInterval;
-          level <= maxElev;
-          level += contourInterval
-        ) {
-          const lines = marchingSquares(gridData, level);
-          const paths = connectLines(lines);
-          paths.forEach((path) => drawCatmullRom(ctx, path));
-        }
-      }
-    }
+    ctx.strokeStyle = colors.contour;
+    ctx.lineWidth = 1.5;
+    contourPaths.forEach((path) => {
+      drawCatmullRom(ctx, path);
+    });
 
     const { p1, p2 } = crossSectionLine;
     const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
@@ -143,7 +125,6 @@ export function KonturCanvas({
     ctx.setLineDash([]);
 
     ctx.lineWidth = 2;
-
     ctx.beginPath();
     ctx.arc(p1.x, p1.y, 8, 0, 2 * Math.PI);
     ctx.fillStyle =
@@ -167,7 +148,7 @@ export function KonturCanvas({
   }, [
     gridSize,
     gridData,
-    contourInterval,
+    contourPaths,
     colors,
     crossSectionLine,
     draggingHandle,
@@ -177,63 +158,135 @@ export function KonturCanvas({
     draw();
   }, [draw]);
 
-  const getMousePos = (e: React.MouseEvent<HTMLCanvasElement>): Point => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
+  const getEventCoordinates = useCallback(
+    (e: MouseEvent | TouchEvent): Point | null => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
+      const clientX = "touches" in e ? e.touches[0]?.clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0]?.clientY : e.clientY;
+      if (clientX === undefined || clientY === undefined) return null;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    },
+    [],
+  );
 
-  const checkHandleHover = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
-    const { p1, p2 } = crossSectionLine;
-    const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  const checkHandleHover = useCallback(
+    (pos: Point) => {
+      const { p1, p2 } = crossSectionLine;
+      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const dist = (pA: Point, pB: Point) =>
+        Math.sqrt(Math.pow(pA.x - pB.x, 2) + Math.pow(pA.y - pB.y, 2));
+      const tolerance = 15;
+      if (dist(pos, p1) < tolerance) return "p1";
+      if (dist(pos, p2) < tolerance) return "p2";
+      if (dist(pos, center) < tolerance) return "center";
+      return null;
+    },
+    [crossSectionLine],
+  );
 
-    const dist = (pA: Point, pB: Point) =>
-      Math.sqrt(Math.pow(pA.x - pB.x, 2) + Math.pow(pA.y - pB.y, 2));
+  const moveDrag = useCallback(
+    (pos: Point) => {
+      if (!draggingHandle) return;
+      setProject((prev) => {
+        let { p1, p2 } = prev.crossSectionLine;
+        if (draggingHandle === "center") {
+          const dx = pos.x - (p1.x + p2.x) / 2;
+          const dy = pos.y - (p1.y + p2.y) / 2;
+          p1 = { x: p1.x + dx, y: p1.y + dy };
+          p2 = { x: p2.x + dx, y: p2.y + dy };
+        } else if (draggingHandle === "p1") {
+          p1 = pos;
+        } else if (draggingHandle === "p2") {
+          p2 = pos;
+        }
+        return { ...prev, crossSectionLine: { p1, p2 } };
+      });
+    },
+    [draggingHandle, setProject],
+  );
 
-    if (dist(pos, p1) < 10) setHoverHandle("p1");
-    else if (dist(pos, p2) < 10) setHoverHandle("p2");
-    else if (dist(pos, center) < 10) setHoverHandle("center");
-    else setHoverHandle(null);
-  };
-
-  const handleMouseDown = () => {
-    if (hoverHandle) {
-      setDraggingHandle(hoverHandle);
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = getEventCoordinates(e.nativeEvent);
+    if (pos) {
+      const handle = checkHandleHover(pos);
+      if (handle) setDraggingHandle(handle);
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
-    if (!draggingHandle) {
-      checkHandleHover(e);
-      return;
-    }
-
-    setProject((prev) => {
-      let { p1, p2 } = prev.crossSectionLine;
-
-      if (draggingHandle === "center") {
-        const dx = pos.x - (p1.x + p2.x) / 2;
-        const dy = pos.y - (p1.y + p2.y) / 2;
-        p1 = { x: p1.x + dx, y: p1.y + dy };
-        p2 = { x: p2.x + dx, y: p2.y + dy };
-      } else if (draggingHandle === "p1") {
-        p1 = pos;
-      } else if (draggingHandle === "p2") {
-        p2 = pos;
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    const pos = getEventCoordinates(e.nativeEvent);
+    if (pos) {
+      const handle = checkHandleHover(pos);
+      if (handle) {
+        e.preventDefault();
+        setDraggingHandle(handle);
       }
-
-      return { ...prev, crossSectionLine: { p1, p2 } };
-    });
+    }
   };
 
-  const handleMouseUpOrLeave = () => {
-    setDraggingHandle(null);
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (draggingHandle) return;
+    const pos = getEventCoordinates(e.nativeEvent);
+    if (pos) setHoverHandle(checkHandleHover(pos));
   };
+
+  const handleWheelScroll = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (scrollContainerRef.current) {
+      e.preventDefault();
+      scrollContainerRef.current.scrollTop += e.deltaY;
+      scrollContainerRef.current.scrollLeft += e.deltaX;
+    }
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      const pos = getEventCoordinates(e);
+      if (pos) moveDrag(pos);
+    };
+
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const pos = getEventCoordinates(e);
+      if (pos) moveDrag(pos);
+    };
+
+    const endDrag = () => setDraggingHandle(null);
+
+    if (draggingHandle) {
+      window.addEventListener("mousemove", handleGlobalMouseMove);
+      window.addEventListener("mouseup", endDrag);
+      window.addEventListener("touchmove", handleGlobalTouchMove, {
+        passive: false,
+      });
+      window.addEventListener("touchend", endDrag);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", endDrag);
+      window.removeEventListener("touchmove", handleGlobalTouchMove);
+      window.removeEventListener("touchend", endDrag);
+    };
+  }, [draggingHandle, getEventCoordinates, moveDrag]);
+
+  useEffect(() => {
+    const bodyElement = document.body;
+    const originalOverflow = bodyElement.style.overflow;
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+    if (draggingHandle && isTouchDevice) {
+      bodyElement.style.overflow = "hidden";
+    } else {
+      bodyElement.style.overflow = originalOverflow;
+    }
+
+    return () => {
+      bodyElement.style.overflow = originalOverflow;
+    };
+  }, [draggingHandle]);
 
   const getCursor = () => {
     if (draggingHandle) return "grabbing";
@@ -247,15 +300,22 @@ export function KonturCanvas({
         <CardTitle>Visualisasi Peta Kontur</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="bg-card-foreground/5 w-full overflow-auto rounded-md border p-2">
+        <div
+          ref={scrollContainerRef}
+          className="bg-card-foreground/5 w-full overflow-auto rounded-md border py-16 px-5"
+        >
           <canvas
+            className="m-auto"
             ref={canvasRef}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUpOrLeave}
-            onMouseLeave={handleMouseUpOrLeave}
-            style={{ cursor: getCursor() }}
-            className="m-auto"
+            onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={() => setHoverHandle(null)}
+            onTouchStart={handleTouchStart}
+            onWheel={handleWheelScroll}
+            style={{
+              cursor: getCursor(),
+              touchAction: "none",
+            }}
           />
         </div>
         <div className="text-muted-foreground mt-4 flex items-center justify-center gap-6 text-sm">
