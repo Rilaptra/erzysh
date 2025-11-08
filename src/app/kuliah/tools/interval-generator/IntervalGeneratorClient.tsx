@@ -124,7 +124,7 @@ const ResultCard = ({
             <div
               key={index}
               className={cn(
-                "bg-muted rounded-r-lg border-l-4 p-4",
+                "bg-muted rounded-lg border-l-4 p-4",
                 softColors[colorsIndex % softColors.length],
               )}
             >
