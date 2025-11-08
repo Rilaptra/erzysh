@@ -26,6 +26,7 @@ import { Calculator } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { softColors } from "@/lib/utils.client";
 import { SegmentData } from "@/lib/utils/kontur";
+import { InlineMath } from "react-katex"; // <-- TAMBAHKAN IMPORT INI
 
 // ✨ This is the new Prop Type
 type NestedInterpolationResults = {
@@ -68,8 +69,9 @@ const SegmentDetailItem = ({
           <TableHeader>
             <TableRow>
               <TableHead>Kontur</TableHead>
-              <TableHead className="text-right">Jarak dari Awal</TableHead>
-              <TableHead className="text-right">Jarak dari Akhir</TableHead>
+              <TableHead className="text-center">Jarak dari Awal</TableHead>
+              <TableHead className="text-center">Jarak dari Akhir</TableHead>
+              <TableHead className="text-center">Rumus</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,17 +83,20 @@ const SegmentDetailItem = ({
                     {p.contourLevel.toFixed(2)} m
                   </TableCell>
                   <TableCell
-                    className="text-right font-mono"
+                    className="text-center font-mono"
                     dangerouslySetInnerHTML={{
                       __html: `${p.distance.toFixed(2)} cm`,
                     }}
                   />
                   <TableCell
-                    className="text-right font-mono"
+                    className="text-center font-mono"
                     dangerouslySetInnerHTML={{
                       __html: `${distB.toFixed(2)} cm`,
                     }}
                   />
+                  <TableCell className="text-muted-foreground text-center font-mono text-lg">
+                    <InlineMath math={p.formula} />
+                  </TableCell>
                 </TableRow>
               );
             })}

@@ -1,19 +1,20 @@
 // src/lib/hooks/useKonturProject.ts
-import { useState, useMemo } from "react";
+"use client";
+
+import { useMemo } from "react";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { toast } from "sonner";
-import {
-  Point,
-  marchingSquares,
-  connectLines,
-} from "@/lib/utils/marching-squares";
+import { Point } from "@/lib/utils/marching-squares";
 import {
   calculateInterpolationPoints,
   groupInterpolationPoints,
   SegmentData,
 } from "@/lib/utils/kontur";
+import { CELL_SIZE } from "@/lib/utils/drawing";
 
-// Constants
+// --- TIPE DATA & STATE AWAL ---
+type ProfilePoint = { distance: number; elevation: number };
+
 const MIN_GRID_SIZE = 2;
 const MAX_GRID_SIZE = 20;
 
@@ -21,43 +22,43 @@ type GridData = (number | null)[][];
 type ProjectState = {
   gridSize: { rows: number; cols: number };
   gridData: GridData;
-  roadPath: Point[];
+  // GANTI roadPath DENGAN crossSectionLine
+  crossSectionLine: { p1: Point; p2: Point };
 };
 type SettingsState = {
   contourInterval: number;
   gridDimension: number;
-  isDrawing: boolean;
-  autoRoadElevation: number | null;
-  autoRoadWidth: number;
 };
 
-// The Hook
+// Fungsi interpolasi linear sederhana
+const lerp = (a: number, b: number, t: number) => a + t * (b - a);
+
+// --- HOOK UTAMA ---
 export function useKonturProject() {
   const [project, setProject] = useLocalStorageState<ProjectState>(
-    "konturProject",
+    "konturProject", // KUNCI LOCALSTORAGE TETAP SAMA
     {
       gridSize: { rows: 7, cols: 10 },
       gridData: Array(7)
         .fill(null)
         .map(() => Array(10).fill(null)),
-      roadPath: [],
+      // Inisialisasi garis potongan default
+      crossSectionLine: {
+        p1: { x: CELL_SIZE * 2, y: CELL_SIZE * 1 },
+        p2: { x: CELL_SIZE * 2, y: CELL_SIZE * 5 },
+      },
     },
   );
 
   const [settings, setSettings] = useLocalStorageState<SettingsState>(
-    "konturSettings",
+    "konturSettings", // KUNCI LOCALSTORAGE TETAP SAMA
     {
       contourInterval: 5,
       gridDimension: 10,
-      isDrawing: false,
-      autoRoadElevation: null,
-      autoRoadWidth: 5,
     },
   );
 
-  const [autoRoadPaths, setAutoRoadPaths] = useState<Point[][]>([]);
-
-  // --- (Handlers & Actions remain the same, no changes needed here) ---
+  // --- Fungsi-fungsi lama (adjustGrid, clearAllPoints, dll) tetap sama ---
   const handleGridDataChange = (row: number, col: number, value: string) => {
     const newGridData = project.gridData.map((r, i) =>
       i === row
@@ -89,7 +90,6 @@ export function useKonturProject() {
             .fill(null)
             .map((_, c) => prev.gridData[r]?.[c] ?? null),
         );
-
       return { ...prev, gridSize: newSize, gridData: newGridData };
     });
   };
@@ -104,40 +104,63 @@ export function useKonturProject() {
     toast.success("Semua titik elevasi telah dihapus.");
   };
 
-  const clearRoad = () => {
-    setProject((prev) => ({ ...prev, roadPath: [] }));
-    setAutoRoadPaths([]);
-    setSettings((prev) => ({ ...prev, autoRoadElevation: null }));
-    toast.success("Trase jalan telah dihapus.");
-  };
+  // +++ FUNGSI BARU: Kalkulasi Profil Potongan Memanjang dengan Bilinear Interpolation +++
+  const profileData = useMemo<ProfilePoint[]>(() => {
+    const { gridData, gridSize, crossSectionLine } = project;
+    const { p1, p2 } = crossSectionLine;
+    const profile: ProfilePoint[] = [];
 
-  const undoLastRoadPoint = () => {
-    setProject((prev) => ({ ...prev, roadPath: prev.roadPath.slice(0, -1) }));
-  };
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const lineLengthPx = Math.sqrt(dx * dx + dy * dy);
+    if (lineLengthPx === 0) return [];
 
-  const addRoadPoint = (point: Point) => {
-    setAutoRoadPaths([]);
-    setProject((prev) => ({ ...prev, roadPath: [...prev.roadPath, point] }));
-  };
+    const numSteps = Math.ceil(lineLengthPx); // Ambil sampel setiap pixel
 
-  const handleGenerateAutoRoad = () => {
-    if (settings.autoRoadElevation === null) {
-      toast.error("Masukkan nilai Ketinggian Jalan terlebih dahulu.");
-      return;
+    for (let i = 0; i <= numSteps; i++) {
+      const t = i / numSteps;
+      const currentX = lerp(p1.x, p2.x, t);
+      const currentY = lerp(p1.y, p2.y, t);
+
+      // Konversi ke koordinat grid
+      const gridX = currentX / CELL_SIZE;
+      const gridY = currentY / CELL_SIZE;
+
+      const j = Math.floor(gridX); // Kolom
+      const i_row = Math.floor(gridY); // Baris
+
+      if (
+        i_row < 0 ||
+        i_row >= gridSize.rows - 1 ||
+        j < 0 ||
+        j >= gridSize.cols - 1
+      ) {
+        continue;
+      }
+
+      const tl = gridData[i_row][j];
+      const tr = gridData[i_row][j + 1];
+      const bl = gridData[i_row + 1][j];
+      const br = gridData[i_row + 1][j + 1];
+
+      if (tl === null || tr === null || bl === null || br === null) continue;
+
+      const tx = gridX - j; // Fraksi horizontal
+      const ty = gridY - i_row; // Fraksi vertikal
+
+      // Bilinear Interpolation
+      const topElev = lerp(tl, tr, tx);
+      const bottomElev = lerp(bl, br, tx);
+      const elevation = lerp(topElev, bottomElev, ty);
+
+      const distance = t * lineLengthPx * (settings.gridDimension / CELL_SIZE);
+      profile.push({ distance, elevation });
     }
-    setProject((prev) => ({ ...prev, roadPath: [] }));
-    const roadLines = marchingSquares(
-      project.gridData,
-      settings.autoRoadElevation,
-    );
-    const connectedPaths = connectLines(roadLines);
-    setAutoRoadPaths(connectedPaths);
-    toast.success(
-      `Trase jalan otomatis untuk elevasi ${settings.autoRoadElevation}m berhasil dibuat!`,
-    );
-  };
 
-  // --- Memoized Calculations ---
+    return profile;
+  }, [project, settings.gridDimension]);
+
+  // Kalkulasi untuk detail interpolasi tidak berubah
   const interpolationResults = useMemo(
     () =>
       calculateInterpolationPoints(
@@ -153,64 +176,35 @@ export function useKonturProject() {
       settings.gridDimension,
     ],
   );
-
-  const groupedInterpolationResults = useMemo(
-    () => groupInterpolationPoints(interpolationResults),
-    [interpolationResults],
-  );
-
-  // ✨ --- NEW: Create nested results for the UI --- ✨
   const nestedInterpolationResults = useMemo(() => {
+    const grouped = groupInterpolationPoints(interpolationResults);
     const nested: {
       vertical: Record<string, SegmentData[]>;
       horizontal: Record<string, SegmentData[]>;
     } = { vertical: {}, horizontal: {} };
 
-    // Group horizontal segments by their row index
-    for (const [key, value] of Object.entries(
-      groupedInterpolationResults.horizontal,
-    )) {
-      const rowIndex = key.split("_")[0].split(",")[0]; // Parses "i,j_..." to get "i"
-      if (!nested.horizontal[rowIndex]) {
-        nested.horizontal[rowIndex] = [];
-      }
+    for (const [key, value] of Object.entries(grouped.horizontal)) {
+      const rowIndex = key.split("_")[0].split(",")[0];
+      if (!nested.horizontal[rowIndex]) nested.horizontal[rowIndex] = [];
       nested.horizontal[rowIndex].push(value);
     }
-
-    // Group vertical segments by their column index
-    for (const [key, value] of Object.entries(
-      groupedInterpolationResults.vertical,
-    )) {
-      const colIndex = key.split("_")[0].split(",")[1]; // Parses "i,j_..." to get "j"
-      if (!nested.vertical[colIndex]) {
-        nested.vertical[colIndex] = [];
-      }
+    for (const [key, value] of Object.entries(grouped.vertical)) {
+      const colIndex = key.split("_")[0].split(",")[1];
+      if (!nested.vertical[colIndex]) nested.vertical[colIndex] = [];
       nested.vertical[colIndex].push(value);
     }
-
     return nested;
-  }, [groupedInterpolationResults]);
+  }, [interpolationResults]);
 
   return {
-    // State
     project,
     settings,
-    autoRoadPaths,
-
-    // Setters
+    setProject, // Export setter utama untuk diubah dari canvas
     setSettings,
-
-    // Handlers
     handleGridDataChange,
     adjustGrid,
     clearAllPoints,
-    clearRoad,
-    undoLastRoadPoint,
-    addRoadPoint,
-    handleGenerateAutoRoad,
-
-    // Memoized Results
-    // We export the new nested one for the UI
     nestedInterpolationResults,
+    profileData,
   };
 }

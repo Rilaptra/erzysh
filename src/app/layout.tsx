@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "katex/dist/katex.min.css"; // <-- TAMBAHKAN BARIS INI
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Layout/Header";
@@ -60,8 +61,7 @@ export const metadata: Metadata = {
     // creator: "@yourtwitterhandle",
     images: [LOGO_URL], // Menggunakan URL logo yang baru
   },
-    manifest: "/manifest.json", // <-- TAMBAHKAN INI
-
+  manifest: "/manifest.json", // <-- TAMBAHKAN INI
 };
 
 export default function RootLayout({

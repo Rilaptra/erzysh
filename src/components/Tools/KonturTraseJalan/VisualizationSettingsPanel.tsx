@@ -4,40 +4,57 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Trash2, Undo, MousePointerClick, Sparkles } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { RotateCw, MoveHorizontal, Maximize } from "lucide-react";
+import { Point } from "@/lib/utils/marching-squares";
 
 type SettingsState = {
   contourInterval: number;
   gridDimension: number;
-  isDrawing: boolean;
-  autoRoadElevation: number | null;
-  autoRoadWidth: number;
 };
 
 type VisualizationSettingsPanelProps = {
   settings: SettingsState;
   setSettings: React.Dispatch<React.SetStateAction<SettingsState>>;
-  handleGenerateAutoRoad: () => void;
-  undoLastRoadPoint: () => void;
-  clearRoad: () => void;
-  hasManualRoad: boolean;
-  hasAutoRoad: boolean;
+  crossSectionLine: { p1: Point; p2: Point };
+  setProject: (updater: (prev: any) => any) => void;
+  canvasSize: { width: number; height: number };
 };
 
 export function VisualizationSettingsPanel({
   settings,
   setSettings,
-  handleGenerateAutoRoad,
-  undoLastRoadPoint,
-  clearRoad,
-  hasManualRoad,
-  hasAutoRoad,
+  crossSectionLine,
+  setProject,
+  canvasSize,
 }: VisualizationSettingsPanelProps) {
+  const { p1, p2 } = crossSectionLine;
+  const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  const dx = p2.x - p1.x;
+  const dy = p2.y - p1.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+  const handleSliderChange = (newLength: number, newAngle: number) => {
+    setProject((prev) => {
+      const rad = newAngle * (Math.PI / 180);
+      const halfLen = newLength / 2;
+      const newP1 = {
+        x: center.x - halfLen * Math.cos(rad),
+        y: center.y - halfLen * Math.sin(rad),
+      };
+      const newP2 = {
+        x: center.x + halfLen * Math.cos(rad),
+        y: center.y + halfLen * Math.sin(rad),
+      };
+      return { ...prev, crossSectionLine: { p1: newP1, p2: newP2 } };
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>2. Atur Visualisasi</CardTitle>
+        <CardTitle>2. Atur Visualisasi & Potongan</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
@@ -70,80 +87,48 @@ export function VisualizationSettingsPanel({
             />
           </div>
         </div>
+
         <div className="space-y-4 rounded-md border p-4">
           <Label className="flex items-center gap-2 font-semibold">
-            <Sparkles className="text-primary h-4 w-4" />
-            Trase Jalan Otomatis
+            <Maximize className="text-primary h-4 w-4" />
+            Kontrol Garis Potongan
           </Label>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="road-elev">Ketinggian (m)</Label>
-              <Input
-                id="road-elev"
-                type="number"
-                placeholder="e.g., 145"
-                value={settings.autoRoadElevation ?? ""}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    autoRoadElevation:
-                      e.target.value === "" ? null : parseFloat(e.target.value),
-                  }))
-                }
-              />
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <Label htmlFor="angle-slider" className="flex items-center gap-1">
+                <RotateCw className="size-3" /> Sudut
+              </Label>
+              <span>{angle.toFixed(1)}°</span>
             </div>
-            <div>
-              <Label htmlFor="road-width">Lebar (px)</Label>
-              <Input
-                id="road-width"
-                type="number"
-                value={settings.autoRoadWidth}
-                onChange={(e) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    autoRoadWidth: parseFloat(e.target.value) || 1,
-                  }))
-                }
-              />
-            </div>
+            <Slider
+              id="angle-slider"
+              min={-180}
+              max={180}
+              step={0.1}
+              value={[angle]}
+              onValueChange={(v) => handleSliderChange(length, v[0])}
+            />
           </div>
-          <Button className="w-full" onClick={handleGenerateAutoRoad}>
-            Generate Trase
-          </Button>
-        </div>
-        <div className="space-y-2">
-          <Label>Gambar Trase Jalan Manual</Label>
-          <div className="flex items-center gap-2">
-            <Button
-              className="grow"
-              variant={settings.isDrawing ? "default" : "outline"}
-              onClick={() =>
-                setSettings((prev) => ({ ...prev, isDrawing: !prev.isDrawing }))
-              }
-            >
-              <MousePointerClick className="mr-2 h-4 w-4" />{" "}
-              {settings.isDrawing
-                ? "Mode Gambar: Aktif"
-                : "Mode Gambar: Nonaktif"}
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={undoLastRoadPoint}
-              disabled={!hasManualRoad}
-            >
-              <Undo className="h-4 w-4" />
-            </Button>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <Label
+                htmlFor="length-slider"
+                className="flex items-center gap-1"
+              >
+                <MoveHorizontal className="size-3" /> Panjang
+              </Label>
+              <span>{length.toFixed(0)} px</span>
+            </div>
+            <Slider
+              id="length-slider"
+              min={10}
+              max={Math.max(canvasSize.width, canvasSize.height)}
+              step={1}
+              value={[length]}
+              onValueChange={(v) => handleSliderChange(v[0], angle)}
+            />
           </div>
         </div>
-        <Button
-          variant="destructive"
-          className="w-full"
-          onClick={clearRoad}
-          disabled={!hasManualRoad && !hasAutoRoad}
-        >
-          <Trash2 className="mr-2 h-4 w-4" /> Hapus Trase Jalan
-        </Button>
       </CardContent>
     </Card>
   );
