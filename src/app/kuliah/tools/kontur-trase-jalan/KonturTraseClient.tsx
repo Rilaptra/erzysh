@@ -9,7 +9,6 @@ import { VisualizationSettingsPanel } from "@/components/Tools/KonturTraseJalan/
 import { KonturCanvas } from "@/components/Tools/KonturTraseJalan/KonturCanvas";
 import { InterpolationResults } from "@/components/Tools/KonturTraseJalan/InterpolationResults";
 import { CrossSectionChart } from "@/components/Tools/KonturTraseJalan/CrossSectionChart";
-import { CELL_SIZE } from "@/lib/utils/drawing";
 
 const KonturTraseSkeleton = () => (
   <main className="container mx-auto flex h-[80vh] max-w-7xl items-center justify-center px-4 py-8">
@@ -38,16 +37,22 @@ export default function KonturTraseClient() {
     profileData,
     handleCalculateContours,
     resetCrossSectionLine,
+    elevationOptions,
+    updateCrossSectionPointByValue,
+    targetElevation,
+    setTargetElevation,
+    pointToMove,
+    searchDirection, // +++ Ambil prop baru
+    setSearchDirection, // +++ Ambil prop baru
+
+    setPointToMove,
+    findAndMovePointToElevation,
+    targetElevationSuggestions,
   } = useKonturProject();
 
   if (!hasMounted) {
     return <KonturTraseSkeleton />;
   }
-
-  const canvasSize = {
-    width: (project.gridSize.cols - 1) * CELL_SIZE,
-    height: (project.gridSize.rows - 1) * CELL_SIZE,
-  };
 
   const profileTitle = `Potongan Memanjang (Panjang: ${(
     profileData[profileData.length - 1]?.distance || 0
@@ -81,11 +86,19 @@ export default function KonturTraseClient() {
           <VisualizationSettingsPanel
             settings={settings}
             setSettings={setSettings}
-            crossSectionLine={project.crossSectionLine}
-            setProject={setProject}
-            canvasSize={canvasSize}
+            elevationOptions={elevationOptions}
+            updateCrossSectionPointByValue={updateCrossSectionPointByValue}
             onCalculateContours={handleCalculateContours}
             onResetCrossSection={resetCrossSectionLine}
+            // +++ PASS PROPS BARU KE KOMPONEN +++
+            targetElevation={targetElevation}
+            setTargetElevation={setTargetElevation}
+            pointToMove={pointToMove}
+            setPointToMove={setPointToMove}
+            searchDirection={searchDirection} // +++ Pass prop baru
+            setSearchDirection={setSearchDirection} // +++ Pass prop baru
+            findAndMovePointToElevation={findAndMovePointToElevation}
+            targetElevationSuggestions={targetElevationSuggestions}
           />
         </div>
 

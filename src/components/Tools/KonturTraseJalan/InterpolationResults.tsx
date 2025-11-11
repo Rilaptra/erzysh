@@ -61,14 +61,14 @@ const SegmentDetailItem = ({
     )}
   >
     <AccordionTrigger className="font-mono text-sm font-medium no-underline hover:no-underline">
-      {`Titik ${segment.elev1.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m → ${segment.elev2.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m`}
+      {`Elevasi ${segment.elev1.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m → ${segment.elev2.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m`}
     </AccordionTrigger>
     <AccordionContent className="pb-0">
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Kontur</TableHead>
+              <TableHead className="text-center">Kontur</TableHead>
               <TableHead className="text-center">Jarak dari Awal</TableHead>
               <TableHead className="text-center">Jarak dari Akhir</TableHead>
               <TableHead className="text-center">Rumus</TableHead>
@@ -79,7 +79,7 @@ const SegmentDetailItem = ({
               const distB = gridDimension - p.distance;
               return (
                 <TableRow key={p.contourLevel}>
-                  <TableCell className="font-mono">
+                  <TableCell className="text-center font-mono">
                     {p.contourLevel.toLocaleString("id-ID", { maximumFractionDigits: 2 })} m
                   </TableCell>
                   <TableCell

@@ -106,36 +106,39 @@ export function GridSettingsPanel({
             <span>
               {gridSize.rows} x {gridSize.cols}
             </span>
-            <div className="flex gap-1">
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => adjustGrid("row", 1)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                className="mr-2"
-                onClick={() => adjustGrid("row", -1)}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => adjustGrid("col", 1)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => adjustGrid("col", -1)}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
+            <div className="flex gap-2">
+              <div className="flex gap-1">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => adjustGrid("row", 1)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => adjustGrid("row", -1)}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => adjustGrid("col", 1)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => adjustGrid("col", -1)}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
