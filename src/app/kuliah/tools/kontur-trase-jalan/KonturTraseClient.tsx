@@ -33,9 +33,11 @@ export default function KonturTraseClient() {
     handleGridDataChange,
     adjustGrid,
     clearAllPoints,
+    parseAndSetGridData,
+    handleExportToExcel, // +++ AMBIL FUNGSI DARI HOOK +++
     profileData,
     handleCalculateContours,
-    resetCrossSectionLine, // +++ Ambil fungsi baru
+    resetCrossSectionLine,
   } = useKonturProject();
 
   if (!hasMounted) {
@@ -47,7 +49,9 @@ export default function KonturTraseClient() {
     height: (project.gridSize.rows - 1) * CELL_SIZE,
   };
 
-  const profileTitle = `Potongan Memanjang (Panjang: ${(profileData[profileData.length - 1]?.distance || 0).toFixed(2)} cm)`;
+  const profileTitle = `Potongan Memanjang (Panjang: ${(
+    profileData[profileData.length - 1]?.distance || 0
+  ).toLocaleString("id-ID", { maximumFractionDigits: 2 })} cm)`;
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-8">
@@ -69,6 +73,8 @@ export default function KonturTraseClient() {
             adjustGrid={adjustGrid}
             handleGridDataChange={handleGridDataChange}
             clearAllPoints={clearAllPoints}
+            parseAndSetGridData={parseAndSetGridData}
+            handleExportToExcel={handleExportToExcel} // +++ PASS FUNGSI KE KOMPONEN +++
           />
         </div>
         <div className="space-y-6 lg:col-span-1">
@@ -79,7 +85,7 @@ export default function KonturTraseClient() {
             setProject={setProject}
             canvasSize={canvasSize}
             onCalculateContours={handleCalculateContours}
-            onResetCrossSection={resetCrossSectionLine} // +++ Kirim handler ke tombol
+            onResetCrossSection={resetCrossSectionLine}
           />
         </div>
 

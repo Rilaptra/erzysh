@@ -19,7 +19,7 @@ export const CompressionOptions = ({
         Kualitas Gambar
       </Label>
       <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-        {(quality * 100).toFixed(0)}%
+        {(quality * 100).toLocaleString("id-ID", { maximumFractionDigits: 0 })}%
       </span>
     </div>
     <p className="text-xs text-gray-500 dark:text-gray-400">

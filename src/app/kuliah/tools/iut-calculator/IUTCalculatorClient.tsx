@@ -210,7 +210,7 @@ const AzimuthVisualizer = () => {
         </div>
 
         <div className="text-lg font-semibold">
-          Total Sudut: {totalAngle.toFixed(4)}°
+          Total Sudut: {totalAngle.toLocaleString("id-ID", { maximumFractionDigits: 4 })}°
         </div>
 
         <div className="bg-muted h-48 w-full overflow-y-auto rounded-lg border p-2">
@@ -220,8 +220,8 @@ const AzimuthVisualizer = () => {
               className="bg-background my-1 flex items-center justify-between rounded-md p-2 shadow-sm"
             >
               <span className="text-sm font-medium">
-                Awal: {sector.start.toFixed(2)}° → Akhir:{" "}
-                {sector.end.toFixed(2)}°
+                Awal: {sector.start.toLocaleString("id-ID", { maximumFractionDigits: 2 })}° → Akhir:{" "}
+                {sector.end.toLocaleString("id-ID", { maximumFractionDigits: 2 })}°
               </span>
               <Button
                 variant="ghost"
@@ -369,7 +369,7 @@ const PolygonSimulator = () => {
       ctx.font = "12px Inter";
       ctx.textAlign = "center";
       ctx.fillText(
-        `P${i + 1} (${coordinates[i].x.toFixed(2)}, ${coordinates[i].y.toFixed(2)})`,
+        `P${i + 1} (${coordinates[i].x.toLocaleString("id-ID", { maximumFractionDigits: 2 })}, ${coordinates[i].y.toLocaleString("id-ID", { maximumFractionDigits: 2 })})`,
         p.x,
         p.y - 15,
       );

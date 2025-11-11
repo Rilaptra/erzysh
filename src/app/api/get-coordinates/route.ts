@@ -55,8 +55,8 @@ export async function GET(req: NextRequest) {
     for (const pattern of COORD_PATTERNS) {
       const match = text.match(pattern);
       if (match) {
-        const lat = parseFloat(match[1] || match[3]).toFixed(6);
-        const lon = parseFloat(match[2] || match[4]).toFixed(6);
+        const lat = parseFloat(match[1] || match[3]).toLocaleString("id-ID", { maximumFractionDigits: 6 });
+        const lon = parseFloat(match[2] || match[4]).toLocaleString("id-ID", { maximumFractionDigits: 6 });
         // 4. Kirim Balik Hasilnya
         return NextResponse.json({ coordinate: `${lat}, ${lon}` });
       }

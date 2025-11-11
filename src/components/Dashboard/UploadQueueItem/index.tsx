@@ -55,7 +55,7 @@ export function UploadQueueItem({ item }: UploadQueueItemProps) {
           />
           {item.status === "uploading" && (
             <span className="text-teal-muted w-12 text-right font-mono text-xs">
-              {elapsedTime.toFixed(1)}s
+              {elapsedTime.toLocaleString("id-ID", { maximumFractionDigits: 1 })}s
             </span>
           )}
         </div>

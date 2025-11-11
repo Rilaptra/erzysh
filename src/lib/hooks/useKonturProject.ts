@@ -1,7 +1,7 @@
 // src/lib/hooks/useKonturProject.ts
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocalStorageState } from "@/lib/hooks/useLocalStorageState";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,7 @@ import {
   SegmentData,
 } from "@/lib/utils/kontur";
 import { CELL_SIZE } from "@/lib/utils/drawing";
+import * as XLSX from "xlsx"; // +++ TAMBAHKAN IMPORT INI +++
 
 // Tipe Data
 type ProfilePoint = { distance: number; elevation: number };
@@ -41,7 +42,6 @@ const MAX_GRID_SIZE = 20;
 
 const lerp = (a: number, b: number, t: number) => a + t * (b - a);
 
-// +++ DEFINISIKAN POSISI DEFAULT DI SINI +++
 const DEFAULT_CROSS_SECTION_LINE = {
   p1: { x: CELL_SIZE * 2, y: CELL_SIZE * 1 },
   p2: { x: CELL_SIZE * 2, y: CELL_SIZE * 5 },
@@ -56,7 +56,7 @@ export function useKonturProject() {
       gridData: Array(7)
         .fill(null)
         .map(() => Array(10).fill(null)),
-      crossSectionLine: DEFAULT_CROSS_SECTION_LINE, // Gunakan posisi default
+      crossSectionLine: DEFAULT_CROSS_SECTION_LINE,
     },
   );
 
@@ -121,6 +121,77 @@ export function useKonturProject() {
     });
     toast.success("Semua titik elevasi telah dihapus.");
   };
+
+  const parseAndSetGridData = useCallback((text: string) => {
+    if (!text.trim()) {
+      toast.info("Text area kosong, tidak ada data yang di-parse.");
+      return;
+    }
+    const parsedData = text
+      .trim()
+      .split("\n")
+      .map((row) =>
+        row.split("\t").map((cell) => {
+          const cleanedCell = cell.trim().replace(",", ".");
+          const num = parseFloat(cleanedCell);
+          return isNaN(num) ? null : num;
+        }),
+      );
+
+    const newRows = Math.max(
+      MIN_GRID_SIZE,
+      Math.min(MAX_GRID_SIZE, parsedData.length),
+    );
+    const newCols = Math.max(
+      MIN_GRID_SIZE,
+      Math.min(MAX_GRID_SIZE, Math.max(...parsedData.map((r) => r.length), 0)),
+    );
+
+    const newGridData = Array(newRows)
+      .fill(null)
+      .map((_, r) =>
+        Array(newCols)
+          .fill(null)
+          .map((_, c) => parsedData[r]?.[c] ?? null),
+      );
+
+    setProject((prev) => ({
+      ...prev,
+      gridSize: { rows: newRows, cols: newCols },
+      gridData: newGridData,
+    }));
+
+    toast.success(
+      `Data berhasil di-parse! Grid diatur ke ${newRows}x${newCols}.`,
+    );
+  }, []);
+
+  // +++ FUNGSI BARU UNTUK EXPORT +++
+  const handleExportToExcel = useCallback(() => {
+    try {
+      if (project.gridData.flat().every((cell) => cell === null)) {
+        toast.warning("Tidak ada data elevasi untuk diekspor.");
+        return;
+      }
+
+      // Ganti null dengan string kosong untuk sel kosong di Excel
+      const dataForSheet = project.gridData.map((row) =>
+        row.map((cell) => (cell === null ? "" : cell)),
+      );
+
+      const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Elevasi");
+
+      const fileName = `Data_Kontur_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      toast.success("Data berhasil diekspor ke Excel!");
+    } catch (error) {
+      console.error("Gagal export ke Excel:", error);
+      toast.error("Terjadi kesalahan saat membuat file Excel.");
+    }
+  }, [project.gridData]);
 
   const profileData = useMemo<ProfilePoint[]>(() => {
     const { gridData, gridSize, crossSectionLine } = project;
@@ -211,7 +282,6 @@ export function useKonturProject() {
     toast.success("Kontur berhasil digenerate!");
   };
 
-  // +++ FUNGSI BARU UNTUK RESET POSISI +++
   const resetCrossSectionLine = () => {
     setProject((prev) => ({
       ...prev,
@@ -229,8 +299,10 @@ export function useKonturProject() {
     handleGridDataChange,
     adjustGrid,
     clearAllPoints,
+    parseAndSetGridData,
+    handleExportToExcel, // +++ EXPORT FUNGSI BARU +++
     profileData,
     handleCalculateContours,
-    resetCrossSectionLine, // Export fungsi reset
+    resetCrossSectionLine,
   };
 }

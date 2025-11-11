@@ -61,7 +61,7 @@ const SegmentDetailItem = ({
     )}
   >
     <AccordionTrigger className="font-mono text-sm font-medium no-underline hover:no-underline">
-      {`Titik ${segment.elev1.toFixed(2)}m → ${segment.elev2.toFixed(2)}m`}
+      {`Titik ${segment.elev1.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m → ${segment.elev2.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m`}
     </AccordionTrigger>
     <AccordionContent className="pb-0">
       <div className="overflow-hidden rounded-md border">
@@ -80,18 +80,18 @@ const SegmentDetailItem = ({
               return (
                 <TableRow key={p.contourLevel}>
                   <TableCell className="font-mono">
-                    {p.contourLevel.toFixed(2)} m
+                    {p.contourLevel.toLocaleString("id-ID", { maximumFractionDigits: 2 })} m
                   </TableCell>
                   <TableCell
                     className="text-center font-mono"
                     dangerouslySetInnerHTML={{
-                      __html: `${p.distance.toFixed(2)} cm`,
+                      __html: `${p.distance.toLocaleString("id-ID", { maximumFractionDigits: 2 })} cm`,
                     }}
                   />
                   <TableCell
                     className="text-center font-mono"
                     dangerouslySetInnerHTML={{
-                      __html: `${distB.toFixed(2)} cm`,
+                      __html: `${distB.toLocaleString("id-ID", { maximumFractionDigits: 2 })} cm`,
                     }}
                   />
                   <TableCell className="text-muted-foreground text-center font-mono text-lg">

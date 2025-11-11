@@ -125,7 +125,7 @@ export function VisualizationSettingsPanel({
               <Label htmlFor="angle-slider" className="flex items-center gap-1">
                 <RotateCw className="size-3" /> Sudut
               </Label>
-              <span>{angle.toFixed(1)}°</span>
+              <span>{angle.toLocaleString("id-ID", { maximumFractionDigits: 1 })}°</span>
             </div>
             <Slider
               id="angle-slider"
@@ -144,7 +144,7 @@ export function VisualizationSettingsPanel({
               >
                 <MoveHorizontal className="size-3" /> Panjang
               </Label>
-              <span>{length.toFixed(0)} px</span>
+              <span>{length.toLocaleString("id-ID", { maximumFractionDigits: 0 })} px</span>
             </div>
             <Slider
               id="length-slider"

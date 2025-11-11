@@ -64,7 +64,7 @@ export function CrossSectionChart({
     chartInstanceRef.current = new Chart(ctx, {
       type: "line",
       data: {
-        labels: profileData.map((p) => p.distance.toFixed(2)),
+        labels: profileData.map((p) => p.distance.toLocaleString("id-ID", { maximumFractionDigits: 2 })),
         datasets: [
           {
             label: "Elevasi",
@@ -90,7 +90,7 @@ export function CrossSectionChart({
           tooltip: {
             callbacks: {
               title: (tooltipItems) => `Jarak: ${tooltipItems[0].label} cm`,
-              label: (context) => `Elevasi: ${context.parsed.y?.toFixed(2)} m`,
+              label: (context) => `Elevasi: ${context.parsed.y?.toLocaleString("id-ID", { maximumFractionDigits: 2 })} m`,
             },
           },
         },
