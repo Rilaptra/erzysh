@@ -15,6 +15,7 @@ import {
   GraduationCap,
   BetweenHorizontalStart,
   Map,
+  Construction,
 } from "lucide-react";
 
 function ToolButtons() {
@@ -25,44 +26,50 @@ function ToolButtons() {
     {
       href: "/kuliah/tools/interval-generator",
       label: "Generator Interval",
-      icon: <BetweenHorizontalStart className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <BetweenHorizontalStart className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/survey-dashboard",
       label: "Dashboard Survey",
-      icon: <ClipboardCheck className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <ClipboardCheck className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/iut-calculator",
       label: "Kalkulator IUT",
-      icon: <Calculator className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <Calculator className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/photo-formatter",
       label: "Photo to Docs Formatter (Tugas Prodi)",
-      icon: <Camera className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <Camera className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: true,
     },
     {
       href: "/kuliah/tools/checklist-teksip",
       label: "Checklist Nama Teksip 25 (Tugas Foto)",
-      icon: <FileInput className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <FileInput className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: false,
     },
     {
       href: "/kuliah/tools/sipadu-leaked",
       label: "Sipadu Leaked",
-      icon: <GraduationCap className="mr-2 h-4 w-4 text-teal-muted" />, // Pastikan ini ada jika tool-nya ada
+      icon: <GraduationCap className="text-teal-muted mr-2 h-4 w-4" />, // Pastikan ini ada jika tool-nya ada
       adminOnly: true,
     },
     {
       href: "/kuliah/tools/kontur-trase-jalan",
       label: "Visualisasi Kontur & Trase",
-      icon: <Map className="mr-2 h-4 w-4 text-teal-muted" />,
+      icon: <Map className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: false, // Atau true jika ini tool admin
+    },
+    {
+      href: "/kuliah/tools/jembatan-balsa",
+      label: "Simulator Jembatan Balsa",
+      icon: <Construction className="text-teal-muted mr-2 h-4 w-4" />,
+      adminOnly: true, // Sesuai request
     },
   ];
 
