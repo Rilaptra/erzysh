@@ -32,7 +32,7 @@ import {
   Calculator,
   Grid,
   ScanLine,
-  Eraser, // Icon baru
+  Eraser,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { BlockMath } from "react-katex";
@@ -55,11 +55,11 @@ type BridgeConfig = {
   // Load Params
   load: number; // kg
   loadType: "point" | "distributed";
-  loadLength: number; // cm
+  loadLength: number; // cm (Digunakan sebagai lebar plat pembebanan)
 
   // Visualization Constants (Editable)
-  gridSize: number; // px (Default 20)
-  scaleFactor: number; // cm per grid unit (Default 5)
+  gridSize: number; // px
+  scaleFactor: number; // cm per grid unit
 
   // Simulation Constants (Advanced Settings)
   materialE: number; // MPa
@@ -69,7 +69,7 @@ type BridgeConfig = {
   autoTickSpeed: number; // ms
 };
 
-// --- CONSTANTS (Fixed Layout) ---
+// --- CONSTANTS ---
 const CANVAS_HEIGHT = 500;
 const GROUND_LEVEL_Y = CANVAS_HEIGHT - 100;
 
@@ -92,23 +92,23 @@ function distToSegment(
 export default function JembatanBalsaClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Default Config
+  // Default Config Sesuai Request (40cm Span, 3x3mm Balsa, Plat 5cm)
   const [config, setConfig] = useState<BridgeConfig>({
-    span: 60,
-    balsaWidth: 10,
-    balsaHeight: 10,
+    span: 40,
+    balsaWidth: 3,
+    balsaHeight: 3,
     load: 0,
-    loadType: "point",
-    loadLength: 20,
+    loadType: "point", // Default point load via plat
+    loadLength: 5, // Lebar plat 5cm
     // Visualization Defaults
     gridSize: 20,
-    scaleFactor: 5,
+    scaleFactor: 2, // 1 grid = 2 cm (Agar 40cm terlihat jelas di layar)
     // Simulation Defaults
-    materialE: 4000,
-    failLimit: 15,
-    maxLoadLimit: 100,
-    autoLoadStep: 0.5,
-    autoTickSpeed: 50,
+    materialE: 3500, // Balsa standar
+    failLimit: 15, // MPa limit
+    maxLoadLimit: 50, // kg limit
+    autoLoadStep: 0.2, // 0.2 kg per tick (lebih presisi karena balsa kecil)
+    autoTickSpeed: 50, // ms
   });
 
   const [nodes, setNodes] = useState<Point[]>([]);
@@ -124,7 +124,6 @@ export default function JembatanBalsaClient() {
     stress: number;
     passed: boolean;
   } | null>(null);
-
   const [isMobile, setIsMobile] = useState(false);
   const [isAutoTesting, setIsAutoTesting] = useState(false);
 
@@ -141,89 +140,171 @@ export default function JembatanBalsaClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- DEFAULT BRIDGE GENERATOR ---
+  // --- DEFAULT BRIDGE GENERATOR (Trapezoidal Fan Truss) ---
   const initDefaultBridge = (currentConfig: BridgeConfig = config) => {
     const widthPx = 800;
     const centerX = widthPx / 2;
-    const spanPx =
-      (currentConfig.span / currentConfig.scaleFactor) * currentConfig.gridSize;
-    const trussHeightPx = currentConfig.gridSize * 4;
 
+    // Helper: Convert CM to Pixel based on current scale
+    const toPx = (cm: number) =>
+      (cm / currentConfig.scaleFactor) * currentConfig.gridSize;
+
+    const spanPx = toPx(currentConfig.span);
+    const heightPx = toPx(10); // Tinggi 10 cm sesuai request
+    const plateWidthPx = toPx(currentConfig.loadLength); // Lebar plat sesuai loadLength (5cm)
+
+    // 1. SETUP NODES
+    // Tumpuan Bawah
     const pLeft: Point = {
       x: centerX - spanPx / 2,
       y: GROUND_LEVEL_Y,
-      id: "support-left",
+      id: "supp-l",
       isSupport: true,
     };
     const pRight: Point = {
       x: centerX + spanPx / 2,
       y: GROUND_LEVEL_Y,
-      id: "support-right",
+      id: "supp-r",
       isSupport: true,
     };
 
-    const seg = 4;
-    const segWidth = spanPx / seg;
-    const bottomNodes: Point[] = [];
-    for (let i = 1; i < seg; i++) {
-      bottomNodes.push({
-        x: pLeft.x + segWidth * i,
+    // Titik Bawah Plat (Tengah)
+    const pPlateL: Point = {
+      x: centerX - plateWidthPx / 2,
+      y: GROUND_LEVEL_Y,
+      id: "pl-b-l",
+    };
+    const pPlateR: Point = {
+      x: centerX + plateWidthPx / 2,
+      y: GROUND_LEVEL_Y,
+      id: "pl-b-r",
+    };
+
+    // Titik Atas (Bahu Trapesium)
+    const pTopL: Point = {
+      x: centerX - plateWidthPx / 2,
+      y: GROUND_LEVEL_Y - heightPx,
+      id: "top-l",
+    };
+    const pTopR: Point = {
+      x: centerX + plateWidthPx / 2,
+      y: GROUND_LEVEL_Y - heightPx,
+      id: "top-r",
+    };
+
+    // Titik Antara (Intermediate Nodes) pada Bawah
+    // Jarak dari tumpuan ke plat = (40 - 5) / 2 = 17.5 cm
+    // Kita bagi menjadi 3 segmen (sesuai gambar referensi) -> 17.5 / 3 = ~5.83 cm per segmen
+    const sideLengthCm = (currentConfig.span - currentConfig.loadLength) / 2;
+    const segments = 3;
+    const segLenPx = toPx(sideLengthCm / segments);
+
+    const interNodesL: Point[] = [];
+    for (let i = 1; i < segments; i++) {
+      interNodesL.push({
+        x: pLeft.x + segLenPx * i,
         y: GROUND_LEVEL_Y,
-        id: `b-${i}`,
+        id: `in-l-${i}`,
       });
     }
 
-    const topNodes: Point[] = [];
-    for (let i = 0; i < seg; i++) {
-      topNodes.push({
-        x: pLeft.x + segWidth * i + segWidth / 2,
-        y: GROUND_LEVEL_Y - trussHeightPx,
-        id: `t-${i}`,
+    const interNodesR: Point[] = [];
+    for (let i = 1; i < segments; i++) {
+      interNodesR.push({
+        x: pRight.x - segLenPx * i,
+        y: GROUND_LEVEL_Y,
+        id: `in-r-${i}`,
       });
     }
+    // Sort right nodes by X ascending to make chaining lines easier
+    interNodesR.sort((a, b) => a.x - b.x);
 
-    const allNodes = [pLeft, pRight, ...bottomNodes, ...topNodes];
+    const allNodes = [
+      pLeft,
+      pRight,
+      pPlateL,
+      pPlateR,
+      pTopL,
+      pTopR,
+      ...interNodesL,
+      ...interNodesR,
+    ];
+
+    // 2. SETUP MEMBERS
     const newMembers: Member[] = [];
 
-    const bottomLine = [pLeft, ...bottomNodes, pRight];
-    for (let i = 0; i < bottomLine.length - 1; i++) {
+    // Bottom Chord (Sambung menyambung)
+    const bottomChain = [
+      pLeft,
+      ...interNodesL,
+      pPlateL,
+      pPlateR,
+      ...interNodesR,
+      pRight,
+    ];
+    for (let i = 0; i < bottomChain.length - 1; i++) {
       newMembers.push({
-        from: bottomLine[i].id,
-        to: bottomLine[i + 1].id,
-        id: `bm-${i}`,
+        from: bottomChain[i].id,
+        to: bottomChain[i + 1].id,
+        id: `bc-${i}`,
         type: "balsa",
       });
     }
-    for (let i = 0; i < topNodes.length - 1; i++) {
-      newMembers.push({
-        from: topNodes[i].id,
-        to: topNodes[i + 1].id,
-        id: `tm-${i}`,
-        type: "balsa",
-      });
-    }
-    bottomLine.forEach((bNode, i) => {
-      if (topNodes[i])
-        newMembers.push({
-          from: bNode.id,
-          to: topNodes[i].id,
-          id: `d1-${i}`,
-          type: "balsa",
-        });
-      if (i > 0 && topNodes[i - 1])
-        newMembers.push({
-          from: bNode.id,
-          to: topNodes[i - 1].id,
-          id: `d2-${i}`,
-          type: "balsa",
-        });
-    });
-    const lastTop = topNodes[topNodes.length - 1];
+
+    // Top Chord (Datar di tengah)
     newMembers.push({
-      from: lastTop.id,
-      to: pRight.id,
-      id: `d-end`,
+      from: pTopL.id,
+      to: pTopR.id,
+      id: "tc-mid",
       type: "balsa",
+    });
+
+    // Outer Slopes (Miring utama)
+    newMembers.push({
+      from: pLeft.id,
+      to: pTopL.id,
+      id: "slope-l",
+      type: "balsa",
+    });
+    newMembers.push({
+      from: pRight.id,
+      to: pTopR.id,
+      id: "slope-r",
+      type: "balsa",
+    });
+
+    // Verticals (Samping plat)
+    newMembers.push({
+      from: pPlateL.id,
+      to: pTopL.id,
+      id: "v-l",
+      type: "balsa",
+    });
+    newMembers.push({
+      from: pPlateR.id,
+      to: pTopR.id,
+      id: "v-r",
+      type: "balsa",
+    });
+
+    // Diagonals (Fanning from Top Corners)
+    // Dari Top Left ke intermediate nodes kiri
+    interNodesL.forEach((node, idx) => {
+      newMembers.push({
+        from: node.id,
+        to: pTopL.id,
+        id: `fan-l-${idx}`,
+        type: "balsa",
+      });
+    });
+    // Dari Top Right ke intermediate nodes kanan
+    interNodesR.forEach((node, idx) => {
+      newMembers.push({
+        from: node.id,
+        to: pTopR.id,
+        id: `fan-r-${idx}`,
+        type: "balsa",
+      });
     });
 
     setNodes(allNodes);
@@ -247,9 +328,11 @@ export default function JembatanBalsaClient() {
     currentLoad: number,
     currentConfig: BridgeConfig,
   ) => {
+    // Unit conversions
     const L_mm = currentConfig.span * 10;
     const P_N = currentLoad * 9.81;
 
+    // Moment of Inertia (I) for rectangle balsa
     const I =
       (currentConfig.balsaWidth * Math.pow(currentConfig.balsaHeight, 3)) / 12;
     const E = currentConfig.materialE;
@@ -257,10 +340,17 @@ export default function JembatanBalsaClient() {
     let maxMoment = 0;
     let deflection = 0;
 
+    // Logic Beban: Meskipun user memilih "Point", kita treat sebagai beban terpusat di tengah.
+    // Namun visualisasinya ada plat. Secara fisika sederhana, jika plat kaku, beban terbagi di 2 titik tumpu plat.
+    // Untuk penyederhanaan simulasi ini, kita tetap gunakan rumus balok sederhana (worst case single point load di tengah).
+
     if (currentConfig.loadType === "point") {
+      // P * L / 4
       maxMoment = (P_N * L_mm) / 4;
       deflection = (P_N * Math.pow(L_mm, 3)) / (48 * E * I);
     } else {
+      // Beban merata sebagian di tengah (sepanjang loadLength)
+      // Approximation ratio
       const ratio = Math.min(1, currentConfig.loadLength / currentConfig.span);
       const factor = 4 + 4 * (1 - ratio);
       maxMoment = (P_N * L_mm) / factor;
@@ -268,7 +358,7 @@ export default function JembatanBalsaClient() {
     }
 
     const y = currentConfig.balsaHeight / 2;
-    const stress = (maxMoment * y) / I;
+    const stress = (maxMoment * y) / I; // My/I
     const passed = stress <= currentConfig.failLimit;
 
     return { deflection, stress, passed };
@@ -324,8 +414,10 @@ export default function JembatanBalsaClient() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear & Sky
+    // 1. Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 2. Background (Sky)
     const gradSky = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
     gradSky.addColorStop(0, "#f0f9ff");
     gradSky.addColorStop(1, "#e0f2fe");
@@ -334,13 +426,15 @@ export default function JembatanBalsaClient() {
       : gradSky;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Calculate dynamic pixel values
-    const spanPx = (config.span / config.scaleFactor) * config.gridSize;
+    // 3. Calculation for Visuals
+    const toPx = (cm: number) => (cm / config.scaleFactor) * config.gridSize;
+    const spanPx = toPx(config.span);
+    const platePx = toPx(config.loadLength);
     const centerX = canvas.width / 2;
     const leftBankX = centerX - spanPx / 2;
     const rightBankX = centerX + spanPx / 2;
 
-    // Environment (Ground & River)
+    // 4. Environment (Ground & River)
     ctx.fillStyle = "#65a30d";
     ctx.beginPath();
     ctx.moveTo(0, GROUND_LEVEL_Y);
@@ -365,12 +459,11 @@ export default function JembatanBalsaClient() {
     );
     ctx.globalAlpha = 1.0;
 
-    // Dynamic Grid
+    // 5. Grid
     ctx.strokeStyle = document.documentElement.classList.contains("dark")
       ? "#ffffff10"
       : "#00000010";
     ctx.lineWidth = 0.5;
-    // Gunakan config.gridSize
     for (let x = 0; x <= canvas.width; x += config.gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -384,7 +477,7 @@ export default function JembatanBalsaClient() {
       ctx.stroke();
     }
 
-    // Members
+    // 6. Members (Balsa Sticks)
     members.forEach((member) => {
       const n1 = nodes.find((n) => n.id === member.from);
       const n2 = nodes.find((n) => n.id === member.to);
@@ -392,26 +485,31 @@ export default function JembatanBalsaClient() {
         ctx.beginPath();
         ctx.moveTo(n1.x, n1.y);
         ctx.lineTo(n2.x, n2.y);
-        ctx.lineWidth = Math.max(2, config.balsaHeight / 2);
-        let color = "#d97706";
+        // Visual width scale (sedikit dibesarkan agar terlihat)
+        const visualWidth = Math.max(1.5, config.balsaHeight * 0.5);
+        ctx.lineWidth = visualWidth;
+
+        let color = "#d97706"; // Wood
         if (simulationResult)
           color = simulationResult.passed ? "#22c55e" : "#ef4444";
         ctx.strokeStyle = color;
         ctx.stroke();
+
+        // Joints
         ctx.fillStyle = "#78350f";
         ctx.beginPath();
-        ctx.arc(n1.x, n1.y, 2, 0, 2 * Math.PI);
+        ctx.arc(n1.x, n1.y, visualWidth / 1.5, 0, 2 * Math.PI);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(n2.x, n2.y, 2, 0, 2 * Math.PI);
+        ctx.arc(n2.x, n2.y, visualWidth / 1.5, 0, 2 * Math.PI);
         ctx.fill();
       }
     });
 
-    // Nodes
+    // 7. Nodes
     nodes.forEach((node) => {
       ctx.beginPath();
-      ctx.arc(node.x, node.y, node.isSupport ? 6 : 4, 0, 2 * Math.PI);
+      ctx.arc(node.x, node.y, node.isSupport ? 5 : 3, 0, 2 * Math.PI);
       ctx.fillStyle =
         node.id === selectedNode
           ? "#eab308"
@@ -422,31 +520,40 @@ export default function JembatanBalsaClient() {
       ctx.stroke();
       if (node.isSupport) {
         ctx.beginPath();
-        ctx.moveTo(node.x, node.y + 8);
-        ctx.lineTo(node.x - 8, node.y + 20);
-        ctx.lineTo(node.x + 8, node.y + 20);
+        ctx.moveTo(node.x, node.y + 6);
+        ctx.lineTo(node.x - 6, node.y + 16);
+        ctx.lineTo(node.x + 6, node.y + 16);
         ctx.closePath();
         ctx.fillStyle = "#475569";
         ctx.fill();
       }
     });
 
-    // Load Visual
-    if (config.load > 0) {
+    // 8. Load Visual (Plate + Arrow)
+    if (config.load > 0 || config.loadType === "distributed") {
+      // Always show plate concept if distributed/plate settings active
       const loadCenterY = GROUND_LEVEL_Y;
+
+      // Draw Plate (Visual only)
+      ctx.fillStyle = "#94a3b8"; // Plate color (grey)
+      ctx.fillRect(centerX - platePx / 2, loadCenterY - 5, platePx, 5);
+      ctx.strokeRect(centerX - platePx / 2, loadCenterY - 5, platePx, 5);
+
       ctx.fillStyle = "#dc2626";
       ctx.strokeStyle = "#dc2626";
       ctx.lineWidth = 2;
       ctx.font = "bold 12px sans-serif";
+
       if (config.loadType === "point") {
+        // Arrow on top of plate
         ctx.beginPath();
         ctx.moveTo(centerX, loadCenterY - 60);
-        ctx.lineTo(centerX, loadCenterY);
+        ctx.lineTo(centerX, loadCenterY - 5);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(centerX - 5, loadCenterY - 10);
-        ctx.lineTo(centerX, loadCenterY);
-        ctx.lineTo(centerX + 5, loadCenterY - 10);
+        ctx.moveTo(centerX - 5, loadCenterY - 15);
+        ctx.lineTo(centerX, loadCenterY - 5);
+        ctx.lineTo(centerX + 5, loadCenterY - 15);
         ctx.fill();
         ctx.fillText(
           `P = ${config.load.toFixed(1)} kg`,
@@ -454,22 +561,35 @@ export default function JembatanBalsaClient() {
           loadCenterY - 40,
         );
       } else {
-        const loadLenPx =
-          (config.loadLength / config.scaleFactor) * config.gridSize;
-        const startX = centerX - loadLenPx / 2;
-        ctx.fillStyle = "rgba(220, 38, 38, 0.2)";
-        ctx.fillRect(startX, loadCenterY - 30, loadLenPx, 30);
-        ctx.strokeRect(startX, loadCenterY - 30, loadLenPx, 30);
+        // Distributed arrows
+        const startX = centerX - platePx / 2;
+        ctx.fillStyle = "rgba(220, 38, 38, 0.1)";
+        ctx.fillRect(startX, loadCenterY - 35, platePx, 30);
+
+        const numArrows = Math.max(3, Math.floor(platePx / 15));
+        for (let i = 0; i < numArrows; i++) {
+          const ax = startX + (platePx / (numArrows + 1)) * (i + 1);
+          ctx.beginPath();
+          ctx.moveTo(ax, loadCenterY - 35);
+          ctx.lineTo(ax, loadCenterY - 5);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(ax - 3, loadCenterY - 10);
+          ctx.lineTo(ax, loadCenterY - 5);
+          ctx.lineTo(ax + 3, loadCenterY - 10);
+          ctx.fillStyle = "#dc2626";
+          ctx.fill();
+        }
         ctx.fillStyle = "#dc2626";
         ctx.fillText(
           `Total = ${config.load.toFixed(1)} kg`,
           centerX - 40,
-          loadCenterY - 40,
+          loadCenterY - 45,
         );
       }
     }
 
-    // Preview
+    // 9. Mouse Preview (Snap Ghost)
     if (mode === "node" || (mode === "member" && selectedNode)) {
       ctx.beginPath();
       ctx.arc(mousePos.x, mousePos.y, 3, 0, 2 * Math.PI);
@@ -568,12 +688,11 @@ export default function JembatanBalsaClient() {
     const numVal = parseFloat(value);
     if (isNaN(numVal) || numVal < 0) return;
 
-    // Reset jika parameter vital berubah drastis
     if (
       (field === "span" || field === "gridSize" || field === "scaleFactor") &&
       numVal !== config[field]
     ) {
-      // Optional: Auto reset or warn
+      // Parameter vital berubah
     }
     setConfig((prev) => ({ ...prev, [field]: numVal }));
   };
@@ -689,21 +808,22 @@ export default function JembatanBalsaClient() {
               />
             </div>
 
-            {config.loadType === "distributed" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="loadLength">Panjang Beban (L) - cm</Label>
-                <Input
-                  id="loadLength"
-                  type="number"
-                  value={config.loadLength}
-                  max={config.span}
-                  onChange={(e) =>
-                    handleParamChange("loadLength", e.target.value)
-                  }
-                  disabled={isAutoTesting}
-                />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="loadLength">Panjang Plat/Beban (L) - cm</Label>
+              <Input
+                id="loadLength"
+                type="number"
+                value={config.loadLength}
+                max={config.span}
+                onChange={(e) =>
+                  handleParamChange("loadLength", e.target.value)
+                }
+                disabled={isAutoTesting}
+              />
+              <p className="text-muted-foreground text-[10px]">
+                *Digunakan sebagai lebar plat (visual) dan distribusi beban.
+              </p>
+            </div>
 
             {/* --- ADVANCED SETTINGS ACCORDION --- */}
             <Accordion
@@ -718,7 +838,6 @@ export default function JembatanBalsaClient() {
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="space-y-4 pt-2">
-                  {/* --- GRID & SCALE SETTINGS (New) --- */}
                   <div className="text-muted-foreground flex items-center gap-1 text-xs font-semibold">
                     <Grid className="h-3 w-3" /> Visualisasi (Grid & Skala)
                   </div>
