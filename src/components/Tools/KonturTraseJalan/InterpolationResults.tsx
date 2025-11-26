@@ -64,7 +64,7 @@ const SegmentDetailItem = ({
       {`Elevasi ${segment.elev1.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m → ${segment.elev2.toLocaleString("id-ID", { maximumFractionDigits: 2 })}m`}
     </AccordionTrigger>
     <AccordionContent className="pb-0">
-      <div className="overflow-hidden rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -80,7 +80,10 @@ const SegmentDetailItem = ({
               return (
                 <TableRow key={p.contourLevel}>
                   <TableCell className="text-center font-mono">
-                    {p.contourLevel.toLocaleString("id-ID", { maximumFractionDigits: 2 })} m
+                    {p.contourLevel.toLocaleString("id-ID", {
+                      maximumFractionDigits: 2,
+                    })}{" "}
+                    m
                   </TableCell>
                   <TableCell
                     className="text-center font-mono"

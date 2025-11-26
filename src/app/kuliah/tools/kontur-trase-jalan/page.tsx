@@ -1,6 +1,6 @@
 // src/app/kuliah/tools/kontur-trase-jalan/page.tsx
 import { Metadata } from "next";
-import KonturTraseClient from "./KonturTraseClient";
+import ClientWrapper from "./ClientWrapper";
 
 export const metadata: Metadata = {
   title: "Visualisasi Kontur & Trase Jalan",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function KonturTrasePage() {
-  return <KonturTraseClient />;
+  return <ClientWrapper />;
 }

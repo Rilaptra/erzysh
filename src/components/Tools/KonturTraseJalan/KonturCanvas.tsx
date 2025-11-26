@@ -295,14 +295,14 @@ export function KonturCanvas({
   };
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle>Visualisasi Peta Kontur</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4 p-4">
         <div
           ref={scrollContainerRef}
-          className="bg-card-foreground/5 w-full overflow-auto rounded-md border py-16 px-5"
+          className="bg-card-foreground/5 w-full flex-1 overflow-auto rounded-md border px-5 py-16"
         >
           <canvas
             className="m-auto"
@@ -318,7 +318,7 @@ export function KonturCanvas({
             }}
           />
         </div>
-        <div className="text-muted-foreground mt-4 flex items-center justify-center gap-6 text-sm">
+        <div className="text-muted-foreground flex shrink-0 items-center justify-center gap-6 text-sm">
           <div className="flex items-center gap-2">
             <div
               className="h-4 w-4 rounded-full"

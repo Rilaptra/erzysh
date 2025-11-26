@@ -102,7 +102,7 @@ export function GridSettingsPanel({
 
         <div className="flex items-center justify-between">
           <Label>Ukuran Grid</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span>
               {gridSize.rows} x {gridSize.cols}
             </span>
@@ -143,7 +143,7 @@ export function GridSettingsPanel({
           </div>
         </div>
         {inputGrid}
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2">
           <Button
             variant="outline"
             className="border-green-600/50 text-green-600 hover:bg-green-500/10 hover:text-green-700"
