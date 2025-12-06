@@ -1,8 +1,7 @@
 "use client";
 
-import { Map, Loader2, Settings2, LayoutDashboard, Calculator } from "lucide-react";
+import { Map, Settings2, LayoutDashboard, Calculator } from "lucide-react";
 import { useKonturProject } from "@/lib/hooks/useKonturProject";
-import { useHasMounted } from "@/lib/hooks/useHasMounted";
 import { GridSettingsPanel } from "@/components/Tools/KonturTraseJalan/GridSettingsPanel";
 import { VisualizationSettingsPanel } from "@/components/Tools/KonturTraseJalan/VisualizationSettingsPanel";
 import { KonturCanvas } from "@/components/Tools/KonturTraseJalan/KonturCanvas";
@@ -11,18 +10,7 @@ import { CrossSectionChart } from "@/components/Tools/KonturTraseJalan/CrossSect
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 
-const KonturTraseSkeleton = () => (
-  <main className="flex h-screen w-full items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-4 text-muted-foreground">
-      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      <p className="text-lg font-semibold">Memuat Studio...</p>
-    </div>
-  </main>
-);
-
 export default function KonturTraseClient() {
-  const hasMounted = useHasMounted();
-
   const {
     project,
     settings,
@@ -49,30 +37,24 @@ export default function KonturTraseClient() {
     targetElevationSuggestions,
   } = useKonturProject();
 
-  if (!hasMounted) {
-    return <KonturTraseSkeleton />;
-  }
-
-  const profileTitle = `Potongan Memanjang (Panjang: ${(
-    profileData[profileData.length - 1]?.distance || 0
-  ).toLocaleString("id-ID", { maximumFractionDigits: 2 })} cm)`;
+  const maxDistance = profileData[profileData.length - 1]?.distance || 0;
+  const profileTitle = `Potongan Memanjang (Panjang: ${maxDistance.toLocaleString(
+    "id-ID",
+    { maximumFractionDigits: 2 },
+  )} cm)`;
 
   return (
-    // Container Utama:
-    // - Desktop: h-[calc(100vh-4rem)] agar pas di layar tanpa scroll body (diasumsikan header tinggi 4rem/64px)
-    // - Mobile: h-auto agar bisa scroll panjang ke bawah
-    <main className="flex flex-col bg-background p-2 lg:h-[calc(100vh-4rem)] lg:overflow-hidden lg:p-4">
-      
+    <main className="bg-background flex min-h-screen flex-col gap-3 p-1.5 lg:gap-4 lg:p-4">
       {/* Header Kecil */}
-      <header className="mb-4 flex shrink-0 items-center gap-3 px-2">
-        <div className="rounded-lg bg-teal-muted/10 p-2">
-          <Map className="h-5 w-5 text-teal-muted" />
+      <header className="mb-2 flex shrink-0 items-center gap-2 px-1 lg:mb-4 lg:gap-3 lg:px-2">
+        <div className="bg-teal-muted/10 rounded-lg p-1.5 lg:p-2">
+          <Map className="text-teal-muted h-4 w-4 lg:h-5 lg:w-5" />
         </div>
         <div>
-          <h1 className="text-lg font-bold leading-none text-foreground md:text-xl">
+          <h1 className="text-foreground text-base leading-none font-bold md:text-xl lg:text-lg">
             Studio Kontur & Trase
           </h1>
-          <p className="hidden text-xs text-muted-foreground md:block">
+          <p className="text-muted-foreground hidden text-xs md:block">
             Simulasi pemetaan topografi dan analisis potongan jalan.
           </p>
         </div>
@@ -83,14 +65,13 @@ export default function KonturTraseClient() {
         - Mobile: Flex Column (satu per satu ke bawah)
         - Desktop (lg): Grid 12 Kolom
       */}
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto lg:grid lg:grid-cols-12 lg:overflow-hidden">
-        
+      <div className="flex flex-1 flex-col gap-3 lg:grid lg:grid-cols-12 lg:gap-4">
         {/* 
           PANEL KIRI: Settings & Tools 
           - Desktop: Kolom 1-3 (Lebar 25%)
           - Scrollable independen
         */}
-        <div className="flex flex-col gap-4 lg:col-span-3 lg:h-full lg:overflow-y-auto pr-1">
+        <aside className="flex flex-col gap-3 pr-0 lg:top-4 lg:col-span-3 lg:gap-4 lg:overflow-y-auto lg:pr-1">
           <Tabs defaultValue="grid" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="grid">
@@ -132,37 +113,40 @@ export default function KonturTraseClient() {
               />
             </TabsContent>
           </Tabs>
-          
+
           {/* Tampilkan Hasil Interpolasi di Bawah Panel Kiri pada Mobile agar urutannya enak */}
           <div className="lg:hidden">
-             <InterpolationResults
-                  results={contourData.interpolationResults}
-                  gridDimension={settings.gridDimension}
-              />
+            <InterpolationResults
+              results={contourData.interpolationResults}
+              gridDimension={settings.gridDimension}
+            />
           </div>
-        </div>
+        </aside>
 
         {/* 
           PANEL TENGAH: Visualisasi (Canvas & Chart)
           - Desktop: Kolom 4-9 (Lebar 50%)
           - Flex Column: Atas Canvas, Bawah Chart
         */}
-        <div className="flex flex-col gap-4 lg:col-span-6 lg:h-full lg:overflow-hidden">
+        <div className="flex flex-col gap-3 lg:col-span-9 lg:gap-4">
           {/* Canvas Area - Flexible height */}
-          <div className="min-h-[400px] flex-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-             <KonturCanvas
-                gridSize={project.gridSize}
-                gridData={project.gridData}
-                contourPaths={contourData.paths}
-                crossSectionLine={project.crossSectionLine}
-                setProject={setProject}
-              />
+          <div className="max-h-[400px] min-h-[280px] flex-1 overflow-hidden sm:min-h-[350px] lg:max-h-none lg:min-h-[400px]">
+            <KonturCanvas
+              gridSize={project.gridSize}
+              gridData={project.gridData}
+              contourPaths={contourData.paths}
+              crossSectionLine={project.crossSectionLine}
+              setProject={setProject}
+            />
           </div>
 
           {/* Chart Area - Fixed height di desktop, auto di mobile */}
           {profileData.length > 0 && (
-            <div className="h-[300px] shrink-0 lg:h-[35%]">
-              <CrossSectionChart profileData={profileData} title={profileTitle} />
+            <div className="h-[200px] shrink-0 sm:h-[250px] lg:h-[35%]">
+              <CrossSectionChart
+                profileData={profileData}
+                title={profileTitle}
+              />
             </div>
           )}
         </div>
@@ -173,19 +157,16 @@ export default function KonturTraseClient() {
           - Scrollable independen
           - Hidden di mobile (karena sudah ditaruh di bawah panel kiri biar gak scroll jauh banget ke bawah)
         */}
-        <div className="hidden lg:col-span-3 lg:block lg:h-full lg:overflow-y-auto pl-1">
-           <div className="sticky top-0 z-10 bg-background pb-4">
-              <Card className="flex items-center gap-2 border-dashed bg-muted/50 p-3 text-sm font-medium text-muted-foreground">
-                  <Calculator className="h-4 w-4" />
-                  <span>Detail Perhitungan</span>
-              </Card>
-           </div>
-           <InterpolationResults
-                results={contourData.interpolationResults}
-                gridDimension={settings.gridDimension}
-            />
+        <div className="hidden flex-col gap-4 pt-4 pl-0 lg:col-span-12 lg:flex lg:pl-1">
+          <Card className="bg-muted/50 text-muted-foreground flex items-center gap-2 border-dashed p-3 text-sm font-medium">
+            <Calculator className="h-4 w-4" />
+            <span>Detail Perhitungan</span>
+          </Card>
+          <InterpolationResults
+            results={contourData.interpolationResults}
+            gridDimension={settings.gridDimension}
+          />
         </div>
-
       </div>
     </main>
   );
