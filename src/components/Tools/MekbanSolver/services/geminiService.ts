@@ -46,7 +46,7 @@ export const explainBeamProblem = async (
       },
     });
 
-    return response.text();
+    return response.text || "";
   } catch (error) {
     console.error("Gemini Error:", error);
     return "Maaf, terjadi kesalahan saat menghubungi asisten AI. Pastikan API Key valid.";
