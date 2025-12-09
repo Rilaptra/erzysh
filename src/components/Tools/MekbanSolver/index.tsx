@@ -509,14 +509,34 @@ const MekbanSolver = () => {
                               </Select>
                             </div>
 
-                            <div className="space-y-1 pl-2">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground font-medium">
-                                  Posisi:{" "}
-                                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
-                                    {s.position} {config.unitLength}
+                            <div className="space-y-2 pl-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <Label className="text-muted-foreground text-xs font-medium">
+                                  Posisi
+                                </Label>
+                                <div className="gap- 1.5 flex items-center">
+                                  <Input
+                                    type="number"
+                                    value={s.position}
+                                    onChange={(e) => {
+                                      const val = Number(e.target.value);
+                                      if (
+                                        !isNaN(val) &&
+                                        val >= 0 &&
+                                        val <= config.length
+                                      ) {
+                                        updateSupport(s.id, { position: val });
+                                      }
+                                    }}
+                                    className="h-7 w-16 font-mono text-xs"
+                                    step="0.1"
+                                    min="0"
+                                    max={config.length}
+                                  />
+                                  <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                    {config.unitLength}
                                   </span>
-                                </span>
+                                </div>
                               </div>
                               <Slider
                                 value={[s.position]}
@@ -649,13 +669,33 @@ const MekbanSolver = () => {
                             {/* Position & Length */}
                             <div className="space-y-5 pt-1 md:col-span-7">
                               <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="font-medium text-slate-600 dark:text-slate-400">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">
                                     Posisi Start
-                                  </span>
-                                  <span className="text-mono rounded bg-slate-100 px-2 py-0.5 font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    {l.position.toFixed(1)} {config.unitLength}
-                                  </span>
+                                  </Label>
+                                  <div className="flex items-center gap-1.5">
+                                    <Input
+                                      type="number"
+                                      value={l.position}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        if (
+                                          !isNaN(val) &&
+                                          val >= 0 &&
+                                          val <= config.length
+                                        ) {
+                                          updateLoad(l.id, { position: val });
+                                        }
+                                      }}
+                                      className="h-7 w-16 font-mono text-xs"
+                                      step="0.1"
+                                      min="0"
+                                      max={config.length}
+                                    />
+                                    <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                      {config.unitLength}
+                                    </span>
+                                  </div>
                                 </div>
                                 <Slider
                                   value={[l.position]}
@@ -670,13 +710,35 @@ const MekbanSolver = () => {
 
                               {l.type !== LoadType.POINT && (
                                 <div className="space-y-2 border-t border-dashed border-rose-100 pt-2 dark:border-rose-800/50">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="font-medium text-slate-600 dark:text-slate-400">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">
                                       Panjang Beban
-                                    </span>
-                                    <span className="text-mono rounded bg-slate-100 px-2 py-0.5 font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                      {l.length?.toFixed(1)} {config.unitLength}
-                                    </span>
+                                    </Label>
+                                    <div className="flex items-center gap-1.5">
+                                      <Input
+                                        type="number"
+                                        value={l.length || 0}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value);
+                                          const maxLen =
+                                            config.length - l.position;
+                                          if (
+                                            !isNaN(val) &&
+                                            val >= 0.1 &&
+                                            val <= maxLen
+                                          ) {
+                                            updateLoad(l.id, { length: val });
+                                          }
+                                        }}
+                                        className="h-7 w-16 font-mono text-xs"
+                                        step="0.1"
+                                        min="0.1"
+                                        max={config.length - l.position}
+                                      />
+                                      <span className="text-muted-foreground text-xs whitespace-nowrap">
+                                        {config.unitLength}
+                                      </span>
+                                    </div>
                                   </div>
                                   <Slider
                                     value={[l.length || 0]}
