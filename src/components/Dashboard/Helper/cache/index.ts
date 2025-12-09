@@ -16,7 +16,7 @@ export const getCachedCollection = (id: string): any | null => {
 
     // Cek apakah cache sudah kedaluwarsa
     if (Date.now() > expiry) {
-      console.log(`Cache for ${id} expired, removing.`);
+      // console.log(`Cache for ${id} expired, removing.`);
       localStorage.removeItem(getCacheKey(id)); // Hapus cache yang sudah usang
       return null;
     }

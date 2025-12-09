@@ -17,7 +17,7 @@ export const TUGAS_BOX_ID = "1409908859971309681"; // ID dari tugas.api.ts
 export const USER_TASK_COMPLETIONS_BOX_ID = "1411948551428116630"; // <-- GANTI DENGAN ID YANG ANDA SALIN
 
 if (!BOT_TOKEN) {
-  console.log(BOT_TOKEN);
+  // console.log(BOT_TOKEN);
   throw new Error(
     "Discord Bot Token (DISCORD_BOT_TOKEN) is not configured in environment variables.",
   );

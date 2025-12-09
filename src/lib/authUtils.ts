@@ -13,7 +13,7 @@ export function verifyAuth(request: NextRequest): UserPayload | null {
   const token = request.cookies.get("token")?.value;
   // ... sisa fungsi tetap sama
   if (!token) {
-    console.log("Auth failed: No token provided.");
+    // console.log("Auth failed: No token provided.");
     return null;
   }
 
