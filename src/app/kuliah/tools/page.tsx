@@ -16,6 +16,7 @@ import {
   BetweenHorizontalStart,
   Map,
   Construction,
+  Ruler,
 } from "lucide-react";
 
 function ToolButtons() {
@@ -70,6 +71,12 @@ function ToolButtons() {
       label: "Simulator Jembatan Balsa",
       icon: <Construction className="text-teal-muted mr-2 h-4 w-4" />,
       adminOnly: true, // Sesuai request
+    },
+    {
+      href: "/kuliah/tools/mekban-solver",
+      label: "MekaBahan Solver Pro",
+      icon: <Ruler className="text-teal-muted mr-2 h-4 w-4" />,
+      adminOnly: false,
     },
   ];
 
