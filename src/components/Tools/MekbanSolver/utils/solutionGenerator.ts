@@ -17,7 +17,7 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
   );
 
   lines.push(`**Tumpuan:**`);
-  supports.forEach((s, i) => lines.push(`- ${s.type} di $x = ${s.position}$`));
+  supports.forEach((s) => lines.push(`- ${s.type} di $x = ${s.position}$`));
 
   lines.push(`**Beban:**`);
   loads.forEach((l, i) => {
@@ -37,8 +37,6 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
   // 2. REAKSI TUMPUAN
   lines.push("### 1. Menghitung Reaksi Tumpuan");
 
-  let R1 = 0,
-    R2 = 0;
   let R1_val = 0,
     R2_val = 0;
   let Ma_val = 0; // Moment at A for cantilever
