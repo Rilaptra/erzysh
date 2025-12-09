@@ -372,9 +372,9 @@ const MekbanSolver = () => {
                 {/* Left: Global Settings */}
                 <div className="space-y-6 lg:col-span-4">
                   {/* Geometry Panel */}
-                  <div className="space-y-6 rounded-xl border border-indigo-100/50 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/30 p-5 shadow-sm dark:from-indigo-950/30 dark:via-slate-900/50 dark:to-slate-900">
+                  <div className="space-y-6 rounded-xl border border-indigo-100/50 bg-linear-to-br from-indigo-50/80 via-white to-blue-50/30 p-5 shadow-sm dark:from-indigo-950/30 dark:via-slate-900/50 dark:to-slate-900">
                     <div className="mb-2 flex items-center gap-2 border-b border-indigo-100 pb-2 dark:border-indigo-900/30">
-                      <span className="animate-subtle-pulse h-8 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-blue-400 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></span>
+                      <span className="animate-subtle-pulse h-8 w-1 rounded-full bg-linear-to-b from-indigo-500 to-blue-400 shadow-[0_0_10px_rgba(99,102,241,0.5)]"></span>
                       <h3 className="font-bold text-indigo-900 dark:text-indigo-100">
                         Geometri Balok
                       </h3>
@@ -470,7 +470,7 @@ const MekbanSolver = () => {
                             key={s.id}
                             className="group relative space-y-3 rounded-lg border border-indigo-100/50 bg-white p-3 shadow-sm transition-all duration-500 hover:z-10 hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-[0_0_20px_-5px_rgba(99,102,241,0.3)] dark:border-indigo-900/50 dark:bg-slate-900 dark:hover:border-indigo-700"
                           >
-                            <div className="animate-subtle-pulse absolute top-3 bottom-3 left-0 w-1 rounded-r bg-gradient-to-b from-indigo-400 to-cyan-400 opacity-70 transition-opacity group-hover:opacity-100"></div>
+                            <div className="animate-subtle-pulse absolute top-3 bottom-3 left-0 w-1 rounded-r bg-linear-to-b from-indigo-400 to-cyan-400 opacity-70 transition-opacity group-hover:opacity-100"></div>
                             <Button
                               onClick={() => removeSupport(s.id)}
                               variant="ghost"
@@ -557,10 +557,10 @@ const MekbanSolver = () => {
 
                 {/* Right: Load Editor */}
                 <div className="space-y-4 lg:col-span-8">
-                  <div className="h-full rounded-xl border border-rose-100/50 bg-gradient-to-br from-rose-50/80 via-white to-orange-50/30 p-5 shadow-sm dark:from-rose-950/30 dark:via-slate-900/50 dark:to-slate-900">
+                  <div className="h-full rounded-xl border border-rose-100/50 bg-linear-to-br from-rose-50/80 via-white to-orange-50/30 p-5 shadow-sm dark:from-rose-950/30 dark:via-slate-900/50 dark:to-slate-900">
                     <div className="mb-6 flex items-center justify-between border-b border-rose-100 pb-2 dark:border-rose-900/30">
                       <div className="flex items-center gap-2">
-                        <span className="animate-subtle-pulse h-8 w-1 rounded-full bg-gradient-to-b from-rose-500 to-orange-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
+                        <span className="animate-subtle-pulse h-8 w-1 rounded-full bg-linear-to-b from-rose-500 to-orange-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"></span>
                         <h3 className="font-bold text-rose-900 dark:text-rose-100">
                           Konfigurasi Beban
                         </h3>
@@ -568,13 +568,13 @@ const MekbanSolver = () => {
                       <Button
                         onClick={addLoad}
                         size="sm"
-                        className="border-0 bg-gradient-to-r from-rose-600 to-orange-600 text-white shadow-md shadow-rose-200 transition-all duration-300 hover:scale-105 hover:from-rose-500 hover:to-orange-500 dark:shadow-rose-900/20"
+                        className="border-0 bg-linear-to-r from-rose-600 to-orange-600 text-white shadow-md shadow-rose-200 transition-all duration-300 hover:scale-105 hover:from-rose-500 hover:to-orange-500 dark:shadow-rose-900/20"
                       >
                         <Plus className="mr-2 h-4 w-4" /> Tambah Beban
                       </Button>
                     </div>
 
-                    <div className="custom-scrollbar -mx-2 max-h-[400px] space-y-3 overflow-y-auto p-2">
+                    <div className="custom-scrollbar -mx-2 max-h-[512px] space-y-3 overflow-y-auto p-2">
                       {config.loads.length === 0 && (
                         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-rose-200/50 bg-white/50 py-12 text-rose-400/60 dark:border-rose-900/30 dark:bg-slate-900/20 dark:text-rose-400/40">
                           <p className="font-medium">
@@ -594,7 +594,7 @@ const MekbanSolver = () => {
                           key={l.id}
                           className="border-border/60 group relative rounded-xl border bg-white p-5 shadow-sm transition-all duration-500 hover:z-10 hover:translate-y-[-2px] hover:border-rose-300 hover:shadow-[0_8px_25px_-5px_rgba(244,63,94,0.25)] dark:bg-slate-900 dark:hover:border-rose-700"
                         >
-                          <div className="animate-subtle-pulse absolute top-4 bottom-4 left-0 w-1 rounded-r bg-gradient-to-b from-rose-400 to-orange-400 opacity-80 transition-all duration-500 group-hover:opacity-100 group-hover:shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
+                          <div className="animate-subtle-pulse absolute top-4 bottom-4 left-0 w-1 rounded-r bg-linear-to-b from-rose-400 to-orange-400 opacity-80 transition-all duration-500 group-hover:opacity-100 group-hover:shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
                           <Button
                             onClick={() => removeLoad(l.id)}
                             variant="ghost"
@@ -769,7 +769,7 @@ const MekbanSolver = () => {
           value="item-2"
           className="bg-card overflow-hidden rounded-xl border border-blue-100/50 shadow-sm dark:border-blue-900/50"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-blue-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-blue-950/20">
+          <AccordionTrigger className="bg-linear-to-r from-blue-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-blue-950/20">
             <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
                 className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-blue-600 text-xs text-white shadow-sm shadow-blue-500/30"
@@ -788,8 +788,8 @@ const MekbanSolver = () => {
                 {/* Results Summary */}
                 {result && (
                   <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-3">
-                    <div className="group relative overflow-hidden rounded-xl border border-emerald-100/50 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] sm:p-5 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-teal-950/30">
-                      <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-emerald-400 to-teal-400 opacity-60"></div>
+                    <div className="group relative overflow-hidden rounded-xl border border-emerald-100/50 bg-linear-to-br from-emerald-50 to-teal-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] sm:p-5 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-teal-950/30">
+                      <div className="absolute top-0 left-0 h-1 w-full bg-linear-to-r from-emerald-400 to-teal-400 opacity-60"></div>
                       <div className="mb-2 text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
                         Reaksi Tumpuan
                       </div>
@@ -809,8 +809,8 @@ const MekbanSolver = () => {
                         ))}
                       </div>
                     </div>
-                    <div className="group relative overflow-hidden rounded-xl border border-rose-100/50 bg-gradient-to-br from-rose-50 to-red-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.3)] sm:p-5 dark:border-rose-900/50 dark:from-rose-950/30 dark:to-red-950/30">
-                      <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-rose-400 to-red-400 opacity-60"></div>
+                    <div className="group relative overflow-hidden rounded-xl border border-rose-100/50 bg-linear-to-br from-rose-50 to-red-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.3)] sm:p-5 dark:border-rose-900/50 dark:from-rose-950/30 dark:to-red-950/30">
+                      <div className="absolute top-0 left-0 h-1 w-full bg-linear-to-r from-rose-400 to-red-400 opacity-60"></div>
                       <div className="mb-1 text-xs font-bold tracking-wider text-rose-600 uppercase dark:text-rose-400">
                         Gaya Geser Maks (Vmax)
                       </div>
@@ -821,8 +821,8 @@ const MekbanSolver = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="group relative overflow-hidden rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)] sm:p-5 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/30">
-                      <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-blue-400 to-indigo-400 opacity-60"></div>
+                    <div className="group relative overflow-hidden rounded-xl border border-blue-100/50 bg-linear-to-br from-blue-50 to-indigo-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)] sm:p-5 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+                      <div className="absolute top-0 left-0 h-1 w-full bg-linear-to-r from-blue-400 to-indigo-400 opacity-60"></div>
                       <div className="mb-1 text-xs font-bold tracking-wider text-blue-600 uppercase dark:text-blue-400">
                         Momen Maks (Mmax)
                       </div>
@@ -864,7 +864,7 @@ const MekbanSolver = () => {
                   className="grid grid-cols-1 gap-6 md:grid-cols-2"
                 >
                   <Card className="overflow-hidden border-rose-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)] dark:border-rose-900/30">
-                    <CardHeader className="bg-gradient-to-r from-rose-50/50 to-transparent pb-2 dark:from-rose-950/10">
+                    <CardHeader className="bg-linear-to-r from-rose-50/50 to-transparent pb-2 dark:from-rose-950/10">
                       <CardTitle className="flex items-center gap-2 text-base">
                         <span className="h-5 w-1 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
                         Diagram Gaya Geser (SFD)
@@ -948,7 +948,7 @@ const MekbanSolver = () => {
                   </Card>
 
                   <Card className="overflow-hidden border-blue-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.2)] dark:border-blue-900/30">
-                    <CardHeader className="bg-gradient-to-r from-blue-50/50 to-transparent pb-2 dark:from-blue-950/10">
+                    <CardHeader className="bg-linear-to-r from-blue-50/50 to-transparent pb-2 dark:from-blue-950/10">
                       <CardTitle className="flex items-center gap-2 text-base">
                         <span className="h-5 w-1 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
                         Diagram Momen Lentur (BMD)
@@ -1041,7 +1041,7 @@ const MekbanSolver = () => {
           value="item-4"
           className="bg-card overflow-hidden rounded-xl border border-orange-100/50 shadow-sm dark:border-orange-900/30"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-orange-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-orange-950/20">
+          <AccordionTrigger className="bg-linear-to-r from-orange-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-orange-950/20">
             <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
                 className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-orange-500 text-xs text-white shadow-sm shadow-orange-500/30"
@@ -1058,7 +1058,7 @@ const MekbanSolver = () => {
             <div className="p-3 sm:p-6">
               <div
                 ref={solutionRef}
-                className="prose prose-sm prose-slate dark:prose-invert max-w-none rounded-xl border border-orange-100/50 bg-gradient-to-b from-orange-50/30 to-white p-4 shadow-inner sm:p-6 dark:border-orange-900/30 dark:from-slate-900 dark:to-slate-900/50"
+                className="prose prose-sm prose-slate dark:prose-invert max-w-none rounded-xl border border-orange-100/50 bg-linear-to-b from-orange-50/30 to-white p-4 shadow-inner sm:p-6 dark:border-orange-900/30 dark:from-slate-900 dark:to-slate-900/50"
                 dangerouslySetInnerHTML={{
                   __html: parseMarkdownWithMath(
                     generateStepByStepSolution(config),
@@ -1076,7 +1076,7 @@ const MekbanSolver = () => {
           id="report-section"
           className="bg-card border-border overflow-hidden rounded-xl border shadow-sm dark:bg-transparent"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-purple-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-purple-950/20">
+          <AccordionTrigger className="bg-linear-to-r from-purple-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-purple-950/20">
             <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
                 className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-purple-600 text-xs text-white shadow-sm shadow-purple-500/30"
@@ -1098,7 +1098,7 @@ const MekbanSolver = () => {
                     <Button
                       onClick={handleExportExcel}
                       variant="default"
-                      className="w-full justify-start bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-emerald-500 hover:to-teal-500"
+                      className="w-full justify-start bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-emerald-500 hover:to-teal-500"
                     >
                       <Download className="mr-2 h-4 w-4" /> Export Excel
                       (Single)
@@ -1123,7 +1123,7 @@ const MekbanSolver = () => {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-inner dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/50">
+                <div className="rounded-xl border border-slate-200 bg-linear-to-br from-slate-50 to-white p-5 shadow-inner dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/50">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300">
                       Isi Laporan Gabungan
@@ -1175,7 +1175,7 @@ const MekbanSolver = () => {
                         <div className="flex gap-2">
                           <Button
                             onClick={handleExportWordReport}
-                            className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-purple-500 hover:to-indigo-500"
+                            className="flex-1 bg-linear-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 transition-all duration-300 hover:scale-[1.02] hover:from-purple-500 hover:to-indigo-500"
                           >
                             <Save className="mr-2 h-4 w-4" /> Unduh Word
                           </Button>
@@ -1200,7 +1200,7 @@ const MekbanSolver = () => {
         {/* 6. AI Tutor */}
         <AccordionItem
           value="item-6"
-          className="bg-card relative overflow-hidden rounded-xl border border-violet-500/50 bg-gradient-to-br from-violet-600 to-indigo-900 text-white shadow-lg shadow-sm transition-all duration-500 hover:shadow-violet-500/20"
+          className="bg-card relative overflow-hidden rounded-xl border border-violet-500/50 bg-linear-to-br from-violet-600 to-indigo-900 text-white shadow-sm transition-all duration-500 hover:shadow-violet-500/20"
         >
           <AccordionTrigger className="px-4 py-3 hover:no-underline sm:px-6 sm:py-4">
             <div className="flex w-full flex-col items-center justify-between gap-3 sm:gap-4 md:flex-row">

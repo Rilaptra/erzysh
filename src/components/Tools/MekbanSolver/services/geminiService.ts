@@ -30,7 +30,7 @@ export const explainBeamProblem = async (
       - Momen Maksimum (Mmax): ${result.maxMoment.toFixed(2)}
 
       TUGAS ANDA:
-      1. Tunjukkan cara menghitung Reaksi Tumpuan ($\Sigma M = 0$, $\Sigma F_y = 0$).
+      1. Tunjukkan cara menghitung Reaksi Tumpuan ($\\Sigma M = 0$, $\\Sigma F_y = 0$).
       2. Jelaskan bagaimana membuat diagram gaya geser (Shear Force Diagram) secara kualitatif.
       3. Jelaskan bagaimana menghitung Momen Maksimum.
       4. Jika ada "Inersia" yang disebut user, jelaskan singkat hubungannya dengan tegangan lentur ($\sigma = My/I$), tapi fokus utama tetap pada gaya dalam.
@@ -39,7 +39,7 @@ export const explainBeamProblem = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // Updated to latest flash model for better speed
+      model: "gemini-flash-latest", // Updated to latest flash model for better speed
       contents: prompt,
       config: {
         // thinkingConfig not supported in standard REST client usually, remove if causing errors
