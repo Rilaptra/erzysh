@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useDebounce } from "@/lib/hooks";
 import {
   AreaChart,
   Area,
@@ -86,6 +87,10 @@ const MekbanSolver = () => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<"beam" | "inertia">("beam");
   const [config, setConfig] = useState<BeamConfig>(PRESETS["4.3-1"]);
+
+  // ⚡ Performance: Debounce config biar gak lag saat user input cepat
+  const debouncedConfig = useDebounce(config, 300);
+
   const [result, setResult] = useState<CalculationResult | null>(null);
 
   const isDarkMode = theme === "dark";
@@ -103,12 +108,12 @@ const MekbanSolver = () => {
   const solutionRef = useRef<HTMLDivElement>(null);
   const aiRef = useRef<HTMLDivElement>(null);
 
-  // Recalculate whenever config changes
+  // Recalculate whenever config changes (pakai debounced biar smooth)
   useEffect(() => {
-    const res = calculateBeam(config);
+    const res = calculateBeam(debouncedConfig);
     setResult(res);
     setAiExplanation("");
-  }, [config]);
+  }, [debouncedConfig]);
 
   // Render Math Safe (Adapted for NPM Katex)
   const renderMathSafe = (element: HTMLElement) => {
@@ -783,7 +788,10 @@ const MekbanSolver = () => {
           <AccordionContent className="border-t p-0">
             <div className="p-3 sm:p-6">
               <CardContent className="pt-6">
-                <BeamVisualizer config={config} isDarkMode={isDarkMode} />
+                <BeamVisualizer
+                  config={debouncedConfig}
+                  isDarkMode={isDarkMode}
+                />
 
                 {/* Results Summary */}
                 {result && (

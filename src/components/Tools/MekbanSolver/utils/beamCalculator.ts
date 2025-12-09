@@ -1,4 +1,11 @@
-import { BeamConfig, CalculationResult, LoadType, SupportType } from "../types";
+import {
+  BeamConfig,
+  CalculationResult,
+  LoadType,
+  SupportType,
+  SectionInput,
+  StressResult,
+} from "../types";
 
 export const calculateBeam = (config: BeamConfig): CalculationResult => {
   const steps = 400; // Increased precision
@@ -189,4 +196,64 @@ export const calculateBeam = (config: BeamConfig): CalculationResult => {
     maxMoment: maxM,
     reactions: { R1: r1, R2: r2, M_R: rMoment },
   };
+};
+
+/**
+ * Fungsi tambahan buat ngitung Tegangan Lentur
+ * Rumus: σ = (M * y) / I
+ */
+export const calculateStress = (
+  maxMoment: number, // Unit: Force * Length (misal kN.m)
+  section: SectionInput,
+  units: { force: string; length: string }, // Buat handling konversi sederhana
+): StressResult => {
+  // 1. Normalisasi Momen ke Unit yang konsisten dengan Section Properties (biasanya N.mm)
+  // Asumsi default section properties (I, y) dalam mm.
+
+  let momentInSectionUnits = maxMoment;
+
+  // Simple converter logic (Bisa dikembangin lagi)
+  // Kalau input config kN & m, tapi section mm -> kita kali 10^6 buat jadi N.mm
+  if (units.force === "kN" && units.length === "m") {
+    momentInSectionUnits = maxMoment * 1_000_000; // kN.m -> N.mm
+  } else if (units.force === "N" && units.length === "m") {
+    momentInSectionUnits = maxMoment * 1000; // N.m -> N.mm
+  }
+  // ... tambah logic konversi lain sesuai kebutuhan ...
+
+  // 2. Hitung Tegangan (Sigma)
+  // σ = M * c / I
+  const sigma = (Math.abs(momentInSectionUnits) * section.y_max) / section.I;
+
+  // 3. Cek Safety
+  const sf = section.sigma_allow / sigma;
+  const isSafe = sigma <= section.sigma_allow;
+
+  return {
+    sigma_max: sigma,
+    isSafe: isSafe,
+    safetyFactor: sf,
+  };
+};
+
+/**
+ * Wrapper function buat kalkulasi total (Gaya Dalam + Tegangan)
+ */
+export const solveBeamSystem = (
+  config: BeamConfig,
+  section?: SectionInput,
+): CalculationResult => {
+  // 1. Hitung V & M dulu
+  const baseResult = calculateBeam(config); // Panggil fungsi calculateBeam yang udah ada
+
+  // 2. Kalau ada data penampang, hitung tegangan
+  if (section && section.I > 0) {
+    const stressResult = calculateStress(baseResult.maxMoment, section, {
+      force: config.unitForce,
+      length: config.unitLength,
+    });
+    return { ...baseResult, stressAnalysis: stressResult };
+  }
+
+  return baseResult;
 };
