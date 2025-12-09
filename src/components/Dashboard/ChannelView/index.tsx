@@ -1,6 +1,6 @@
 // src/components/Dashboard/boxView/index.tsx
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,7 +34,6 @@ import type {
   ApiDbUpdateChannelRequest,
 } from "@/types";
 import { CollectionDetailsModal } from "../CollectionDetailModal";
-import { getCachedCollection, setCachedCollection } from "../Helper/cache";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface boxViewProps {
@@ -74,61 +73,6 @@ export function ChannelView({
   } | null>(null);
 
   const [manualIsPublic, setManualIsPublic] = useState(false); // State baru
-
-  // --- BARU: useEffect untuk pre-fetch data koleksi di background ---
-  useEffect(() => {
-    // Pastikan ada kategori aktif dan box yang ditampilkan
-    if (!activeCategoryId || boxes.length === 0) {
-      return;
-    }
-
-    console.log("🚀 Starting background pre-fetch for collections...");
-
-    const preFetchPromises = [];
-
-    // Kumpulkan semua 'message' (koleksi) dari semua box
-    for (const box of boxes) {
-      for (const message of box.collections) {
-        // Cek dulu, kalau sudah ada di cache, lewati
-        if (getCachedCollection(message.id)) {
-          continue;
-        }
-
-        // Buat promise untuk fetch data, tapi jangan di-await dulu
-        const promise = fetch(
-          `/api/database/${activeCategoryId}/${box.id}/${message.id}`,
-        )
-          .then((res) => {
-            if (!res.ok) {
-              // Abaikan error untuk pre-fetch, jangan sampai crash
-              return Promise.reject(`Failed to pre-fetch ${message.name}`);
-            }
-            return res.json();
-          })
-          .then((data) => {
-            // Kalau berhasil, simpan di cache
-            setCachedCollection(message.id, data);
-            console.log(`✅ Cached: ${message.name}`);
-          })
-          .catch((err) => {
-            // Tangkap error agar Promise.allSettled tidak berhenti
-            console.warn(err);
-          });
-
-        preFetchPromises.push(promise);
-      }
-    }
-
-    // Jalankan semua promise secara paralel dan "lupakan"
-    // Ini proses background, kita tidak perlu menunggu hasilnya di sini
-    if (preFetchPromises.length > 0) {
-      Promise.allSettled(preFetchPromises).then(() => {
-        console.log("🏁 Background pre-fetch finished.");
-      });
-    } else {
-      console.log("✅ All collections already cached.");
-    }
-  }, [boxes, activeCategoryId]); // Jalankan effect ini saat boxes atau kategori berubah
 
   // State untuk mode upload & form
   const [uploadMode, setUploadMode] = useState<"file" | "manual">("file");

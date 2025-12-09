@@ -1,13 +1,7 @@
-// /api/database/helpers.ts
-
-// 🗑️ HAPUS 'use server' DARI SINI. File ini adalah utility biasa, bukan Server Action Module.
+// src/app/api/database/helpers.ts
 
 import { discord } from "@/lib/discord-api-handler";
-import {
-  editMessage,
-  sanitizeMessage,
-  sendMessage,
-} from "@/lib/utils";
+import { editMessage, sanitizeMessage, sendMessage } from "@/lib/utils";
 import {
   DiscordCategory,
   DiscordChannel,
@@ -18,18 +12,16 @@ import {
 } from "@/types";
 import chalk from "chalk";
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache, revalidateTag } from "next/cache";
 
 import { MESSAGE_LAYOUT, USERS_DATA_CHANNEL_ID } from "@/lib/constants";
 import {
   ApiDbErrorResponse,
   ApiDbModifyMessageResponse,
 } from "@/types/api-db-response";
-import { cache } from "react";
-
-// ✨ Semua fungsi di sini adalah helper server-side biasa,
-// bukan actions yang dipanggil dari client.
 
 const ACTIVITY_LOG_CHANNEL_ID = MESSAGE_LAYOUT.channelID;
+const IS_DEV = process.env.NODE_ENV === "development";
 
 export enum CHANNEL_TYPE {
   GUILD_TEXT = 0,
@@ -45,7 +37,105 @@ export interface MessageMetadata {
   [key: string]: any;
 }
 
-// ✨ FUNGSI INI MASIH DIPERLUKAN OLEH API ROUTES YANG LAMA, JADI BIARKAN SAJA
+// --- 🧠 1. CORE FETCHER LOGIC (Reusable) ---
+async function fetchUsersFromDiscord(): Promise<[string, UserData][]> {
+  console.log(chalk.blue("☁️ [DISCORD HIT] Fetching raw user data..."));
+  const usersMap = new Map<string, UserData>();
+
+  try {
+    const res = await discord.get<DiscordMessage[]>(
+      `/channels/${USERS_DATA_CHANNEL_ID}/messages`,
+    );
+
+    if (!res) return [];
+
+    const messages = res.map((msg) => sanitizeMessage(msg, true));
+    const parsedContent = messages.map((msg) => msg.content as UserData);
+
+    parsedContent.forEach((user) => {
+      if (!user) return;
+      if (user.userID) usersMap.set(user.userID, user);
+      if (user.username && !usersMap.has(user.username))
+        usersMap.set(user.username, user);
+    });
+
+    return Array.from(usersMap.entries());
+  } catch (error: any) {
+    console.error(chalk.red("Error fetching user data:"), error.message);
+    return [];
+  }
+}
+
+// --- 🧠 2. CACHING STRATEGY (GLOBAL OBJECT INJECTION) ---
+
+// Kita define tipe buat global cache biar TypeScript ga marah
+const globalForCache = global as unknown as {
+  _usersCache: Map<string, UserData> | null;
+  _usersCacheTime: number;
+};
+
+// Inisialisasi kalau belum ada (Hanya sekali seumur hidup server)
+if (!globalForCache._usersCache) {
+  globalForCache._usersCache = null;
+  globalForCache._usersCacheTime = 0;
+}
+
+const DEV_CACHE_TTL = 60 * 1000; // 1 menit
+
+// Next.js Cache buat Prod
+const getCachedUsersProd = unstable_cache(
+  async () => fetchUsersFromDiscord(),
+  ["users-data-cache-key"],
+  {
+    tags: ["users-data"],
+    revalidate: 60,
+  },
+);
+
+// --- 🧠 3. UNIFIED ACCESSOR ---
+export const getUsersData = async (): Promise<Map<string, UserData>> => {
+  // SKENARIO DEV: Pakai Global Object (Persistent across Hot Reloads)
+  if (IS_DEV) {
+    const now = Date.now();
+
+    // Cek Cache di Global Object
+    if (
+      globalForCache._usersCache &&
+      now - globalForCache._usersCacheTime < DEV_CACHE_TTL
+    ) {
+      // Uncomment ini buat ngecek cache jalan
+      // console.log(chalk.green("🚀 [DEV CACHE] Hit (Global Object)"));
+      return globalForCache._usersCache;
+    }
+
+    // Kalau kosong/expired, fetch baru
+    const data = await fetchUsersFromDiscord();
+
+    // Simpan ke Global Object
+    globalForCache._usersCache = new Map(data);
+    globalForCache._usersCacheTime = now;
+
+    return globalForCache._usersCache;
+  }
+
+  // SKENARIO PROD
+  const dataEntries = await getCachedUsersProd();
+  return new Map(dataEntries);
+};
+
+// --- 🧠 4. INVALIDATOR ---
+async function invalidateUsersCache() {
+  if (IS_DEV) {
+    console.log(chalk.yellow("🧹 [DEV] Clearing Global Object Cache..."));
+    globalForCache._usersCache = null;
+  } else {
+    console.log(chalk.yellow("🧹 [PROD] Revalidating Next.js Cache Tag..."));
+    revalidateTag("users-data", "max");
+  }
+}
+
+// --- HELPER LAINNYA (Standard) ---
+
 export function createApiResponse<T>(data: T, status: number): NextResponse<T> {
   return NextResponse.json(data, {
     status,
@@ -136,42 +226,6 @@ export async function updateActivityLog(
   }
 }
 
-// 🗑️ Hapus variabel `updated` karena sudah tidak relevan
-// export let updated = false;
-
-// ✨ Fungsi `getUsersData` dengan `cache` sudah benar.
-// Fungsi ini bisa diimpor dan digunakan di mana saja di sisi server.
-export const getUsersData = cache(async (): Promise<Map<string, UserData>> => {
-  console.log(chalk.blue("Fetching user data from Discord (will be cached)..."));
-  const users = new Map<string, UserData>();
-  try {
-    const res = await discord.get<DiscordMessage[]>(
-      `/channels/${USERS_DATA_CHANNEL_ID}/messages`,
-    );
-
-    if (!res) {
-      console.error(chalk.red("Failed to fetch user data from Discord (empty response)."));
-      return users;
-    }
-
-    const messages = res.map((msg) => sanitizeMessage(msg, true));
-    const parsedContent = messages.map((msg) => msg.content as UserData);
-
-    parsedContent.forEach((user) => {
-      if (!user) return;
-      if (user.userID) users.set(user.userID, user);
-      if (user.username && !users.has(user.username))
-        users.set(user.username, user);
-    });
-
-    console.log(chalk.green("User data fetched and memoized."));
-    return users;
-  } catch (error: any) {
-    console.error(chalk.red("Error fetching user data:"), error.message);
-    return new Map<string, UserData>();
-  }
-});
-
 // save user data to Discord channel
 export async function addUserData(
   user: UserData,
@@ -189,7 +243,8 @@ export async function addUserData(
     if (!message || !message.id) {
       throw new Error("Failed to save user data: No message ID returned.");
     }
-    // Tidak perlu `updated = true` lagi, karena kita akan pakai revalidation
+
+    await invalidateUsersCache();
     return message;
   } catch (error: any) {
     console.error(
@@ -225,7 +280,8 @@ export async function updateUserData(
     await editMessage(USERS_DATA_CHANNEL_ID, messageId, {
       content,
     });
-    // Tidak perlu `updated = true` lagi
+
+    await invalidateUsersCache();
   } catch (error: any) {
     console.error(chalk.red("Error updating user data:"), error.message);
   }

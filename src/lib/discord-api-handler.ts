@@ -1,119 +1,130 @@
-// File: src/lib/discord-api-handler.ts
+// src/lib/discord-api-handler.ts
 
 import { BOT_TOKEN, DISCORD_API_BASE } from "./constants";
 import chalk from "chalk";
 
 const MAX_RETRIES = 5;
-const INITIAL_BACKOFF_MS = 1000; // 1 detik
+const BASE_DELAY = 2000; // Naikkan delay jadi 2 detik
+const MAX_CONCURRENT_REQUESTS = 2; // 🚦 HANYA BOLEH 2 REQUEST JALAN BARENGAN
 
-async function timeoutPromise(timeout: number) {
-  await new Promise((resolve) => {
-    setTimeout(resolve, timeout);
-  });
+// --- SEMAPHORE / QUEUE SYSTEM ---
+// Ini yang bikin request antri rapi, nggak tawuran.
+class RequestQueue {
+  private running = 0;
+  private queue: Array<() => void> = [];
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    // Kalau slot penuh, tunggu di antrian
+    if (this.running >= MAX_CONCURRENT_REQUESTS) {
+      await new Promise<void>((resolve) => this.queue.push(resolve));
+    }
+
+    this.running++;
+    try {
+      return await fn();
+    } finally {
+      this.running--;
+      // Panggil orang berikutnya di antrian
+      if (this.queue.length > 0) {
+        const next = this.queue.shift();
+        next?.();
+      }
+    }
+  }
 }
 
-/**
- * Pintu gerbang utama untuk semua request ke Discord API.
- * Fungsi ini mengelola rate limits, retries, dan error handling secara terpusat.
- *
- * @param route Endpoint API Discord (e.g., "/channels/123/messages").
- * @param options Opsi `fetch` standar (method, headers, body).
- * @param retries Jumlah percobaan yang sudah dilakukan (untuk internal).
- * @returns Promise yang resolve dengan objek `Response` dari `fetch`.
- * @throws Error jika request gagal setelah semua percobaan.
- */
-async function apiRequest(
+const requestQueue = new RequestQueue();
+
+// Helper: Sleep dengan Jitter
+const sleep = (ms: number) => {
+  const jitter = Math.floor(Math.random() * 500);
+  return new Promise((resolve) => setTimeout(resolve, ms + jitter));
+};
+
+async function apiRequestCore<T>(
   route: string,
   options: RequestInit,
   retries = 0,
-): Promise<Response> {
+): Promise<T | null> {
   const url = `${DISCORD_API_BASE}${route}`;
-
-  // Tambahkan header Authorization secara otomatis
   const headers = new Headers(options.headers);
   headers.set("Authorization", `Bot ${BOT_TOKEN}`);
+  headers.set("User-Agent", "Eryzsh/2.0 (Bun; +https://github.com/Rilaptra)");
 
   const finalOptions: RequestInit = { ...options, headers };
 
-  const res = await fetch(url, finalOptions);
-
-  if (res.ok) {
-    return res;
-  }
-
-  // --- Di sinilah keajaiban Rate Limit Handling dimulai ---
-  if (res.status === 429) {
-    if (retries >= MAX_RETRIES) {
-      console.error(
-        chalk.red(
-          `[RATE LIMIT] Max retries (${MAX_RETRIES}) reached for ${route}. Aborting.`,
-        ),
-      );
-      throw new Error(
-        "Discord API rate limit exceeded after multiple retries.",
-      );
-    }
-
-    try {
-      const errorData = await res.json();
-      const retryAfter = (errorData.retry_after || 0) * 1000; // Konversi ke ms
-      const isGlobal = errorData.global || false;
-
-      // Exponential backoff jika retry_after tidak ada
-      const waitTime =
-        retryAfter > 0 ? retryAfter : INITIAL_BACKOFF_MS * Math.pow(2, retries);
-
-      const waitColor = waitTime > 3000 ? chalk.red : chalk.yellow;
-      console.warn(
-        chalk.yellow(
-          `[RATE LIMIT] Hit for ${route}. Global: ${isGlobal}. Retrying after ${waitColor(waitTime + "ms")}... (Attempt ${retries + 1}/${MAX_RETRIES})`,
-        ),
-      );
-
-      await timeoutPromise(waitTime);
-
-      // Panggil ulang dengan increment retries
-      return apiRequest(route, options, retries + 1);
-    } catch {
-      // Gagal parsing JSON dari error 429, fallback ke backoff standar
-      const waitTime = INITIAL_BACKOFF_MS * Math.pow(2, retries);
-      console.warn(
-        chalk.yellow(
-          `[RATE LIMIT] Hit for ${route}. Could not parse error. Retrying after ${waitTime}ms...`,
-        ),
-      );
-      await timeoutPromise(waitTime);
-      return apiRequest(route, options, retries + 1);
-    }
-  }
-
-  // Handle error lain (404, 403, 500, dll)
   try {
-    const errorData = await res.json();
-    console.error(
-      chalk.red(
-        `💥 Discord API Error [${res.status}] on ${route}: ${errorData.message || JSON.stringify(errorData)}`,
-      ),
-    );
-    throw new Error(
-      `Error (${res.status}): ${errorData.message || "Unknown Discord API Error"}`,
-    );
-  } catch {
-    console.error(
-      chalk.red(
-        `💥 Discord API Error [${res.status}] on ${route}. Could not parse error response.`,
-      ),
-    );
-    throw new Error(`Error (${res.status}): Failed to fetch from Discord API.`);
+    const res = await fetch(url, finalOptions);
+
+    if (res.ok) {
+      if (res.status === 204) return null;
+      return (await res.json()) as T;
+    }
+
+    // HANDLE RATE LIMIT (429)
+    if (res.status === 429) {
+      if (retries >= MAX_RETRIES) {
+        console.error(chalk.red(`💀 [FATAL] Max retries reached for ${route}`));
+        throw new Error("Discord API Rate Limit Exceeded");
+      }
+
+      const errorData = (await res.json()) as {
+        retry_after?: number;
+        global?: boolean;
+      };
+
+      // Hitung waktu tunggu + Backoff
+      let waitTime = errorData.retry_after
+        ? errorData.retry_after * 1000 + 500 // Tambah buffer 500ms
+        : BASE_DELAY * Math.pow(2, retries);
+
+      const isGlobal = errorData.global ? "🌍 GLOBAL" : "⚠️ ROUTE";
+
+      console.warn(
+        chalk.yellow(
+          `⏳ [RATE LIMIT] ${isGlobal} on ${route}. Waiting ${(waitTime / 1000).toFixed(2)}s...`,
+        ),
+      );
+
+      await sleep(waitTime);
+      return apiRequestCore<T>(route, options, retries + 1); // Retry
+    }
+
+    // Error Lainnya
+    let errorMessage = `Discord API Error ${res.status}`;
+    try {
+      const errorBody = await res.json();
+      errorMessage = `Error (${res.status}): ${JSON.stringify(errorBody.message || errorBody)}`;
+    } catch {
+      errorMessage = `Error (${res.status}): ${res.statusText}`;
+    }
+
+    if (res.status === 404) {
+      // 404 kita anggap null, bukan error fatal
+      // console.warn(chalk.yellow(`🔍 [404] Not Found: ${route}`));
+      return null;
+    }
+
+    console.error(chalk.red(`💥 [API ERROR] ${errorMessage}`));
+    throw new Error(errorMessage);
+  } catch (error: any) {
+    if (error.message.includes("Rate Limit")) throw error;
+    console.error(chalk.red(`🔌 [SYSTEM ERROR] ${route} : ${error.message}`));
+    throw error;
   }
 }
 
-// Wrapper object yang akan kita gunakan di seluruh aplikasi
+// Wrapper yang masukin request ke dalam Queue
+async function apiRequest<T>(
+  route: string,
+  options: RequestInit,
+): Promise<T | null> {
+  return requestQueue.add(() => apiRequestCore<T>(route, options));
+}
+
 export const discord = {
   get: async <T>(route: string): Promise<T | null> => {
-    const res = await apiRequest(route, { method: "GET" });
-    if (res.status === 204) return null; // Handle No Content
-    return res.json();
+    return apiRequest<T>(route, { method: "GET" });
   },
 
   post: async <T>(
@@ -122,15 +133,12 @@ export const discord = {
     isFormData: boolean = false,
   ): Promise<T | null> => {
     const options: RequestInit = { method: "POST" };
-    if (isFormData) {
-      options.body = body; // FormData akan set Content-Type sendiri
-    } else {
+    if (isFormData) options.body = body;
+    else {
       options.body = JSON.stringify(body);
       options.headers = { "Content-Type": "application/json" };
     }
-    const res = await apiRequest(route, options);
-    if (res.status === 204) return null;
-    return res.json();
+    return apiRequest<T>(route, options);
   },
 
   patch: async <T>(
@@ -139,20 +147,15 @@ export const discord = {
     isFormData: boolean = false,
   ): Promise<T | null> => {
     const options: RequestInit = { method: "PATCH" };
-    if (isFormData) {
-      options.body = body;
-    } else {
+    if (isFormData) options.body = body;
+    else {
       options.body = JSON.stringify(body);
       options.headers = { "Content-Type": "application/json" };
     }
-    const res = await apiRequest(route, options);
-    if (res.status === 204) return null;
-    return res.json();
+    return apiRequest<T>(route, options);
   },
 
   delete: async <T>(route: string): Promise<T | null> => {
-    const res = await apiRequest(route, { method: "DELETE" });
-    if (res.status === 204) return null; // DELETE sering return 204 No Content
-    return res.json();
+    return apiRequest<T>(route, { method: "DELETE" });
   },
 };
