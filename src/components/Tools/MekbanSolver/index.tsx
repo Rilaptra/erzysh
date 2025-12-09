@@ -331,32 +331,43 @@ const MekbanSolver = () => {
           value="item-1"
           className="bg-card overflow-hidden rounded-xl border shadow-sm"
         >
-          <AccordionTrigger className="px-6 py-4 transition-colors hover:bg-slate-50/50 hover:no-underline dark:hover:bg-slate-900/50">
-            <div className="flex w-full items-center justify-between pr-4">
-              <div className="flex items-center gap-2 text-left text-xl font-bold">
-                <span className="animate-float flex h-6 w-6 items-center justify-center rounded bg-indigo-600 text-xs text-white shadow-sm shadow-indigo-500/30">
-                  1
-                </span>
-                Konfigurasi Soal
-              </div>
-              <div onClick={(e) => e.stopPropagation()} className="w-[180px]">
-                <Select onValueChange={handlePresetChange} defaultValue="4.3-1">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pilih Soal" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="empty">Custom (Kosong)</SelectItem>
-                    <SelectItem value="4.3-1">Soal 4.3-1</SelectItem>
-                    <SelectItem value="4.3-2">Soal 4.3-2</SelectItem>
-                    <SelectItem value="4.3-4">Soal 4.3-4</SelectItem>
-                    <SelectItem value="4.3-7">Soal 4.3-7</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Preset Selector - Outside Trigger to avoid button nesting */}
+          <div className="border-b px-4 py-3 sm:px-6 sm:py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label
+                htmlFor="preset-select"
+                className="text-muted-foreground text-sm font-medium"
+              >
+                Pilih Soal Preset:
+              </label>
+              <Select onValueChange={handlePresetChange} defaultValue="4.3-1">
+                <SelectTrigger
+                  id="preset-select"
+                  className="w-full sm:w-[200px]"
+                >
+                  <SelectValue placeholder="Pilih Soal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="empty">Custom (Kosong)</SelectItem>
+                  <SelectItem value="4.3-1">Soal 4.3-1</SelectItem>
+                  <SelectItem value="4.3-2">Soal 4.3-2</SelectItem>
+                  <SelectItem value="4.3-4">Soal 4.3-4</SelectItem>
+                  <SelectItem value="4.3-7">Soal 4.3-7</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <AccordionTrigger className="px-4 py-3 transition-colors hover:bg-slate-50/50 hover:no-underline sm:px-6 sm:py-4 dark:hover:bg-slate-900/50">
+            <div className="flex items-center gap-2 text-left text-lg font-bold sm:text-xl">
+              <span className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-indigo-600 text-xs text-white shadow-sm shadow-indigo-500/30">
+                1
+              </span>
+              Konfigurasi Soal
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t p-0">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <CardContent className="grid grid-cols-1 gap-6 pt-4 lg:grid-cols-12">
                 {/* Left: Global Settings */}
                 <div className="space-y-6 lg:col-span-4">
@@ -696,10 +707,10 @@ const MekbanSolver = () => {
           value="item-2"
           className="bg-card overflow-hidden rounded-xl border border-blue-100/50 shadow-sm dark:border-blue-900/50"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-blue-50/50 to-transparent px-6 py-4 hover:no-underline dark:from-blue-950/20">
-            <div className="flex items-center gap-2 text-lg font-bold">
+          <AccordionTrigger className="bg-gradient-to-r from-blue-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-blue-950/20">
+            <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
-                className="animate-float flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-xs text-white shadow-sm shadow-blue-500/30"
+                className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-blue-600 text-xs text-white shadow-sm shadow-blue-500/30"
                 style={{ animationDelay: "0.5s" }}
               >
                 2
@@ -708,14 +719,14 @@ const MekbanSolver = () => {
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t p-0">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <CardContent className="pt-6">
                 <BeamVisualizer config={config} isDarkMode={isDarkMode} />
 
                 {/* Results Summary */}
                 {result && (
-                  <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="group relative overflow-hidden rounded-xl border border-emerald-100/50 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-teal-950/30">
+                  <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:gap-4 md:grid-cols-3">
+                    <div className="group relative overflow-hidden rounded-xl border border-emerald-100/50 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)] sm:p-5 dark:border-emerald-900/50 dark:from-emerald-950/30 dark:to-teal-950/30">
                       <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-emerald-400 to-teal-400 opacity-60"></div>
                       <div className="mb-2 text-xs font-bold tracking-wider text-emerald-600 uppercase dark:text-emerald-400">
                         Reaksi Tumpuan
@@ -736,24 +747,24 @@ const MekbanSolver = () => {
                         ))}
                       </div>
                     </div>
-                    <div className="group relative overflow-hidden rounded-xl border border-rose-100/50 bg-gradient-to-br from-rose-50 to-red-50 p-5 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.3)] dark:border-rose-900/50 dark:from-rose-950/30 dark:to-red-950/30">
+                    <div className="group relative overflow-hidden rounded-xl border border-rose-100/50 bg-gradient-to-br from-rose-50 to-red-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.3)] sm:p-5 dark:border-rose-900/50 dark:from-rose-950/30 dark:to-red-950/30">
                       <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-rose-400 to-red-400 opacity-60"></div>
                       <div className="mb-1 text-xs font-bold tracking-wider text-rose-600 uppercase dark:text-rose-400">
                         Gaya Geser Maks (Vmax)
                       </div>
-                      <div className="text-3xl font-bold text-rose-700 drop-shadow-sm dark:text-rose-300">
+                      <div className="text-2xl font-bold text-rose-700 drop-shadow-sm sm:text-3xl dark:text-rose-300">
                         {result.maxShear.toFixed(2)}{" "}
                         <span className="text-sm font-medium text-rose-500/70">
                           {config.unitForce}
                         </span>
                       </div>
                     </div>
-                    <div className="group relative overflow-hidden rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50 to-indigo-50 p-5 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)] dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+                    <div className="group relative overflow-hidden rounded-xl border border-blue-100/50 bg-gradient-to-br from-blue-50 to-indigo-50 p-4 text-center shadow-sm transition-all duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)] sm:p-5 dark:border-blue-900/50 dark:from-blue-950/30 dark:to-indigo-950/30">
                       <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-blue-400 to-indigo-400 opacity-60"></div>
                       <div className="mb-1 text-xs font-bold tracking-wider text-blue-600 uppercase dark:text-blue-400">
                         Momen Maks (Mmax)
                       </div>
-                      <div className="text-3xl font-bold text-blue-700 drop-shadow-sm dark:text-blue-300">
+                      <div className="text-2xl font-bold text-blue-700 drop-shadow-sm sm:text-3xl dark:text-blue-300">
                         {result.maxMoment.toFixed(2)}{" "}
                         <span className="text-sm font-medium text-blue-500/70">
                           {config.unitForce}·{config.unitLength}
@@ -773,10 +784,10 @@ const MekbanSolver = () => {
             value="item-3"
             className="bg-card overflow-hidden rounded-xl border shadow-sm"
           >
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-              <div className="flex items-center gap-2 text-lg font-bold">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline sm:px-6 sm:py-4">
+              <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
                 <span
-                  className="animate-float flex h-6 w-6 items-center justify-center rounded bg-rose-600 text-xs text-white shadow-sm shadow-rose-500/30"
+                  className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-rose-600 text-xs text-white shadow-sm shadow-rose-500/30"
                   style={{ animationDelay: "0.7s" }}
                 >
                   3
@@ -785,181 +796,178 @@ const MekbanSolver = () => {
               </div>
             </AccordionTrigger>
             <AccordionContent className="border-t p-0">
-              <div className="p-6">
+              <div className="p-3 sm:p-6">
                 <div
                   id="charts-section"
                   className="grid grid-cols-1 gap-6 md:grid-cols-2"
                 >
-                  <div
-                    id="charts-section"
-                    className="grid grid-cols-1 gap-6 md:grid-cols-2"
-                  >
-                    <Card className="overflow-hidden border-rose-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)] dark:border-rose-900/30">
-                      <CardHeader className="bg-gradient-to-r from-rose-50/50 to-transparent pb-2 dark:from-rose-950/10">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <span className="h-5 w-1 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
-                          Diagram Gaya Geser (SFD)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={result.points}>
-                              <defs>
-                                <linearGradient
-                                  id="colorShear"
-                                  x1="0"
-                                  y1="0"
-                                  x2="0"
-                                  y2="1"
-                                >
-                                  <stop
-                                    offset="5%"
-                                    stopColor="#ef4444"
-                                    stopOpacity={0.8}
-                                  />
-                                  <stop
-                                    offset="95%"
-                                    stopColor="#ef4444"
-                                    stopOpacity={0.1}
-                                  />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid
-                                strokeDasharray="3 3"
-                                vertical={false}
-                                stroke={isDarkMode ? "#334155" : "#e5e7eb"}
-                              />
-                              <XAxis
-                                dataKey="x"
-                                type="number"
-                                domain={[0, config.length]}
-                                tickFormatter={(v: any) => Number(v).toFixed(1)}
-                                stroke={isDarkMode ? "#94a3b8" : "#666"}
-                                fontSize={11}
-                              />
-                              <YAxis
-                                label={{
-                                  value: `V`,
-                                  angle: -90,
-                                  position: "insideLeft",
-                                  fill: isDarkMode ? "#94a3b8" : "#666",
-                                  fontSize: 10,
-                                }}
-                                stroke={isDarkMode ? "#94a3b8" : "#666"}
-                                fontSize={11}
-                              />
-                              <Tooltip
-                                formatter={(val: any) => Number(val).toFixed(2)}
-                                contentStyle={{
-                                  backgroundColor: isDarkMode
-                                    ? "#1e293b"
-                                    : "#fff",
-                                  borderColor: isDarkMode ? "#334155" : "#ccc",
-                                  borderRadius: "8px",
-                                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                                }}
-                              />
-                              <ReferenceLine
-                                y={0}
-                                stroke={isDarkMode ? "#94a3b8" : "#000"}
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="shear"
-                                stroke="#ef4444"
-                                strokeWidth={2}
-                                fill="url(#colorShear)"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
+                  <Card className="overflow-hidden border-rose-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)] dark:border-rose-900/30">
+                    <CardHeader className="bg-gradient-to-r from-rose-50/50 to-transparent pb-2 dark:from-rose-950/10">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <span className="h-5 w-1 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
+                        Diagram Gaya Geser (SFD)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={result.points}>
+                            <defs>
+                              <linearGradient
+                                id="colorShear"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#ef4444"
+                                  stopOpacity={0.8}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#ef4444"
+                                  stopOpacity={0.1}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              vertical={false}
+                              stroke={isDarkMode ? "#334155" : "#e5e7eb"}
+                            />
+                            <XAxis
+                              dataKey="x"
+                              type="number"
+                              domain={[0, config.length]}
+                              tickFormatter={(v: any) => Number(v).toFixed(1)}
+                              stroke={isDarkMode ? "#94a3b8" : "#666"}
+                              fontSize={11}
+                            />
+                            <YAxis
+                              label={{
+                                value: `V`,
+                                angle: -90,
+                                position: "insideLeft",
+                                fill: isDarkMode ? "#94a3b8" : "#666",
+                                fontSize: 10,
+                              }}
+                              stroke={isDarkMode ? "#94a3b8" : "#666"}
+                              fontSize={11}
+                            />
+                            <Tooltip
+                              formatter={(val: any) => Number(val).toFixed(2)}
+                              contentStyle={{
+                                backgroundColor: isDarkMode
+                                  ? "#1e293b"
+                                  : "#fff",
+                                borderColor: isDarkMode ? "#334155" : "#ccc",
+                                borderRadius: "8px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                              }}
+                            />
+                            <ReferenceLine
+                              y={0}
+                              stroke={isDarkMode ? "#94a3b8" : "#000"}
+                            />
+                            <Area
+                              type="linear"
+                              dataKey="shear"
+                              stroke="#ef4444"
+                              strokeWidth={2}
+                              fill="url(#colorShear)"
+                              baseValue={0}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                    <Card className="overflow-hidden border-blue-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.2)] dark:border-blue-900/30">
-                      <CardHeader className="bg-gradient-to-r from-blue-50/50 to-transparent pb-2 dark:from-blue-950/10">
-                        <CardTitle className="flex items-center gap-2 text-base">
-                          <span className="h-5 w-1 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
-                          Diagram Momen Lentur (BMD)
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-4">
-                        <div className="h-64">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={result.points}>
-                              <defs>
-                                <linearGradient
-                                  id="colorMoment"
-                                  x1="0"
-                                  y1="0"
-                                  x2="0"
-                                  y2="1"
-                                >
-                                  <stop
-                                    offset="5%"
-                                    stopColor="#3b82f6"
-                                    stopOpacity={0.8}
-                                  />
-                                  <stop
-                                    offset="95%"
-                                    stopColor="#3b82f6"
-                                    stopOpacity={0.1}
-                                  />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid
-                                strokeDasharray="3 3"
-                                vertical={false}
-                                stroke={isDarkMode ? "#334155" : "#e5e7eb"}
-                              />
-                              <XAxis
-                                dataKey="x"
-                                type="number"
-                                domain={[0, config.length]}
-                                tickFormatter={(v: any) => Number(v).toFixed(1)}
-                                stroke={isDarkMode ? "#94a3b8" : "#666"}
-                                fontSize={11}
-                              />
-                              <YAxis
-                                label={{
-                                  value: `M`,
-                                  angle: -90,
-                                  position: "insideLeft",
-                                  fill: isDarkMode ? "#94a3b8" : "#666",
-                                  fontSize: 10,
-                                }}
-                                stroke={isDarkMode ? "#94a3b8" : "#666"}
-                                fontSize={11}
-                              />
-                              <Tooltip
-                                formatter={(val: any) => Number(val).toFixed(2)}
-                                contentStyle={{
-                                  backgroundColor: isDarkMode
-                                    ? "#1e293b"
-                                    : "#fff",
-                                  borderColor: isDarkMode ? "#334155" : "#ccc",
-                                  borderRadius: "8px",
-                                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                                }}
-                              />
-                              <ReferenceLine
-                                y={0}
-                                stroke={isDarkMode ? "#94a3b8" : "#000"}
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="moment"
-                                stroke="#3b82f6"
-                                strokeWidth={2}
-                                fill="url(#colorMoment)"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                  <Card className="overflow-hidden border-blue-200/50 shadow-sm transition-shadow duration-500 hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.2)] dark:border-blue-900/30">
+                    <CardHeader className="bg-gradient-to-r from-blue-50/50 to-transparent pb-2 dark:from-blue-950/10">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <span className="h-5 w-1 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span>
+                        Diagram Momen Lentur (BMD)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={result.points}>
+                            <defs>
+                              <linearGradient
+                                id="colorMoment"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0.8}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#3b82f6"
+                                  stopOpacity={0.1}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              vertical={false}
+                              stroke={isDarkMode ? "#334155" : "#e5e7eb"}
+                            />
+                            <XAxis
+                              dataKey="x"
+                              type="number"
+                              domain={[0, config.length]}
+                              tickFormatter={(v: any) => Number(v).toFixed(1)}
+                              stroke={isDarkMode ? "#94a3b8" : "#666"}
+                              fontSize={11}
+                            />
+                            <YAxis
+                              label={{
+                                value: `M`,
+                                angle: -90,
+                                position: "insideLeft",
+                                fill: isDarkMode ? "#94a3b8" : "#666",
+                                fontSize: 10,
+                              }}
+                              stroke={isDarkMode ? "#94a3b8" : "#666"}
+                              fontSize={11}
+                            />
+                            <Tooltip
+                              formatter={(val: any) => Number(val).toFixed(2)}
+                              contentStyle={{
+                                backgroundColor: isDarkMode
+                                  ? "#1e293b"
+                                  : "#fff",
+                                borderColor: isDarkMode ? "#334155" : "#ccc",
+                                borderRadius: "8px",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                              }}
+                            />
+                            <ReferenceLine
+                              y={0}
+                              stroke={isDarkMode ? "#94a3b8" : "#000"}
+                            />
+                            <Area
+                              type="linear"
+                              dataKey="moment"
+                              stroke="#3b82f6"
+                              strokeWidth={2}
+                              fill="url(#colorMoment)"
+                              baseValue={0}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </AccordionContent>
@@ -971,22 +979,24 @@ const MekbanSolver = () => {
           value="item-4"
           className="bg-card overflow-hidden rounded-xl border border-orange-100/50 shadow-sm dark:border-orange-900/30"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-orange-50/50 to-transparent px-6 py-4 hover:no-underline dark:from-orange-950/20">
-            <div className="flex items-center gap-2 text-lg font-bold">
+          <AccordionTrigger className="bg-gradient-to-r from-orange-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-orange-950/20">
+            <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
-                className="animate-float flex h-6 w-6 items-center justify-center rounded bg-orange-500 text-xs text-white shadow-sm shadow-orange-500/30"
+                className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-orange-500 text-xs text-white shadow-sm shadow-orange-500/30"
                 style={{ animationDelay: "1s" }}
               >
                 4
               </span>
-              Perhitungan Manual (Auto-Generated)
+              <span className="line-clamp-1">
+                Perhitungan Manual (Auto-Generated)
+              </span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t p-0">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <div
                 ref={solutionRef}
-                className="prose prose-sm prose-slate dark:prose-invert max-w-none rounded-xl border border-orange-100/50 bg-gradient-to-b from-orange-50/30 to-white p-6 shadow-inner dark:border-orange-900/30 dark:from-slate-900 dark:to-slate-900/50"
+                className="prose prose-sm prose-slate dark:prose-invert max-w-none rounded-xl border border-orange-100/50 bg-gradient-to-b from-orange-50/30 to-white p-4 shadow-inner sm:p-6 dark:border-orange-900/30 dark:from-slate-900 dark:to-slate-900/50"
                 dangerouslySetInnerHTML={{
                   __html: parseMarkdownWithMath(
                     generateStepByStepSolution(config),
@@ -1004,10 +1014,10 @@ const MekbanSolver = () => {
           id="report-section"
           className="bg-card border-border overflow-hidden rounded-xl border shadow-sm dark:bg-transparent"
         >
-          <AccordionTrigger className="bg-gradient-to-r from-purple-50/50 to-transparent px-6 py-4 hover:no-underline dark:from-purple-950/20">
-            <div className="flex items-center gap-2 text-lg font-bold">
+          <AccordionTrigger className="bg-gradient-to-r from-purple-50/50 to-transparent px-4 py-3 hover:no-underline sm:px-6 sm:py-4 dark:from-purple-950/20">
+            <div className="flex items-center gap-2 text-base font-bold sm:text-lg">
               <span
-                className="animate-float flex h-6 w-6 items-center justify-center rounded bg-purple-600 text-xs text-white shadow-sm shadow-purple-500/30"
+                className="animate-float flex h-6 w-6 shrink-0 items-center justify-center rounded bg-purple-600 text-xs text-white shadow-sm shadow-purple-500/30"
                 style={{ animationDelay: "1.5s" }}
               >
                 5
@@ -1016,7 +1026,7 @@ const MekbanSolver = () => {
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t p-0">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
                 <div className="space-y-4">
                   <h3 className="border-b border-purple-100 pb-2 font-bold text-purple-900 dark:border-purple-900/30 dark:text-purple-100">
@@ -1130,14 +1140,14 @@ const MekbanSolver = () => {
           value="item-6"
           className="bg-card relative overflow-hidden rounded-xl border border-violet-500/50 bg-gradient-to-br from-violet-600 to-indigo-900 text-white shadow-lg shadow-sm transition-all duration-500 hover:shadow-violet-500/20"
         >
-          <AccordionTrigger className="px-6 py-4 hover:no-underline">
-            <div className="flex w-full flex-col items-center justify-between gap-4 md:flex-row">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline sm:px-6 sm:py-4">
+            <div className="flex w-full flex-col items-center justify-between gap-3 sm:gap-4 md:flex-row">
               <div>
-                <div className="flex items-center gap-2 text-2xl font-bold text-white">
+                <div className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
                   <span className="animate-pulse text-yellow-300">✨</span>{" "}
                   Asisten Dosen AI
                 </div>
-                <div className="mt-1 text-left text-sm font-normal text-violet-200">
+                <div className="mt-1 text-left text-xs font-normal text-violet-200 sm:text-sm">
                   Bingung caranya? Minta AI jelaskan langkah-langkah
                   penyelesaian soal ini secara lebih mendalam.
                 </div>
@@ -1153,7 +1163,7 @@ const MekbanSolver = () => {
             </div>
           </AccordionTrigger>
           <AccordionContent className="border-t border-violet-500/30 p-0">
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <div className="mb-4 flex justify-end">
                 <Button
                   onClick={handleAskAI}
@@ -1191,10 +1201,10 @@ const MekbanSolver = () => {
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="mb-4 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="text-foreground text-2xl font-extrabold tracking-tight">
+            <h1 className="text-foreground text-xl font-extrabold tracking-tight sm:text-2xl">
               MekaBahan <span className="text-blue-600">Solver Pro</span>
             </h1>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs sm:text-sm">
               Analisis Struktur & Mekanika Bahan
             </p>
           </div>
@@ -1202,7 +1212,7 @@ const MekbanSolver = () => {
           <div className="flex items-center gap-4">
             <Tabs
               defaultValue="beam"
-              className="w-[400px]"
+              className="w-full max-w-[400px]"
               onValueChange={(val) => setActiveTab(val as "beam" | "inertia")}
             >
               <TabsList className="grid w-full grid-cols-2">

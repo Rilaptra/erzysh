@@ -6,6 +6,7 @@ import "katex/dist/katex.min.css"; // <-- TAMBAHKAN BARIS INI
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Layout/Header";
+import Footer from "@/components/Layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,6 +78,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Header />
           {children}
+          <Footer />
           <Toaster position="bottom-right" />
         </ThemeProvider>
       </body>

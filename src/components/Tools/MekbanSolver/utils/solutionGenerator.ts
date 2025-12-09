@@ -12,30 +12,41 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
 
   // 1. HEADER
   lines.push("## Perhitungan Detail (Metode Irisan)");
+  lines.push("");
   lines.push(
     `$$ \\text{Diketahui: Panjang Balok } L = ${L} \\text{ ${config.unitLength}} $$`,
   );
+  lines.push("");
 
   lines.push(`**Tumpuan:**`);
-  supports.forEach((s) => lines.push(`- ${s.type} di $x = ${s.position}$`));
+  supports.forEach((s) =>
+    lines.push(`- ${s.type} di $x = ${s.position}$ ${config.unitLength}`),
+  );
+  lines.push("");
 
   lines.push(`**Beban:**`);
   loads.forEach((l, i) => {
     if (l.type === LoadType.POINT)
-      lines.push(`- $P_{${i + 1}} = ${l.magnitude}$ di $x=${l.position}$`);
+      lines.push(
+        `- $P_{${i + 1}} = ${l.magnitude}$ ${config.unitForce} di $x=${l.position}$ ${config.unitLength}`,
+      );
     if (l.type === LoadType.DISTRIBUTED)
       lines.push(
-        `- $q_{${i + 1}} = ${l.magnitude}$ dari $x=${l.position}$ s.d. $${l.position + (l.length || 0)}$`,
+        `- $q_{${i + 1}} = ${l.magnitude}$ ${config.unitForce}/${config.unitLength} dari $x=${l.position}$ s.d. $${l.position + (l.length || 0)}$ ${config.unitLength}`,
       );
     if (l.type === LoadType.TRIANGULAR)
       lines.push(
-        `- $q_{\\text{max},${i + 1}} = ${l.magnitude}$ dari $x=${l.position}$ s.d. $${l.position + (l.length || 0)}$`,
+        `- $q_{\\text{max},${i + 1}} = ${l.magnitude}$ ${config.unitForce}/${config.unitLength} dari $x=${l.position}$ s.d. $${l.position + (l.length || 0)}$ ${config.unitLength}`,
       );
   });
+
+  lines.push("");
   lines.push("---");
+  lines.push("");
 
   // 2. REAKSI TUMPUAN
   lines.push("### 1. Menghitung Reaksi Tumpuan");
+  lines.push("");
 
   let R1_val = 0,
     R2_val = 0;
@@ -59,12 +70,15 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     const A = supports[0];
     const B = supports[1];
     lines.push(
-      `Tumpuan A (${A.type}) di $x=${A.position}$, Tumpuan B (${B.type}) di $x=${B.position}$.`,
+      `Tumpuan **A** (${A.type}) di $x=${A.position}$ ${config.unitLength}, Tumpuan **B** (${B.type}) di $x=${B.position}$ ${config.unitLength}.`,
     );
+    lines.push("");
 
     // Sigma M_A = 0
-    lines.push(`**a. Mencari Reaksi di B ($\\sum M_A = 0$)**`);
+    lines.push(`**a. Mencari Reaksi di B** ($\\sum M_A = 0$)`);
+    lines.push("");
     lines.push(`Asumsi arah jarum jam positif (+).`);
+    lines.push("");
 
     let sigmaM_eq: string[] = [];
     let sigmaM_val = 0;
@@ -72,7 +86,6 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     eqLoads.forEach((l) => {
       const arm = l.pos - A.position;
       const m = l.force * arm;
-      // Using \cdot for multiplication
       sigmaM_eq.push(`(${fmt(l.force)} \\cdot ${fmt(arm)})`);
       sigmaM_val += m;
     });
@@ -80,42 +93,54 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     const distAB = B.position - A.position;
     lines.push(`$$ \\sum M_A = 0 $$`);
     lines.push(`$$ \\sum (P \\cdot d) - R_B \\cdot ${distAB} = 0 $$`);
+    lines.push("");
 
     if (sigmaM_eq.length > 0) {
       lines.push(`$$ [ ${sigmaM_eq.join(" + ")} ] - R_B(${distAB}) = 0 $$`);
     }
 
     lines.push(`$$ ${fmt(sigmaM_val)} - R_B(${distAB}) = 0 $$`);
+    lines.push("");
 
     R2_val = sigmaM_val / distAB;
     lines.push(
-      `$$ R_B = \\frac{${fmt(sigmaM_val)}}{${distAB}} = \\mathbf{${fmt(R2_val)} \\text{ ${config.unitForce}}} $$`,
+      `> **Hasil:** $R_B = \\frac{${fmt(sigmaM_val)}}{${distAB}} = \\mathbf{${fmt(R2_val)} \\text{ ${config.unitForce}}}$`,
     );
+    lines.push("");
 
     // Sigma F_y = 0
-    lines.push(`\n**b. Mencari Reaksi di A ($\\sum F_v = 0$)**`);
+    lines.push(`**b. Mencari Reaksi di A** ($\\sum F_v = 0$)`);
+    lines.push("");
     const totalLoad = eqLoads.reduce((s, l) => s + l.force, 0);
     lines.push(`$$ R_A + R_B - \\sum P = 0 $$`);
     lines.push(`$$ R_A + ${fmt(R2_val)} - ${fmt(totalLoad)} = 0 $$`);
+    lines.push("");
     R1_val = totalLoad - R2_val;
     lines.push(
-      `$$ R_A = ${fmt(totalLoad)} - ${fmt(R2_val)} = \\mathbf{${fmt(R1_val)} \\text{ ${config.unitForce}}} $$`,
+      `> **Hasil:** $R_A = ${fmt(totalLoad)} - ${fmt(R2_val)} = \\mathbf{${fmt(R1_val)} \\text{ ${config.unitForce}}}$`,
     );
+    lines.push("");
   } else if (supports.length === 1 && supports[0].type === SupportType.FIXED) {
     // Cantilever
     const A = supports[0];
-    lines.push(`Tumpuan Jepit di A ($x=${A.position}$).`);
+    lines.push(
+      `Tumpuan **Jepit** di A ($x=${A.position}$ ${config.unitLength}).`,
+    );
+    lines.push("");
 
     // Force
     const totalLoad = eqLoads.reduce((s, l) => s + l.force, 0);
-    lines.push(`**a. Mencari Reaksi Vertikal ($\\sum F_v = 0$)**`);
+    lines.push(`**a. Mencari Reaksi Vertikal** ($\\sum F_v = 0$)`);
+    lines.push("");
     lines.push(
-      `$$ R_A = \\sum P = \\mathbf{${fmt(totalLoad)} \\text{ ${config.unitForce}}} $$`,
+      `> **Hasil:** $R_A = \\sum P = \\mathbf{${fmt(totalLoad)} \\text{ ${config.unitForce}}}$`,
     );
+    lines.push("");
     R1_val = totalLoad;
 
     // Moment
-    lines.push(`\n**b. Mencari Momen Jepit ($\\sum M_A = 0$)**`);
+    lines.push(`**b. Mencari Momen Jepit** ($\\sum M_A = 0$)`);
+    lines.push("");
     let m_sum = 0;
     let m_parts: string[] = [];
     eqLoads.forEach((l) => {
@@ -129,14 +154,18 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     if (m_parts.length > 0) {
       lines.push(`$$ M_A = ${m_parts.join(" + ")} $$`);
     }
-    Ma_val = -m_sum; // Usually reaction moment opposes loads
+    lines.push("");
+    Ma_val = -m_sum;
     lines.push(
-      `$$ M_A = \\mathbf{${fmt(m_sum)} \\text{ ${config.unitForce}\\cdot ${config.unitLength}}} $$`,
+      `> **Hasil:** $M_A = \\mathbf{${fmt(m_sum)} \\text{ ${config.unitForce}\\cdot ${config.unitLength}}}$`,
     );
+    lines.push("");
   }
 
   lines.push("---");
+  lines.push("");
   lines.push("### 2. Analisis Gaya Dalam per Segmen (Metode Potongan)");
+  lines.push("");
 
   // 3. SEGMENT ANALYSIS
   // Identify key x points
@@ -158,8 +187,9 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     if (Math.abs(x_end - x_start) < 0.001) continue; // Skip tiny intervals
 
     lines.push(
-      `\n#### **Segmen ${i + 1}: $${fmt(x_start)} \\le x \\le ${fmt(x_end)}$**`,
+      `#### **Segmen ${i + 1}**: \`${fmt(x_start)} ≤ x ≤ ${fmt(x_end)}\` ${config.unitLength}`,
     );
+    lines.push("");
 
     // Evaluate at boundaries
     const evalAt = (x: number) => {
@@ -171,7 +201,6 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
         if (s.position <= x) {
           const r = supports.length > 1 && idx === 1 ? R2_val : R1_val;
           if (s.position <= x + 0.0001) {
-            // Include
             v += r;
             m += r * (x - s.position);
           }
@@ -221,14 +250,13 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
     };
 
     // Evaluate
-    const resStart = evalAt(x_start + 0.0001); // Just right of start
-    const resEnd = evalAt(x_end - 0.0001); // Just left of end
+    const resStart = evalAt(x_start + 0.0001);
+    const resEnd = evalAt(x_end - 0.0001);
 
     // Identify equation type
     let v_desc = "Konstan";
     let m_desc = "Linear";
 
-    // Check if distributed load is active in this segment
     const hasDist = loads.some(
       (l) =>
         l.type === LoadType.DISTRIBUTED &&
@@ -260,21 +288,23 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
       m_desc = "Konstan";
     }
 
-    lines.push(`- **Gaya Geser $V(x)$**: ${v_desc}`);
+    lines.push(`**Gaya Geser V(x)**: ${v_desc}`);
     lines.push(
-      `$$ x = ${fmt(x_start)} \\rightarrow V = \\mathbf{${fmt(resStart.v)}} $$`,
+      `- Awal segmen: $x = ${fmt(x_start)}$ → $V = \\mathbf{${fmt(resStart.v)}}$ ${config.unitForce}`,
     );
     lines.push(
-      `$$ x = ${fmt(x_end)} \\rightarrow V = \\mathbf{${fmt(resEnd.v)}} $$`,
+      `- Akhir segmen: $x = ${fmt(x_end)}$ → $V = \\mathbf{${fmt(resEnd.v)}}$ ${config.unitForce}`,
     );
+    lines.push("");
 
-    lines.push(`- **Momen Lentur $M(x)$**: ${m_desc}`);
+    lines.push(`**Momen Lentur M(x)**: ${m_desc}`);
     lines.push(
-      `$$ x = ${fmt(x_start)} \\rightarrow M = \\mathbf{${fmt(resStart.m)}} $$`,
+      `- Awal segmen: $x = ${fmt(x_start)}$ → $M = \\mathbf{${fmt(resStart.m)}}$ ${config.unitForce}·${config.unitLength}`,
     );
     lines.push(
-      `$$ x = ${fmt(x_end)} \\rightarrow M = \\mathbf{${fmt(resEnd.m)}} $$`,
+      `- Akhir segmen: $x = ${fmt(x_end)}$ → $M = \\mathbf{${fmt(resEnd.m)}}$ ${config.unitForce}·${config.unitLength}`,
     );
+    lines.push("");
 
     // Check for Max Moment inside interval
     if ((resStart.v > 0 && resEnd.v < 0) || (resStart.v < 0 && resEnd.v > 0)) {
@@ -287,26 +317,33 @@ export const generateStepByStepSolution = (config: BeamConfig): string => {
           const distToZero = Math.abs(resStart.v) / q;
           const x_zero = x_start + distToZero;
           const resZero = evalAt(x_zero);
-          lines.push(`> **Momen Maksimum Lokal** (Geser $V=0$):`);
+          lines.push(`> **⚠️ Momen Maksimum Lokal** (Geser $V=0$):`);
           lines.push(
-            `$$ x = ${fmt(x_zero)} \\rightarrow M_{\\text{max}} = \\mathbf{${fmt(resZero.m)}} $$`,
+            `> $x = ${fmt(x_zero)}$ ${config.unitLength} → $M_{\\text{max}} = \\mathbf{${fmt(resZero.m)}}$ ${config.unitForce}·${config.unitLength}`,
           );
+          lines.push("");
         }
       }
     }
   }
 
-  lines.push("\n---");
-  lines.push("### Ringkasan Hasil");
-  lines.push(
-    `1. **Reaksi**: $R_A = \\mathbf{${fmt(R1_val)}}$, $R_B = \\mathbf{${fmt(R2_val)}}$`,
-  );
-  if (Ma_val !== 0)
+  lines.push("---");
+  lines.push("");
+  lines.push("### 📊 Ringkasan Hasil");
+  lines.push("");
+  lines.push(`**Reaksi Tumpuan:**  `);
+  lines.push(`- $R_A = \\mathbf{${fmt(R1_val)}}$ ${config.unitForce}`);
+  lines.push(`- $R_B = \\mathbf{${fmt(R2_val)}}$ ${config.unitForce}`);
+  if (Ma_val !== 0) {
+    lines.push("");
+    lines.push(`**Momen Reaksi:**`);
     lines.push(
-      `2. **Momen Reaksi**: $M_A = \\mathbf{${fmt(Math.abs(Ma_val))}}$`,
+      `- $M_A = \\mathbf{${fmt(Math.abs(Ma_val))}}$ ${config.unitForce}·${config.unitLength}`,
     );
+  }
+  lines.push("");
   lines.push(
-    "3. **Diagram**: Lihat visualisasi grafik di atas untuk bentuk lengkap diagram geser dan momen.",
+    "**Diagram:** Lihat visualisasi grafik **SFD & BMD** di atas untuk bentuk lengkap diagram geser dan momen.",
   );
 
   return lines.join("\n");
