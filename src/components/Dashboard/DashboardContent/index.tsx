@@ -1,4 +1,4 @@
-// src/components/Dashboard/DashboardContent/tsx
+// src/components/Dashboard/DashboardContent/index.tsx
 "use client";
 
 import { useState, useRef, useCallback } from "react";
@@ -16,7 +16,6 @@ import type {
   DiscordCategory,
   ApiDbCategoryChannel,
 } from "@/types";
-import { cn } from "@/lib/cn";
 
 interface DashboardContentProps {
   initialCategories: ApiDbCategory[];
@@ -36,15 +35,14 @@ export function DashboardContent({
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/database");
       if (!res.ok) throw new Error("Failed to refresh server data.");
-
       const serverData: { data: { [key: string]: ApiDbCategory } } =
         await res.json();
-      const categoriesFromApi = Object.values(serverData.data);
-      setCategories(categoriesFromApi);
+      setCategories(Object.values(serverData.data));
     } catch (err) {
       toast.error("Failed to refresh data", {
         description: (err as Error).message,
@@ -53,16 +51,16 @@ export function DashboardContent({
   }, []);
 
   const handleDataChange = useCallback(() => {
-    setTimeout(() => {
-      fetchData();
-    }, 1000);
+    // Delay sedikit biar server Discord sempat proses
+    setTimeout(() => fetchData(), 1000);
   }, [fetchData]);
 
   const handleSelectCategory = (id: string) => {
     setActiveCategoryId(id);
-    setIsSidebarOpen(false);
+    setIsSidebarOpen(false); // Tutup sidebar di mobile setelah pilih
   };
 
+  // --- UPLOAD LOGIC ---
   const handleAddToUploadQueue = (
     files: (File & { isPublic?: boolean })[],
     categoryId: string,
@@ -93,11 +91,11 @@ export function DashboardContent({
             const isJson =
               item.file.type === "application/json" ||
               item.file.name.endsWith(".json");
+            // Basic handling: JSON as text, others as base64
             const finalContent = isJson
               ? fileContent
               : fileContent.split(",")[1];
-            if (!finalContent)
-              throw new Error("Content could not be processed.");
+
             const payload: ApiDbSendMessageRequest = {
               data: {
                 name: item.file.name,
@@ -105,6 +103,7 @@ export function DashboardContent({
                 isPublic: (item.file as any)?.isPublic || false,
               },
             };
+
             const res = await fetch(
               `/api/database/${item.categoryId}/${item.channelId}`,
               {
@@ -113,16 +112,14 @@ export function DashboardContent({
                 body: JSON.stringify(payload),
               },
             );
-            if (!res.ok) {
-              const errorData = await res.json();
-              throw new Error(errorData.message || "Upload failed");
-            }
+
+            if (!res.ok) throw new Error("Upload failed");
             resolve(await res.json());
           } catch (err) {
             reject(err);
           }
         };
-        reader.onerror = () => reject(new Error("Error reading file."));
+
         const isJsonFile =
           item.file.type === "application/json" ||
           item.file.name.endsWith(".json");
@@ -139,9 +136,9 @@ export function DashboardContent({
             ),
           );
           handleDataChange();
-          return `${item.file.name} uploaded successfully!`;
+          return `${item.file.name} uploaded!`;
         },
-        error: (err: Error) => {
+        error: (err) => {
           setUploadQueue((prev) =>
             prev.map((q) =>
               q.id === item.id
@@ -149,12 +146,13 @@ export function DashboardContent({
                 : q,
             ),
           );
-          return `Failed to upload ${item.file.name}: ${err.message}`;
+          return `Failed: ${err.message}`;
         },
       });
     });
   };
 
+  // --- PREPARE DATA ---
   const simplifiedCategories: DiscordCategory[] = categories.map((cat) => ({
     id: cat.id,
     name: cat.name,
@@ -166,34 +164,25 @@ export function DashboardContent({
   const allChannels: ApiDbCategoryChannel[] = categories.flatMap(
     (cat) => cat.boxes || [],
   );
-
   const filteredChannels = allChannels.filter(
     (ch) => ch.categoryId === activeCategoryId,
   );
-
   const activeContainer = simplifiedCategories.find(
     (cat) => cat.id === activeCategoryId,
   );
 
+  // --- ANIMASI BACKGROUND ---
   useGSAP(
     () => {
-      gsap.to(".gsap-blob-1", {
-        x: "random(-150, 150)",
-        y: "random(-100, 100)",
-        scale: 1.2,
-        duration: 8,
-        ease: "sine.inOut",
-        repeat: -1,
-        yoyo: true,
-      });
-      gsap.to(".gsap-blob-2", {
+      gsap.to(".blob-db", {
         x: "random(-100, 100)",
-        y: "random(-150, 150)",
-        scale: 1.1,
+        y: "random(-100, 100)",
+        scale: "random(0.8, 1.2)",
         duration: 10,
-        ease: "sine.inOut",
         repeat: -1,
         yoyo: true,
+        ease: "sine.inOut",
+        stagger: 2,
       });
     },
     { scope: container },
@@ -202,20 +191,21 @@ export function DashboardContent({
   return (
     <div
       ref={container}
-      className="bg-dark-shale text-off-white relative h-[calc(100vh-4rem)] overflow-hidden"
+      className="bg-background relative h-[calc(100vh-4rem)] overflow-hidden"
     >
-      <div className="absolute inset-0 z-0">
-        <div className="gsap-blob-1 bg-teal-muted/10 absolute top-1/4 left-1/4 h-80 w-80 rounded-full blur-3xl filter"></div>
-        <div className="gsap-blob-2 bg-gunmetal/40 absolute top-1/2 right-1/4 h-72 w-72 rounded-full blur-3xl filter"></div>
+      {/* Background Ambience */}
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="blob-db absolute top-0 left-0 h-[600px] w-[600px] rounded-full bg-teal-500/5 blur-[120px]" />
+        <div className="blob-db absolute right-0 bottom-0 h-[500px] w-[500px] rounded-full bg-blue-500/5 blur-[120px]" />
       </div>
 
-      {/* --- PERUBAHAN DI SINI --- */}
-      <div className="relative z-10 flex h-[calc(100vh-4rem)] flex-col">
+      <div className="relative z-10 flex h-full flex-col">
         <DashboardHeader
           user={user}
           uploadQueue={uploadQueue}
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
         />
+
         <div className="flex flex-1 overflow-hidden">
           <CategorySidebar
             categories={simplifiedCategories}
@@ -224,22 +214,20 @@ export function DashboardContent({
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
           />
+
+          {/* Overlay Mobile */}
           {isSidebarOpen && (
             <div
-              className="fixed inset-0 z-10 bg-black/50 lg:hidden"
+              className="fixed inset-0 z-20 bg-black/60 backdrop-blur-sm lg:hidden"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
-          <main
-            className={cn(
-              "flex-1 transform transition-transform duration-300 ease-in-out",
-              isSidebarOpen && "translate-x-48 md:translate-x-64",
-            )}
-          >
+
+          <main className="relative flex-1 overflow-hidden">
             <ChannelView
               boxes={filteredChannels}
               activeCategoryId={activeCategoryId}
-              activeContainerName={activeContainer?.name || ""}
+              activeContainerName={activeContainer?.name || "Select Container"}
               onDataChanged={handleDataChange}
               onboxCreated={handleDataChange}
               onboxDeleted={handleDataChange}

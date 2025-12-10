@@ -1,7 +1,11 @@
-// src/components/Dashboard/boxView/index.tsx
+// src/components/Dashboard/ChannelView/index.tsx
 "use client";
-import { useState, useRef } from "react";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -9,46 +13,46 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  PlusCircle,
-  Trash2,
-  Loader2,
-  FileJson,
   Plus,
-  Edit,
-  Check,
-  FileUp,
-  FileText,
-  UploadCloud, // Tambahkan ikon baru
+  Box,
+  Search,
+  MoreVertical,
+  FileJson,
+  Trash,
+  Loader2,
+  FileCode2,
+  Image as ImageIcon,
+  Database,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type {
   ApiDbCategoryChannel,
   ApiDbProcessedMessage,
   ApiDbCreateChannelRequest,
-  ApiDbUpdateChannelRequest,
 } from "@/types";
 import { CollectionDetailsModal } from "../CollectionDetailModal";
-import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
 
-interface boxViewProps {
+interface ChannelViewProps {
   boxes: ApiDbCategoryChannel[];
   activeCategoryId: string | null;
   activeContainerName: string;
   onboxCreated: () => void;
   onboxDeleted: () => void;
-  onDataChanged: () => void;
   onboxUpdated: () => void;
+  onDataChanged: () => void;
   onAddToQueue: (
     files: File[],
-    categoryId: string,
+    catId: string,
     boxId: string,
-    containerName: string,
+    contName: string,
     boxName: string,
   ) => void;
 }
@@ -60,454 +64,350 @@ export function ChannelView({
   onboxCreated,
   onboxDeleted,
   onDataChanged,
-  onboxUpdated,
   onAddToQueue,
-}: boxViewProps) {
+}: ChannelViewProps) {
+  const [search, setSearch] = useState("");
+  const [newBoxName, setNewBoxName] = useState("");
+  const [isCreatingBox, setIsCreatingBox] = useState(false);
   const [addBoxOpen, setAddBoxOpen] = useState(false);
-  const [newboxName, setNewboxName] = useState("");
-  const [isCreatingbox, setIsCreatingbox] = useState(false);
-  const [addCollectionOpen, setAddCollectionOpen] = useState(false);
-  const [targetbox, setTargetbox] = useState<{
+
+  // Upload State
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [targetBox, setTargetBox] = useState<{
     id: string;
     name: string;
   } | null>(null);
-
-  const [manualIsPublic, setManualIsPublic] = useState(false); // State baru
-
-  // State untuk mode upload & form
   const [uploadMode, setUploadMode] = useState<"file" | "manual">("file");
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [manualName, setManualName] = useState("");
   const [manualContent, setManualContent] = useState("");
-  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [manualName, setManualName] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
 
+  // Detail Modal
   const [selectedCollection, setSelectedCollection] = useState<
     (ApiDbProcessedMessage & { boxId: string }) | null
   >(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [editingboxId, setEditingboxId] = useState<string | null>(null);
-  const [editingboxName, setEditingboxName] = useState("");
-  const [isUpdatingbox, setIsUpdatingbox] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
-  const handleCreatebox = async () => {
-    if (!newboxName || !activeCategoryId) return;
-    setIsCreatingbox(true);
-    await fetch(`/api/database/${activeCategoryId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        data: { name: newboxName },
-      } as ApiDbCreateChannelRequest),
-    });
-    setIsCreatingbox(false);
-    setNewboxName("");
-    setAddBoxOpen(false);
-    onboxCreated();
+  const filteredBoxes = boxes.filter((b) =>
+    b.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  // FIX: Create Box Logic
+  const handleCreateBox = async () => {
+    if (!newBoxName || !activeCategoryId) return;
+    setIsCreatingBox(true);
+    try {
+      const res = await fetch(`/api/database/${activeCategoryId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: { name: newBoxName },
+        } as ApiDbCreateChannelRequest),
+      });
+
+      if (!res.ok) throw new Error("Failed to create box");
+
+      toast.success(`Box "${newBoxName}" created!`);
+      setAddBoxOpen(false);
+      setNewBoxName("");
+      onboxCreated(); // Trigger parent refresh
+    } catch (e) {
+      toast.error("Error creating box");
+    } finally {
+      setIsCreatingBox(false);
+    }
   };
 
-  const handleDeletebox = async (boxId: string) => {
-    if (!activeCategoryId) return;
-    setIsDeleting(boxId);
-    await fetch(`/api/database/${activeCategoryId}/${boxId}`, {
+  const handleDeleteBox = async (id: string) => {
+    if (!activeCategoryId || !confirm("Delete this box?")) return;
+    await fetch(`/api/database/${activeCategoryId}/${id}`, {
       method: "DELETE",
     });
-    setIsDeleting(null);
     onboxDeleted();
   };
 
-  const handleStartEditbox = (ch: ApiDbCategoryChannel) => {
-    setEditingboxId(ch.id);
-    setEditingboxName(ch.name);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const handleUpdateboxName = async (boxId: string) => {
-    if (!editingboxName || !activeCategoryId || isUpdatingbox) return;
-    setIsUpdatingbox(true);
-    await fetch(`/api/database/${activeCategoryId}/${boxId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        data: { name: editingboxName },
-      } as ApiDbUpdateChannelRequest),
-    });
-    setIsUpdatingbox(false);
-    setEditingboxId(null);
-    setEditingboxName("");
-    onboxUpdated();
-  };
-
-  const openAddCollectionDialog = (box: ApiDbCategoryChannel) => {
-    setTargetbox({ id: box.id, name: box.name });
-    // Reset form states
-    setUploadMode("file");
-    setSelectedFiles(null);
-    setManualName("");
-    setManualContent("");
-    setJsonError(null);
-    setAddCollectionOpen(true);
-    setManualIsPublic(false); // Reset juga state ini
-  };
-
   const handleStartUpload = () => {
-    if (!activeCategoryId || !targetbox) return;
+    if (!activeCategoryId || !targetBox) return;
 
     if (uploadMode === "file" && selectedFiles) {
       onAddToQueue(
         Array.from(selectedFiles),
         activeCategoryId,
-        targetbox.id,
+        targetBox.id,
         activeContainerName,
-        targetbox.name,
+        targetBox.name,
       );
     } else if (uploadMode === "manual" && manualName && manualContent) {
       try {
-        const parsedJson = JSON.parse(manualContent);
-        setJsonError(null);
+        const parsed = JSON.parse(manualContent);
         const file = new File(
-          [JSON.stringify(parsedJson, null, 2)],
+          [JSON.stringify(parsed, null, 2)],
           manualName.endsWith(".json") ? manualName : `${manualName}.json`,
           { type: "application/json" },
         );
-        // Buat objek file dengan properti isPublic
-        const fileWithMeta = Object.assign(file, { isPublic: manualIsPublic });
-
         onAddToQueue(
-          [fileWithMeta],
+          [file],
           activeCategoryId,
-          targetbox.id,
+          targetBox.id,
           activeContainerName,
-          targetbox.name,
+          targetBox.name,
         );
       } catch {
-        setJsonError("Invalid JSON format. Please provide valid JSON.");
+        toast.error("Invalid JSON format");
         return;
       }
     }
-    setAddCollectionOpen(false);
+    setUploadModalOpen(false);
   };
 
-  const handleOpenDetails = (
-    collection: ApiDbProcessedMessage,
-    boxId: string,
-  ) => {
-    setSelectedCollection({ ...collection, boxId });
-    setIsDetailModalOpen(true);
+  // Helper untuk icon file
+  const getIcon = (name: string) => {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (["jpg", "png", "jpeg", "webp"].includes(ext || ""))
+      return <ImageIcon className="h-3 w-3 text-purple-500" />;
+    if (name.endsWith(".json"))
+      return <FileJson className="h-3 w-3 text-yellow-500" />;
+    return <FileCode2 className="h-3 w-3 text-blue-500" />;
   };
 
   if (!activeCategoryId)
     return (
-      <div className="text-off-white/50 flex flex-1 items-center justify-center p-6">
-        <p>Select a container from the left to view its boxes.</p>
+      <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-4">
+        <div className="bg-muted/30 border-border/50 rounded-full border p-6">
+          <Database className="h-12 w-12 opacity-50" />
+        </div>
+        <p>Select a container from the sidebar</p>
       </div>
     );
 
   return (
-    <>
-      <main className="flex-1 space-y-6 overflow-y-auto p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-off-white text-2xl font-bold">Data Boxes</h2>
+    <div className="bg-card/30 flex h-full flex-col backdrop-blur-sm">
+      {/* Header */}
+      <div className="border-border/40 bg-background/40 flex flex-col gap-4 border-b p-6 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {activeContainerName}
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            {boxes.length} boxes available
+          </p>
+        </div>
+        <div className="flex w-full gap-2 md:w-auto">
+          <div className="relative flex-1 md:flex-none">
+            <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
+            <Input
+              placeholder="Search boxes..."
+              className="bg-background/50 border-border/60 w-full pl-9 md:w-64"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <Dialog open={addBoxOpen} onOpenChange={setAddBoxOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80">
-                <PlusCircle size={20} className="mr-2" />
-                Add Box
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white sm:max-w-[425px]">
+            <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Box</DialogTitle>
-                <DialogDescription className="text-off-white/70">
-                  This will create a new data box (box) in the selected
-                  container.
-                </DialogDescription>
+                <DialogTitle>Create New Box</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <Label htmlFor="box-name">Box Name</Label>
+              <div className="space-y-2 py-4">
+                <Label>Box Name</Label>
                 <Input
-                  id="box-name"
-                  value={newboxName}
-                  onChange={(e) => setNewboxName(e.target.value)}
-                  className="bg-dark-shale border-teal-muted/50"
-                  placeholder="e.g., user-profiles"
+                  value={newBoxName}
+                  onChange={(e) => setNewBoxName(e.target.value)}
+                  placeholder="e.g. UserData"
                 />
               </div>
               <DialogFooter>
                 <Button
-                  onClick={handleCreatebox}
-                  disabled={isCreatingbox}
-                  className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
+                  onClick={handleCreateBox}
+                  disabled={isCreatingBox}
+                  className="bg-teal-600 text-white hover:bg-teal-700"
                 >
-                  {isCreatingbox && (
+                  {isCreatingBox ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
                   )}
-                  Add Box
+                  Create
                 </Button>
               </DialogFooter>
             </DialogContent>
+            <Button
+              onClick={() => setAddBoxOpen(true)}
+              className="bg-teal-600 text-white shadow-lg shadow-teal-500/20 hover:bg-teal-700"
+            >
+              <Plus className="mr-2 h-4 w-4" /> New Box
+            </Button>
           </Dialog>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {boxes.map((ch) => (
-            <Card
-              key={ch.id}
-              className="bg-gunmetal/50 border-gunmetal text-off-white flex flex-col"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <FileJson size={16} />
-                  {editingboxId === ch.id ? (
-                    <Input
-                      ref={inputRef}
-                      value={editingboxName}
-                      onChange={(e) => setEditingboxName(e.target.value)}
-                      onBlur={() => handleUpdateboxName(ch.id)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && handleUpdateboxName(ch.id)
-                      }
-                      className="bg-dark-shale border-teal-muted/50 h-8 flex-1"
-                      disabled={isUpdatingbox}
-                    />
-                  ) : (
-                    <CardTitle>{ch.name}</CardTitle>
-                  )}
-                </div>
-                <div className="flex items-center">
-                  {editingboxId === ch.id ? (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={() => handleUpdateboxName(ch.id)}
-                      disabled={isUpdatingbox}
-                    >
-                      {isUpdatingbox ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check size={16} />
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-off-white/50 hover:text-off-white/80 h-8 w-8"
-                      onClick={() => handleStartEditbox(ch)}
-                    >
-                      <Edit size={16} />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeletebox(ch.id)}
-                    disabled={!!isDeleting}
-                    className="h-8 w-8 text-red-500/50 hover:bg-red-900/30 hover:text-red-500"
-                  >
-                    {isDeleting === ch.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 size={16} />
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col justify-between">
-                <div className="mb-4">
-                  <h4 className="text-off-white/60 mb-2 text-xs font-semibold uppercase">
-                    Collections ({ch.collections.length})
-                  </h4>
-                  {ch.collections.length > 0 ? (
-                    <ul className="max-h-24 space-y-1 overflow-y-auto pr-2 text-xs">
-                      {ch.collections.map((msg: ApiDbProcessedMessage) => (
-                        <li
-                          key={msg.id}
-                          className="bg-dark-shale/50 hover:bg-dark-shale/80 flex cursor-pointer items-center justify-between rounded p-1.5 transition-colors"
-                          onClick={() => handleOpenDetails(msg, ch.id)}
-                        >
-                          <span className="truncate" title={msg.name}>
-                            {msg.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-off-white/50 py-4 text-center text-xs">
-                      No collections yet.
-                    </p>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-teal-muted/20 text-dark-sha hover:bg-teal-muted/10 w-full"
-                  onClick={() => openAddCollectionDialog(ch)}
-                >
-                  <Plus size={16} className="mr-2" />
-                  Add Collection
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </main>
+      </div>
 
-      <Dialog open={addCollectionOpen} onOpenChange={setAddCollectionOpen}>
-        <DialogContent className="bg-gunmetal border-teal-muted/30 text-off-white sm:max-w-lg">
+      {/* Grid Content */}
+      <div className="scrollbar-thin scrollbar-thumb-border flex-1 overflow-y-auto p-6">
+        {filteredBoxes.length === 0 ? (
+          <div className="border-border/60 bg-muted/10 animate-in fade-in zoom-in-95 flex h-64 flex-col items-center justify-center rounded-xl border border-dashed text-center">
+            <Box className="text-muted-foreground/50 mb-3 h-10 w-10" />
+            <p className="text-muted-foreground font-medium">No boxes found</p>
+            <p className="text-muted-foreground/70 text-xs">
+              Create a box to start storing data.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredBoxes.map((box) => (
+              <div
+                key={box.id}
+                className="group border-border/50 bg-background/40 relative flex flex-col rounded-xl border p-4 transition-all hover:-translate-y-1 hover:border-teal-500/50 hover:shadow-xl hover:shadow-teal-500/5"
+              >
+                {/* Box Header */}
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-teal-500/20 bg-teal-500/10 text-teal-600 transition-colors group-hover:bg-teal-500/20">
+                      <Box className="h-5 w-5" />
+                    </div>
+                    <span
+                      className="truncate text-sm font-semibold"
+                      title={box.name}
+                    >
+                      {box.name}
+                    </span>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteBox(box.id)}
+                        className="text-red-500 focus:bg-red-50 focus:text-red-600"
+                      >
+                        <Trash className="mr-2 h-4 w-4" /> Delete Box
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Items Preview List */}
+                <div className="bg-muted/20 border-border/30 mb-4 min-h-[100px] flex-1 space-y-1.5 rounded-lg border p-2">
+                  {box.collections.length > 0 ? (
+                    box.collections.slice(0, 4).map((item) => (
+                      <div
+                        key={item.id}
+                        className="text-muted-foreground bg-background/50 flex cursor-pointer items-center gap-2 rounded-md border border-transparent p-1.5 text-xs transition-colors hover:border-teal-500/20 hover:bg-teal-500/10 hover:text-teal-600"
+                        onClick={() => {
+                          setSelectedCollection({ ...item, boxId: box.id });
+                          setDetailModalOpen(true);
+                        }}
+                      >
+                        {getIcon(item.name)}
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-muted-foreground/40 flex h-full items-center justify-center text-xs italic">
+                      Empty box
+                    </div>
+                  )}
+                  {box.collections.length > 4 && (
+                    <div className="text-muted-foreground pt-1 text-center text-[10px]">
+                      + {box.collections.length - 4} more
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-muted/50 mt-auto w-full transition-colors hover:bg-teal-600 hover:text-white"
+                  onClick={() => {
+                    setTargetBox({ id: box.id, name: box.name });
+                    setUploadModalOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-3 w-3" /> Add Data
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Upload Modal (Reused) */}
+      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Collection(s)</DialogTitle>
-            <DialogDescription className="text-off-white/70">
-              Upload files or enter JSON content for the &quot;
-              <b>{targetbox?.name}</b>&quot; box.
+            <DialogTitle>Add to {targetBox?.name}</DialogTitle>
+            <DialogDescription>
+              Upload file or create JSON manually.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mb-4 grid grid-cols-2 gap-2">
             <Button
               variant={uploadMode === "file" ? "default" : "outline"}
               onClick={() => setUploadMode("file")}
-              className={
-                uploadMode === "file"
-                  ? "bg-teal-muted text-dark-shale hover:bg-teal-muted/90"
-                  : "border-gunmetal hover:bg-gunmetal/80"
-              }
             >
-              <FileUp className="mr-2 h-4 w-4" /> Upload file
+              Upload File
             </Button>
             <Button
               variant={uploadMode === "manual" ? "default" : "outline"}
               onClick={() => setUploadMode("manual")}
-              className={
-                uploadMode === "manual"
-                  ? "bg-teal-muted text-dark-shale hover:bg-teal-muted/90"
-                  : "border-gunmetal hover:bg-gunmetal/80"
-              }
             >
-              <FileText className="mr-2 h-4 w-4" /> Manual Input
+              Manual JSON
             </Button>
           </div>
-
-          <div className="grid gap-4 py-4">
-            {uploadMode === "file" ? (
-              <div className="space-y-3">
-                <Label htmlFor="data-file">Drop Zone</Label>
-                <div className="relative">
-                  <Input
-                    id="data-file"
-                    type="file"
-                    multiple
-                    onChange={(e) => setSelectedFiles(e.target.files)}
-                    className="sr-only" // Input asli disembunyikan
-                  />
-                  <Label
-                    htmlFor="data-file"
-                    className="border-teal-muted/30 bg-dark-shale hover:border-teal-muted hover:bg-gunmetal/50 flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed transition-colors"
-                  >
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <UploadCloud className="text-off-white/70 mb-4 h-8 w-8" />
-                      <p className="text-off-white/70 mb-2 text-sm">
-                        <span className="text-teal-muted font-semibold">
-                          Click to upload
-                        </span>
-                        or drag and drop
-                      </p>
-                      <p className="text-off-white/50 text-xs">
-                        Any file type supported
-                      </p>
-                    </div>
-                  </Label>
-                </div>
-                {selectedFiles && selectedFiles.length > 0 && (
-                  <div className="text-off-white/80 text-xs">
-                    <p className="mb-1 font-semibold">
-                      {selectedFiles.length} file selected:
-                    </p>
-                    <ul className="max-h-24 list-inside list-disc space-y-1 overflow-y-auto pl-2">
-                      {Array.from(selectedFiles).map((file) => (
-                        <li key={file.name} className="truncate">
-                          {file.name}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+          {uploadMode === "file" ? (
+            <div className="space-y-2">
+              <Label>Select File(s)</Label>
+              <Input
+                type="file"
+                multiple
+                onChange={(e) => setSelectedFiles(e.target.files)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label>Name</Label>
+                <Input
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  placeholder="data.json"
+                />
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="manual-name">Collection Name</Label>
-                  <Input
-                    id="manual-name"
-                    value={manualName}
-                    onChange={(e) => setManualName(e.target.value)}
-                    className="bg-dark-shale border-teal-muted/50"
-                    placeholder="e.g., my_document.json"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="manual-content">Content (JSON)</Label>
-                  <Textarea
-                    id="manual-content"
-                    value={manualContent}
-                    onChange={(e) => setManualContent(e.target.value)}
-                    className="bg-dark-shale border-teal-muted/50 min-h-[150px] font-mono"
-                    placeholder='{ "key": "value" }'
-                  />
-                  {jsonError && (
-                    <p className="text-sm text-red-500">{jsonError}</p>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="manual-public"
-                    checked={manualIsPublic}
-                    onCheckedChange={(checked) =>
-                      setManualIsPublic(Boolean(checked))
-                    }
-                  />
-                  <Label
-                    htmlFor="manual-public"
-                    className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Make this collection public
-                  </Label>
-                </div>
+              <div>
+                <Label>Content</Label>
+                <Textarea
+                  value={manualContent}
+                  onChange={(e) => setManualContent(e.target.value)}
+                  placeholder="{...}"
+                  rows={5}
+                />
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <DialogFooter>
-            <Button
-              onClick={handleStartUpload}
-              disabled={
-                (uploadMode === "file" &&
-                  (!selectedFiles || selectedFiles.length === 0)) ||
-                (uploadMode === "manual" && (!manualName || !manualContent))
-              }
-              className="bg-teal-muted text-dark-shale hover:bg-teal-muted/80"
-            >
-              {uploadMode === "file"
-                ? `Upload ${selectedFiles?.length || 0} file`
-                : "Add Collection"}
-            </Button>
+            <Button onClick={handleStartUpload}>Upload</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {selectedCollection && activeCategoryId && (
         <CollectionDetailsModal
-          isOpen={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
+          isOpen={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
           collection={selectedCollection}
           categoryId={activeCategoryId}
           channelId={selectedCollection.boxId}
           onDataChanged={() => {
-            setIsDetailModalOpen(false);
+            setDetailModalOpen(false);
             onDataChanged();
           }}
         />
       )}
-    </>
+    </div>
   );
 }
