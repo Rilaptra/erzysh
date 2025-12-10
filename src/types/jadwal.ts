@@ -1,5 +1,5 @@
 // src/lib/data/jadwal.ts
-import jadwalData from "./jadwal.json";
+import jadwalData from "../lib/data/jadwal.json";
 import type { Jadwal, MataKuliah, JadwalJson } from "./jadwal-types";
 
 /**

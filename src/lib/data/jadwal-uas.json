@@ -1,0 +1,82 @@
+[
+  {
+    "no": 1,
+    "mata_kuliah": "Menggambar Bangunan Sipil (T*)",
+    "sks": 2,
+    "tanggal": "2025-12-22",
+    "waktu": { "mulai": "08:00", "selesai": "09:40" },
+    "ruang": "E.03.4.01 & E.03.2.03"
+  },
+  {
+    "no": 2,
+    "mata_kuliah": "Dasar-Dasar Rekayasa Transportasi",
+    "sks": 2,
+    "tanggal": "2025-12-15",
+    "waktu": { "mulai": "09:45", "selesai": "11:25" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  },
+  {
+    "no": 3,
+    "mata_kuliah": "Ilmu Ukur Tanah",
+    "sks": 2,
+    "tanggal": "2025-12-22",
+    "waktu": { "mulai": "12:30", "selesai": "14:10" },
+    "ruang": "E.03.4.15 & E.03.4.01"
+  },
+  {
+    "no": 4,
+    "mata_kuliah": "Fisika Dasar",
+    "sks": 2,
+    "tanggal": "2025-12-16",
+    "waktu": { "mulai": "08:00", "selesai": "09:40" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  },
+  {
+    "no": 5,
+    "mata_kuliah": "Kimia Dasar",
+    "sks": 2,
+    "tanggal": "2025-12-23",
+    "waktu": { "mulai": "12:30", "selesai": "14:10" },
+    "ruang": "E.03.4.15 & E.03.4.01"
+  },
+  {
+    "no": 6,
+    "mata_kuliah": "Matematika I",
+    "sks": 3,
+    "tanggal": "2025-12-17",
+    "waktu": { "mulai": "08:00", "selesai": "09:40" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  },
+  {
+    "no": 7,
+    "mata_kuliah": "Mekanika Bahan",
+    "sks": 2,
+    "tanggal": "2025-12-18",
+    "waktu": { "mulai": "08:00", "selesai": "09:40" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  },
+  {
+    "no": 8,
+    "mata_kuliah": "Praktikum Ilmu Ukur Tanah",
+    "sks": 1,
+    "tanggal": "2025-12-18",
+    "waktu": { "mulai": "12:30", "selesai": "14:10" },
+    "ruang": "E.03.4.01"
+  },
+  {
+    "no": 9,
+    "mata_kuliah": "Pendidikan Agama Islam",
+    "sks": 2,
+    "tanggal": "2025-12-19",
+    "waktu": { "mulai": "09:45", "selesai": "11:25" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  },
+  {
+    "no": 10,
+    "mata_kuliah": "Pancasila",
+    "sks": 2,
+    "tanggal": "2025-12-19",
+    "waktu": { "mulai": "14:45", "selesai": "16:25" },
+    "ruang": "E.03.4.15 & E.03.4.16"
+  }
+]

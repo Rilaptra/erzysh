@@ -1,6 +1,6 @@
 // src/app/kuliah/tugas/page.tsx
 import { TugasDashboard } from "@/components/Tugas/TugasDashboard";
-import { jadwalKuliah } from "@/lib/data/jadwal";
+import { jadwalKuliah } from "@/types/jadwal";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {

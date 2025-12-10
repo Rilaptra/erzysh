@@ -3,7 +3,7 @@
 
 import { JadwalCard } from "@/components/Jadwal/JadwalCard";
 import { LiveClock } from "@/components/Jadwal/LiveClock";
-import type { Jadwal, MataKuliah } from "@/lib/data/jadwal-types";
+import type { Jadwal, MataKuliah } from "@/types/jadwal-types";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Calendar } from "lucide-react";
@@ -20,7 +20,7 @@ export const JadwalWidget = ({ fullSchedule }: JadwalWidgetProps) => {
   const [todayString, setTodayString] = useState("");
   const today = new Date();
   const academicEvents = useAcademicEvents(today);
-  
+
   useEffect(() => {
     const days = [
       "Minggu",
@@ -42,7 +42,7 @@ export const JadwalWidget = ({ fullSchedule }: JadwalWidgetProps) => {
       {/* Event Akademik */}
       {academicEvents.length > 0 && (
         <div className="mb-4 rounded-md bg-blue-900/20 p-3">
-          <p className="text-blue-300 flex items-center gap-1 text-sm">
+          <p className="flex items-center gap-1 text-sm text-blue-300">
             <Calendar size={14} /> {academicEvents[0].kegiatan}
           </p>
         </div>

@@ -1,7 +1,7 @@
 // src/components/Jadwal/HariLainCard.tsx
 "use client";
 
-import type { MataKuliah } from "@/lib/data/jadwal-types"; // <-- Diubah
+import type { MataKuliah } from "@/types/jadwal-types"; // <-- Diubah
 import {
   Card,
   CardContent,

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { Box, Database, File } from "lucide-react";
 import type { ApiDbCategory, UserPayload } from "@/types";
 import type { Tugas } from "@/types/tugas";
-import { jadwalKuliah } from "@/lib/data/jadwal";
+import { jadwalKuliah } from "@/types/jadwal";
 
 import { StatCard } from "./StatCard";
 import { JadwalWidget } from "./JadwalWidget";
