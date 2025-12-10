@@ -2,51 +2,71 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Zap } from "lucide-react";
+import { Zap, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export const ApiStatusWidget = () => {
-  const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<"loading" | "healthy" | "error">(
+    "loading",
+  );
 
   useEffect(() => {
     fetch("/api/health")
-      .then((res) => (res.ok ? setIsHealthy(true) : setIsHealthy(false)))
-      .catch(() => setIsHealthy(false));
+      .then((res) => (res.ok ? setStatus("healthy") : setStatus("error")))
+      .catch(() => setStatus("error"));
   }, []);
 
-  const statusText =
-    isHealthy === null ? "Checking..." : isHealthy ? "Healthy" : "Offline";
-  const statusColor =
-    isHealthy === null
-      ? "text-yellow-400"
-      : isHealthy
-        ? "text-green-400"
-        : "text-red-500";
-
   return (
-    <Card className="bg-gunmetal/30 border-gunmetal/50 backdrop-blur-sm">
-      <CardHeader>
-        <CardTitle className="text-off-white flex items-center gap-2">
-          <Zap className="text-teal-muted" />
-          API Status
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              "h-3 w-3 rounded-full",
-              isHealthy === null
-                ? "bg-yellow-400"
-                : isHealthy
-                  ? "animate-pulse bg-green-400"
-                  : "bg-red-500",
-            )}
-          ></div>
-          <span className={cn("font-bold", statusColor)}>{statusText}</span>
+    <div className="border-border/50 bg-card/50 flex items-center justify-between rounded-2xl border p-4 backdrop-blur-md">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full",
+            status === "healthy"
+              ? "bg-green-500/10 text-green-500"
+              : status === "error"
+                ? "bg-red-500/10 text-red-500"
+                : "bg-yellow-500/10 text-yellow-500",
+          )}
+        >
+          {status === "loading" ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Zap className="h-5 w-5" />
+          )}
         </div>
-      </CardContent>
-    </Card>
+        <div>
+          <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+            System Status
+          </p>
+          <p
+            className={cn(
+              "leading-none font-bold",
+              status === "healthy"
+                ? "text-green-500"
+                : status === "error"
+                  ? "text-red-500"
+                  : "text-yellow-500",
+            )}
+          >
+            {status === "healthy"
+              ? "All Systems Operational"
+              : status === "error"
+                ? "System Outage"
+                : "Checking..."}
+          </p>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "h-2 w-2 animate-pulse rounded-full",
+          status === "healthy"
+            ? "bg-green-500"
+            : status === "error"
+              ? "bg-red-500"
+              : "bg-yellow-500",
+        )}
+      />
+    </div>
   );
 };

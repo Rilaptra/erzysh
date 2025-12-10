@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
       {
         hostname: "smart.untidar.ac.id",
       },
+      {
+        hostname: "avatars.githubusercontent.com",
+      },
     ],
   },
   /* config options here */

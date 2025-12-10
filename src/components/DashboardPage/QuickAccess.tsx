@@ -1,59 +1,59 @@
 // src/components/DashboardPage/QuickAccess.tsx
 "use client";
 
+import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Wrench,
   Camera,
-  ListChecks,
-  GraduationCap,
   FileInput,
-} from "lucide-react"; // Tambahkan FileInput
-import Link from "next/link";
+  GraduationCap,
+  FileDown,
+} from "lucide-react";
 
 const tools = [
   {
     href: "/kuliah/tools/photo-formatter",
-    label: "Photo to DOCX",
-    icon: <Camera className="size-5" />,
+    label: "Photo Formatter",
+    icon: Camera,
   },
-  // --- TAMBAHKAN TOOL BARU DI SINI ---
   {
     href: "/kuliah/tools/docx-extractor",
-    label: "DOCX to Photo",
-    icon: <FileInput className="size-5" />,
+    label: "Docx Extractor",
+    icon: FileDown,
   },
   {
     href: "/kuliah/tools/checklist-teksip",
     label: "Checklist Teksip",
-    icon: <ListChecks className="size-5" />,
+    icon: FileInput,
   },
   {
     href: "/kuliah/tools/sipadu-leaked",
-    label: "Sipadu Leaked",
-    icon: <GraduationCap className="size-5" />,
+    label: "Sipadu Viewer",
+    icon: GraduationCap,
   },
 ];
 
 export const QuickAccess = () => {
   return (
-    <Card className="bg-gunmetal/30 border-gunmetal/50 backdrop-blur-sm">
+    <Card className="border-border/50 bg-card/50 h-full backdrop-blur-md">
       <CardHeader>
-        <CardTitle className="text-off-white flex items-center gap-2">
-          <Wrench className="text-teal-muted" />
-          Quick Tools
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Wrench className="h-5 w-5 text-teal-500" /> Quick Tools
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="grid grid-cols-2 gap-3">
         {tools.map((tool) => (
-          <Link className="w-full" href={tool.href} key={tool.href}>
+          <Link key={tool.href} href={tool.href} className="w-full">
             <Button
               variant="outline"
-              className="border-gunmetal/80 hover:bg-gunmetal/80 w-full justify-start"
+              className="h-auto w-full flex-col gap-2 py-4 hover:border-teal-500/50 hover:bg-teal-500/5 hover:text-teal-600 dark:hover:text-teal-400"
             >
-              <span className="text-teal-muted mr-3">{tool.icon}</span>
-              {tool.label}
+              <div className="bg-muted text-foreground/70 rounded-full p-2">
+                {<tool.icon className="h-5 w-5" />}
+              </div>
+              <span className="text-xs font-medium">{tool.label}</span>
             </Button>
           </Link>
         ))}
