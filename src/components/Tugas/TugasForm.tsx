@@ -1,6 +1,7 @@
 // src/components/Tugas/TugasForm.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import { Tugas, TugasKategori } from "@/types/tugas";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +23,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react"; // <-- Import ikon baru
+import {
+  Sparkles,
+  Loader2,
+  Calendar,
+  Clock,
+  BookOpen,
+  Tag,
+  Type,
+  AlignLeft,
+  Save,
+} from "lucide-react";
+import { cn } from "@/lib/cn";
 
 interface TugasFormProps {
   isOpen: boolean;
@@ -35,14 +46,17 @@ interface TugasFormProps {
   initialData?: Tugas | null;
   mataKuliahOptions: string[];
 }
+
 const kategoriOptions: TugasKategori[] = ["Kuliah", "Tugas Prodi", "Lainnya"];
 
-// Helper untuk memisahkan ISO string menjadi [YYYY-MM-DD, HH:mm]
+// Helper untuk memisahkan ISO string
 const splitISOString = (isoString: string) => {
   if (!isoString) return ["", ""];
   const date = new Date(isoString);
+  // Handle timezone offset manually simple way or just use split if stored as ISO
+  // Simplest for input type="date": YYYY-MM-DD
   const datePart = date.toISOString().split("T")[0];
-  const timePart = date.toTimeString().split(" ")[0].substring(0, 5);
+  const timePart = date.toTimeString().slice(0, 5);
   return [datePart, timePart];
 };
 
@@ -57,9 +71,10 @@ export const TugasForm = ({
   const [mataKuliah, setMataKuliah] = useState("");
   const [kategori, setKategori] = useState<TugasKategori>("Kuliah");
   const [deadlineDate, setDeadlineDate] = useState("");
-  const [deadlineTime, setDeadlineTime] = useState("23:59"); // Default waktu
+  const [deadlineTime, setDeadlineTime] = useState("23:59");
   const [deskripsi, setDeskripsi] = useState("");
-  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false); // <-- State loading baru
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+
   const isEditing = !!initialData;
 
   useEffect(() => {
@@ -67,26 +82,26 @@ export const TugasForm = ({
       setJudul(initialData.judul);
       setMataKuliah(initialData.mataKuliah);
       setKategori(initialData.kategori);
-      const [datePart, timePart] = splitISOString(initialData.deadline);
-      setDeadlineDate(datePart);
-      setDeadlineTime(timePart);
+      const [d, t] = splitISOString(initialData.deadline);
+      setDeadlineDate(d);
+      setDeadlineTime(t);
       setDeskripsi(initialData.deskripsi);
     } else {
+      // Reset form
       setJudul("");
       setMataKuliah("");
       setKategori("Kuliah");
       setDeadlineDate("");
-      setDeadlineTime("23:59"); // Reset ke default
+      setDeadlineTime("23:59");
       setDeskripsi("");
     }
   }, [initialData, isOpen]);
 
-  // --- FUNGSI BARU UNTUK GENERATE JUDUL ---
   const handleGenerateTitle = async () => {
     if (!mataKuliah || !deskripsi) {
-      toast.error(
-        "Isi Mata Kuliah dan Deskripsi terlebih dahulu untuk membuat judul otomatis.",
-      );
+      toast.warning("Info Kurang", {
+        description: "Isi Mata Kuliah dan Deskripsi dulu biar AI bisa mikir.",
+      });
       return;
     }
 
@@ -98,18 +113,17 @@ export const TugasForm = ({
         body: JSON.stringify({ mataKuliah, deskripsi }),
       });
 
-      if (!response.ok) {
-        throw new Error("Gagal mendapatkan respon dari server.");
-      }
+      if (!response.ok) throw new Error("Gagal request ke server.");
 
       const data = await response.json();
       setJudul(data.title);
-      toast.success("Judul berhasil dibuat oleh AI!");
+      toast.success("Judul Siap!", {
+        icon: <Sparkles className="h-4 w-4 text-amber-400" />,
+        description: "Judul berhasil dibuat otomatis.",
+      });
     } catch (error) {
       console.error(error);
-      toast.error("Gagal membuat judul otomatis.", {
-        description: (error as Error).message,
-      });
+      toast.error("Gagal generate judul.");
     } finally {
       setIsGeneratingTitle(false);
     }
@@ -117,9 +131,13 @@ export const TugasForm = ({
 
   const handleSubmit = () => {
     if (!judul || !mataKuliah || !deadlineDate) {
-      toast.error("Mohon lengkapi Judul, Mata Kuliah, dan Tanggal Deadline.");
+      toast.error("Data Belum Lengkap", {
+        description: "Pastikan Judul, Matkul, dan Deadline terisi.",
+      });
       return;
     }
+
+    // Gabungkan Date & Time
     const deadlineISO = new Date(
       `${deadlineDate}T${deadlineTime || "00:00"}:00`,
     ).toISOString();
@@ -141,111 +159,175 @@ export const TugasForm = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-screen overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Edit Tugas" : "Tambah Tugas Baru"}
+      <DialogContent className="border-border/50 bg-card/95 max-h-[90vh] gap-0 overflow-y-auto border-2 p-0 shadow-2xl backdrop-blur-xl sm:max-w-lg">
+        {/* HEADER */}
+        <DialogHeader className="border-border/50 bg-muted/20 border-b p-6 pb-2">
+          <DialogTitle className="flex items-center gap-2 text-2xl font-black tracking-tight">
+            {isEditing ? (
+              <>
+                <span className="text-teal-500">Edit</span> Misi
+              </>
+            ) : (
+              <>
+                <span className="text-indigo-500">New</span> Mission
+              </>
+            )}
           </DialogTitle>
-          <DialogDescription>Isi detail tugas di bawah ini.</DialogDescription>
+          <DialogDescription className="text-base">
+            {isEditing
+              ? "Perbarui detail tugas ini."
+              : "Tambahkan tugas baru ke daftar antrian."}
+          </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
-          {/* --- PERUBAHAN PADA INPUT JUDUL --- */}
+
+        {/* BODY */}
+        <div className="flex flex-col gap-5 p-6">
+          {/* 1. SECTION: MATKUL & KATEGORI (2 Kolom) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold">
+                <BookOpen className="h-3.5 w-3.5" /> Mata Kuliah
+              </Label>
+              <Select onValueChange={setMataKuliah} value={mataKuliah}>
+                <SelectTrigger className="bg-background/50 border-muted-foreground/20">
+                  <SelectValue placeholder="Pilih Matkul" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mataKuliahOptions.map((mk) => (
+                    <SelectItem key={mk} value={mk}>
+                      {mk}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold">
+                <Tag className="h-3.5 w-3.5" /> Kategori
+              </Label>
+              <Select
+                onValueChange={(val: TugasKategori) => setKategori(val)}
+                value={kategori}
+              >
+                <SelectTrigger className="bg-background/50 border-muted-foreground/20">
+                  <SelectValue placeholder="Pilih Kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {kategoriOptions.map((kat) => (
+                    <SelectItem key={kat} value={kat}>
+                      {kat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* 2. SECTION: DESKRIPSI (Ditaruh tengah biar flow AI enak) */}
           <div className="flex flex-col gap-2">
+            <Label
+              htmlFor="deskripsi"
+              className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <AlignLeft className="h-3.5 w-3.5" /> Deskripsi Tugas
+            </Label>
+            <Textarea
+              id="deskripsi"
+              value={deskripsi}
+              onChange={(e) => setDeskripsi(e.target.value)}
+              className="bg-background/50 border-muted-foreground/20 min-h-[100px] resize-none focus-visible:ring-indigo-500"
+              placeholder="Contoh: Buat makalah tentang struktur jembatan..."
+            />
+          </div>
+
+          {/* 3. SECTION: JUDUL (AI Powered) */}
+          <div className="relative flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="judul">Judul</Label>
+              <Label
+                htmlFor="judul"
+                className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold"
+              >
+                <Type className="h-3.5 w-3.5" /> Judul Tugas
+              </Label>
+
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateTitle}
                 disabled={isGeneratingTitle}
-                className="text-teal-muted -mr-2 h-auto px-2 py-1 text-xs"
+                className={cn(
+                  "h-6 gap-1.5 rounded-full border border-amber-500/20 bg-linear-to-r from-amber-500/10 to-orange-500/10 px-2 text-[10px] text-amber-600 transition-all hover:border-amber-500/50 hover:text-amber-700",
+                  isGeneratingTitle && "cursor-wait opacity-70",
+                )}
               >
                 {isGeneratingTitle ? (
-                  <Loader2 className="mr-1.5 size-3 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Sparkles className="mr-1.5 size-3" />
+                  <Sparkles className="h-3 w-3" />
                 )}
-                Generate
+                {isGeneratingTitle ? "Thinking..." : "Auto-Title AI"}
               </Button>
             </div>
             <Input
               id="judul"
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
-              placeholder="Akan dibuat otomatis atau isi manual"
+              placeholder="Judul tugas..."
+              className="bg-background/50 border-muted-foreground/20 focus-visible:ring-indigo-500"
             />
           </div>
-          {/* --- AKHIR PERUBAHAN JUDUL --- */}
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="matkul">Mata Kuliah</Label>
-            <Select onValueChange={setMataKuliah} value={mataKuliah}>
-              <SelectTrigger id="matkul">
-                <SelectValue placeholder="Pilih Mata Kuliah" />
-              </SelectTrigger>
-              <SelectContent>
-                {mataKuliahOptions.map((mk) => (
-                  <SelectItem key={mk} value={mk}>
-                    {mk}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="kategori">Kategori</Label>
-            <Select
-              onValueChange={(val: TugasKategori) => setKategori(val)}
-              value={kategori}
-            >
-              <SelectTrigger id="kategori">
-                <SelectValue placeholder="Pilih Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                {kategoriOptions.map((kat) => (
-                  <SelectItem key={kat} value={kat}>
-                    {kat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-5 gap-2">
+
+          {/* 4. SECTION: DEADLINE (2 Kolom) */}
+          <div className="grid grid-cols-5 gap-4">
             <div className="col-span-3 flex flex-col gap-2">
-              <Label htmlFor="deadline-date">Tanggal Deadline</Label>
+              <Label
+                htmlFor="deadline-date"
+                className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold"
+              >
+                <Calendar className="h-3.5 w-3.5" /> Tanggal
+              </Label>
               <Input
                 id="deadline-date"
                 type="date"
                 value={deadlineDate}
                 onChange={(e) => setDeadlineDate(e.target.value)}
+                className="bg-background/50 border-muted-foreground/20"
               />
             </div>
             <div className="col-span-2 flex flex-col gap-2">
-              <Label htmlFor="deadline-time">Waktu</Label>
+              <Label
+                htmlFor="deadline-time"
+                className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold"
+              >
+                <Clock className="h-3.5 w-3.5" /> Jam
+              </Label>
               <Input
                 id="deadline-time"
                 type="time"
                 value={deadlineTime}
                 onChange={(e) => setDeadlineTime(e.target.value)}
+                className="bg-background/50 border-muted-foreground/20 text-center"
               />
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="deskripsi">Deskripsi</Label>
-            <Textarea
-              id="deskripsi"
-              value={deskripsi}
-              onChange={(e) => setDeskripsi(e.target.value)}
-              className="min-h-[100px]"
-              placeholder="Jelaskan detail tugas di sini untuk membantu AI membuat judul..."
-            />
-          </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+
+        {/* FOOTER */}
+        <DialogFooter className="bg-muted/20 border-border/50 gap-2 border-t p-6 pt-2 sm:gap-0">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="hover:bg-muted/50"
+          >
             Batal
           </Button>
-          <Button onClick={handleSubmit}>
-            {isEditing ? "Simpan Perubahan" : "Buat Tugas"}
+          <Button
+            onClick={handleSubmit}
+            className="gap-2 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-700"
+          >
+            <Save className="h-4 w-4" />
+            {isEditing ? "Simpan Perubahan" : "Simpan Tugas"}
           </Button>
         </DialogFooter>
       </DialogContent>
