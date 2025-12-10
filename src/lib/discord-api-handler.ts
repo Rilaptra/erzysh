@@ -49,7 +49,7 @@ async function apiRequestCore<T>(
   const url = `${DISCORD_API_BASE}${route}`;
   const headers = new Headers(options.headers);
   headers.set("Authorization", `Bot ${BOT_TOKEN}`);
-  headers.set("User-Agent", "Eryzsh/2.0 (Bun; +https://github.com/Rilaptra)");
+  headers.set("User-Agent", "Erzysh/2.0 (Bun; +https://github.com/Rilaptra)");
 
   const finalOptions: RequestInit = { ...options, headers };
 

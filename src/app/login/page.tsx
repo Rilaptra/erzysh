@@ -118,7 +118,7 @@ export default function LoginPage() {
           <h1 className="brand-element invisible mb-4 text-5xl leading-tight font-black tracking-tighter">
             Welcome to <br />
             <span className="bg-linear-to-r from-teal-500 to-indigo-500 bg-clip-text text-transparent">
-              Eryzsh System.
+              Erzysh System.
             </span>
           </h1>
           <p className="brand-element text-muted-foreground invisible text-lg leading-relaxed">
@@ -141,7 +141,7 @@ export default function LoginPage() {
               Sign in
             </h2>
             <p className="auth-element text-muted-foreground invisible mt-2">
-              Masukan kredensial akun Eryzsh kamu.
+              Masukan kredensial akun Erzysh kamu.
             </p>
           </div>
 

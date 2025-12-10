@@ -24,15 +24,15 @@ const LOGO_URL =
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Eryzsh",
-    default: "Eryzsh",
+    template: "%s | Erzysh",
+    default: "Erzysh",
   },
   description: "Personal dashboard, DBaaS, and university toolkit.",
   openGraph: {
-    title: "Eryzsh",
+    title: "Erzysh",
     description: "Personal dashboard, DBaaS, and university toolkit.",
     url: "https://eryzsh.vercel.app",
-    siteName: "Eryzsh",
+    siteName: "Erzysh",
     locale: "id_ID",
     type: "website",
     images: [
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
         url: LOGO_URL, // Menggunakan URL logo yang baru
         width: 512,
         height: 512,
-        alt: "Eryzsh Logo",
+        alt: "Erzysh Logo",
       },
     ],
   },
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Eryzsh",
+    title: "Erzysh",
     description: "Personal dashboard, DBaaS, and university toolkit.",
     // creator: "@yourtwitterhandle",
     images: [LOGO_URL], // Menggunakan URL logo yang baru
