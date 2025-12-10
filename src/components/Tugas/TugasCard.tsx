@@ -44,20 +44,16 @@ export const TugasCard = ({
   // Tentukan status urgensi
   let statusColor = "bg-blue-500";
   let borderColor = "border-blue-500/20";
-  let statusText = "Aman";
 
   if (tugas.isCompleted) {
     statusColor = "bg-green-500";
     borderColor = "border-green-500/20";
-    statusText = "Selesai";
   } else if (isPastDeadline) {
     statusColor = "bg-red-600";
     borderColor = "border-red-600/50";
-    statusText = "Telat";
   } else if (daysLeft < 2) {
     statusColor = "bg-orange-500";
     borderColor = "border-orange-500/50";
-    statusText = "Urgent";
   }
 
   const handleAddToCalendar = () => {
