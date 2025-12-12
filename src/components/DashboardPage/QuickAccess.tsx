@@ -4,13 +4,7 @@
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Wrench,
-  Camera,
-  FileInput,
-  GraduationCap,
-  FileDown,
-} from "lucide-react";
+import { Wrench, Camera, FileInput, FileDown, FileCode } from "lucide-react";
 
 const tools = [
   {
@@ -29,9 +23,9 @@ const tools = [
     icon: FileInput,
   },
   {
-    href: "/kuliah/tools/sipadu-leaked",
-    label: "Sipadu Viewer",
-    icon: GraduationCap,
+    href: "/kuliah/tools/mekban-solver",
+    label: "Mekban Solver",
+    icon: FileCode,
   },
 ];
 
@@ -51,7 +45,7 @@ export const QuickAccess = () => {
               className="h-auto w-full flex-col gap-2 py-4 hover:border-teal-500/50 hover:bg-teal-500/5 hover:text-teal-600 dark:hover:text-teal-400"
             >
               <div className="bg-muted text-foreground/70 rounded-full p-2">
-                {<tool.icon className="h-5 w-5" />}
+                {tool.icon && <tool.icon className="h-5 w-5" />}
               </div>
               <span className="text-xs font-medium">{tool.label}</span>
             </Button>

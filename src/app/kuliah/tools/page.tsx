@@ -15,9 +15,21 @@ import {
   Ruler,
   Search,
   Lock,
+  Unlock,
+  Terminal,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/cn";
+import { useDevMode } from "@/lib/hooks/useDevMode";
 
 // Definisikan warna untuk setiap kategori
 const categoryColors: Record<string, string> = {
@@ -101,13 +113,34 @@ const tools = [
 
 export default function ToolsPage() {
   const [search, setSearch] = useState("");
+  const { isDevMode, unlockDevMode, lockDevMode } = useDevMode();
 
-  const filteredTools = tools.filter(
-    (t) =>
+  // State untuk Modal Unlock
+  const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+
+  const handleUnlockSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = unlockDevMode(passwordInput);
+    if (success) {
+      setIsUnlockOpen(false);
+      setPasswordInput("");
+    }
+  };
+
+  // Logic Filtering: Search + Dev Mode Check
+  const filteredTools = tools.filter((t) => {
+    // 1. Filter Admin: Kalau admin=true DAN bukan Dev Mode, hide.
+    if (t.admin && !isDevMode) return false;
+
+    // 2. Filter Search
+    const matchesSearch =
       t.label.toLowerCase().includes(search.toLowerCase()) ||
       t.desc.toLowerCase().includes(search.toLowerCase()) ||
-      t.cat.toLowerCase().includes(search.toLowerCase()),
-  );
+      t.cat.toLowerCase().includes(search.toLowerCase());
+
+    return matchesSearch;
+  });
 
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
@@ -162,7 +195,14 @@ export default function ToolsPage() {
 
               return (
                 <Link href={tool.href} key={i} className="group relative">
-                  <div className="relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/50 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-xl dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/40">
+                  <div
+                    className={cn(
+                      "relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/50 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-xl dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/40",
+                      // Kasih border merah tipis kalo item admin
+                      tool.admin &&
+                        "border-rose-500/20 dark:border-rose-500/20",
+                    )}
+                  >
                     {/* Top Accent Line */}
                     <div
                       className={cn(
@@ -223,6 +263,64 @@ export default function ToolsPage() {
           </div>
         )}
       </div>
+
+      {/* --- FOOTER / UNLOCK BUTTON --- */}
+      <div className="fixed right-6 bottom-6 z-50">
+        {isDevMode ? (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={lockDevMode}
+            className="rounded-full border-rose-500/50 text-rose-500 shadow-lg hover:bg-rose-500/10 hover:text-rose-600"
+            title="Lock Developer Mode"
+          >
+            <Lock className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsUnlockOpen(true)}
+            className="text-muted-foreground/30 hover:text-foreground/50 text-xs"
+          >
+            <Terminal className="mr-2 h-3 w-3" />
+            v2.0.0
+          </Button>
+        )}
+      </div>
+
+      {/* --- UNLOCK DIALOG --- */}
+      <Dialog open={isUnlockOpen} onOpenChange={setIsUnlockOpen}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Unlock className="h-5 w-5 text-indigo-500" /> Unlock Dev Mode
+            </DialogTitle>
+            <DialogDescription>
+              Masukan sandi untuk mengakses fitur experimental & admin.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUnlockSubmit} className="space-y-4 py-2">
+            <Input
+              type="password"
+              placeholder="Enter Access Code"
+              className="text-center font-mono tracking-widest"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              autoFocus
+            />
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+              >
+                Unlock
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
