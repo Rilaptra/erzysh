@@ -15,6 +15,30 @@ interface GitHubStats {
   html_url: string;
 }
 
+const GitHubSkeleton = () => (
+  <div className="border-border/50 bg-card/50 relative h-full overflow-hidden rounded-2xl border p-5 backdrop-blur-md">
+    <div className="flex items-start justify-between">
+      <div className="flex items-center gap-3">
+        <div className="bg-muted/50 h-12 w-12 animate-pulse rounded-full" />
+        <div className="space-y-2">
+          <div className="bg-muted/50 h-4 w-24 animate-pulse rounded" />
+          <div className="bg-muted/50 h-3 w-32 animate-pulse rounded" />
+        </div>
+      </div>
+      <div className="bg-muted/50 h-6 w-6 animate-pulse rounded-full" />
+    </div>
+    <div className="mt-6 grid grid-cols-3 gap-2">
+      {[1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="bg-background/50 h-16 animate-pulse rounded-lg"
+        />
+      ))}
+    </div>
+    <div className="bg-muted/50 mt-4 h-8 w-full animate-pulse rounded-md" />
+  </div>
+);
+
 export const GitHubWidget = ({ username }: { username: string }) => {
   const [stats, setStats] = useState<GitHubStats | null>(null);
 
@@ -25,10 +49,7 @@ export const GitHubWidget = ({ username }: { username: string }) => {
       .catch((err) => console.error(err));
   }, [username]);
 
-  if (!stats)
-    return (
-      <div className="bg-muted/50 h-full w-full animate-pulse rounded-2xl" />
-    );
+  if (!stats) return <GitHubSkeleton />;
 
   return (
     <div className="border-border/50 bg-card/50 relative overflow-hidden rounded-2xl border p-5 backdrop-blur-md">

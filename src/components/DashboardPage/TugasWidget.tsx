@@ -13,9 +13,27 @@ import { cn } from "@/lib/cn";
 
 interface TugasWidgetProps {
   tugasList: Tugas[];
+  isLoading?: boolean;
 }
 
-export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
+// Skeleton Component for Tugas Item
+const TugasItemSkeleton = () => (
+  <div className="border-border/50 bg-card/50 flex flex-col gap-2 rounded-xl border p-3">
+    <div className="flex items-start justify-between">
+      <div className="bg-muted/50 h-4 w-3/4 animate-pulse rounded" />
+      <div className="bg-muted/50 h-4 w-16 animate-pulse rounded-full" />
+    </div>
+    <div className="flex items-center justify-between">
+      <div className="bg-muted/50 h-3 w-1/2 animate-pulse rounded" />
+      <div className="bg-muted/50 h-3 w-12 animate-pulse rounded" />
+    </div>
+  </div>
+);
+
+export const TugasWidget = ({
+  tugasList,
+  isLoading = false,
+}: TugasWidgetProps) => {
   const upcomingTugas = useMemo(() => {
     return tugasList
       .filter((t) => !t.isCompleted)
@@ -35,21 +53,30 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
   };
 
   return (
-    <div className="from-card/80 to-card/40 flex h-full flex-col bg-linear-to-b p-6 backdrop-blur-md">
+    <div className="from-card/80 to-card/40 flex h-full flex-col bg-linear-to-b p-4 backdrop-blur-md sm:p-6">
       {/* HEADER */}
-      <div className="mb-6 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-lg font-bold">
-          <BookCheck className="h-5 w-5 text-indigo-500" />
+      <div className="mb-4 flex items-center justify-between sm:mb-6">
+        <h3 className="flex items-center gap-2 text-base font-bold sm:text-lg">
+          <BookCheck className="h-4 w-4 text-indigo-500 sm:h-5 sm:w-5" />
           Tugas Aktif
         </h3>
-        <Badge variant="outline" className="font-mono">
-          {upcomingTugas.length} Pending
+        <Badge
+          variant="outline"
+          className="h-6 px-2 font-mono text-[10px] sm:text-xs"
+        >
+          {isLoading ? "-" : upcomingTugas.length} Pending
         </Badge>
       </div>
 
       {/* CONTENT */}
       <div className="flex-1 space-y-3">
-        {upcomingTugas.length > 0 ? (
+        {isLoading ? (
+          <>
+            <TugasItemSkeleton />
+            <TugasItemSkeleton />
+            <TugasItemSkeleton />
+          </>
+        ) : upcomingTugas.length > 0 ? (
           upcomingTugas.map((tugas) => {
             const urgencyClass = getUrgencyColor(tugas.deadline);
 
@@ -58,13 +85,13 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
                 key={tugas.id}
                 className="group border-border/50 bg-card/50 hover:bg-card flex flex-col gap-2 rounded-xl border p-3 transition-all hover:-translate-x-1 hover:shadow-md"
               >
-                <div className="flex items-start justify-between">
-                  <h4 className="line-clamp-1 text-sm font-semibold transition-colors group-hover:text-indigo-500">
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="line-clamp-2 text-xs font-semibold transition-colors group-hover:text-indigo-500 sm:line-clamp-1 sm:text-sm">
                     {tugas.judul}
                   </h4>
                   <div
                     className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium whitespace-nowrap",
                       urgencyClass,
                     )}
                   >
@@ -75,10 +102,10 @@ export const TugasWidget = ({ tugasList }: TugasWidgetProps) => {
                 </div>
 
                 <div className="text-muted-foreground flex items-center justify-between text-xs">
-                  <span className="bg-muted/50 line-clamp-1 max-w-[60%] rounded px-2 py-0.5">
+                  <span className="bg-muted/50 line-clamp-1 max-w-[60%] rounded px-2 py-0.5 text-[10px] sm:text-xs">
                     {tugas.mataKuliah}
                   </span>
-                  <div className="flex items-center gap-1 opacity-70">
+                  <div className="flex shrink-0 items-center gap-1 opacity-70">
                     <Clock className="h-3 w-3" />
                     {new Date(tugas.deadline).toLocaleTimeString("id-ID", {
                       hour: "2-digit",

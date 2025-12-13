@@ -1,9 +1,10 @@
 // src/components/DashboardPage/index.tsx
 "use client";
 
+import useSWR from "swr";
 import { useMemo, useRef, useEffect, useState } from "react";
 import { Box, Cloud, Database, File } from "lucide-react";
-import type { ApiDbCategory, UserPayload } from "@/types";
+import type { ApiDbGetAllStructuredDataResponse, UserPayload } from "@/types";
 import type { Tugas } from "@/types/tugas";
 import { jadwalKuliah } from "@/types/jadwal";
 import gsap from "gsap";
@@ -15,13 +16,10 @@ import { ApiStatusWidget } from "./ApiStatusWidget";
 import { GitHubWidget } from "./GitHubWidget";
 import { TugasWidget } from "./TugasWidget";
 
-interface DashboardClientProps {
-  user: UserPayload;
-  initialData: ApiDbCategory[];
-  tugasList: Tugas[];
-}
+// Helper Fetcher
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Helper untuk ucapan waktu
+// Helper Greeting
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 11) return "Selamat Pagi";
@@ -30,22 +28,60 @@ const getGreeting = () => {
   return "Selamat Malam";
 };
 
-export const DashboardClient = ({
-  user,
-  initialData,
-  tugasList,
-}: DashboardClientProps) => {
+// ID Container
+const TUGAS_CONTAINER = "1409908765074919585";
+const TUGAS_BOX = "1409908859971309681";
+
+export const DashboardClient = () => {
   const containerRef = useRef(null);
   const [greeting, setGreeting] = useState("");
+
+  // --- SWR DATA FETCHING ---
+  // 1. User Data
+  const { data: userData, isLoading: userLoading } = useSWR<UserPayload>(
+    "/api/auth/me",
+    fetcher,
+  );
+
+  // 2. Database Structure
+  const { data: dbData, isLoading: dbLoading } =
+    useSWR<ApiDbGetAllStructuredDataResponse>("/api/database", fetcher);
+
+  // 3. Tugas
+  const { data: tugasResponse, isLoading: tugasLoading } = useSWR(
+    `/api/database/${TUGAS_CONTAINER}/${TUGAS_BOX}?full=true`,
+    fetcher,
+  );
 
   useEffect(() => {
     setGreeting(getGreeting());
   }, []);
 
-  // Animasi Masuk
+  // --- LOGIC STATS ---
+  const user = userData || { username: "Guest" };
+  const categories = dbData?.data ? Object.values(dbData.data) : [];
+  const tugasList: Tugas[] = tugasResponse?.data || [];
+
+  const stats = useMemo(() => {
+    const totalContainers = categories.length;
+    let totalBoxes = 0;
+    let totalCollections = 0;
+
+    categories.forEach((container) => {
+      totalBoxes += container.boxes.length;
+      container.boxes.forEach((box) => {
+        totalCollections += box.collections.length;
+      });
+    });
+
+    return { totalContainers, totalBoxes, totalCollections };
+  }, [categories]);
+
+  // --- ANIMASI MASUK ---
   useEffect(() => {
+    // Jalankan animasi layout sekalian, biarpun data belum full
+    // Element yang belum ada datanya bakal nampilin skeleton sendiri-sendiri
     const ctx = gsap.context(() => {
-      // Set initial states
       gsap.set(".dashboard-item", { y: 30, autoAlpha: 0 });
       gsap.set(".header-text", { x: -20, autoAlpha: 0 });
 
@@ -70,21 +106,6 @@ export const DashboardClient = ({
     return () => ctx.revert();
   }, []);
 
-  const stats = useMemo(() => {
-    const totalContainers = initialData.length;
-    let totalBoxes = 0;
-    let totalCollections = 0;
-
-    initialData.forEach((container) => {
-      totalBoxes += container.boxes.length;
-      container.boxes.forEach((box) => {
-        totalCollections += box.collections.length;
-      });
-    });
-
-    return { totalContainers, totalBoxes, totalCollections };
-  }, [initialData]);
-
   return (
     <div
       ref={containerRef}
@@ -106,7 +127,11 @@ export const DashboardClient = ({
             <h1 className="header-text text-foreground text-3xl font-black tracking-tight md:text-4xl">
               {greeting},{" "}
               <span className="bg-linear-to-r from-teal-500 to-blue-500 bg-clip-text text-transparent">
-                {user.username}
+                {userLoading ? (
+                  <span className="bg-muted/50 inline-block h-8 w-32 animate-pulse rounded-lg" />
+                ) : (
+                  user.username
+                )}
               </span>{" "}
               👋
             </h1>
@@ -119,12 +144,13 @@ export const DashboardClient = ({
 
         {/* BENTO GRID LAYOUT */}
         <div className="grid auto-rows-min grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* ROW 1: STATS (Full Width on Mobile, distributed on Desktop) */}
+          {/* STATS */}
           <div className="dashboard-item col-span-1 lg:col-span-1">
             <StatCard
               title="Database Containers"
               value={stats.totalContainers}
               icon={<Database className="h-6 w-6" />}
+              isLoading={dbLoading}
               className="h-full border-blue-500/20 bg-linear-to-br from-blue-500/10 to-transparent"
             />
           </div>
@@ -133,34 +159,34 @@ export const DashboardClient = ({
               title="Active Boxes"
               value={stats.totalBoxes}
               icon={<Box className="h-6 w-6" />}
+              isLoading={dbLoading}
               className="h-full border-teal-500/20 bg-linear-to-br from-teal-500/10 to-transparent"
             />
           </div>
           <div className="dashboard-item col-span-1 lg:col-span-2">
             <StatCard
-              title="Total Collections Stored"
+              title="Total Collections"
               value={stats.totalCollections}
               icon={<File className="h-6 w-6" />}
+              isLoading={dbLoading}
               className="h-full border-purple-500/20 bg-linear-to-br from-purple-500/10 to-transparent"
             />
           </div>
 
-          {/* ROW 2: MAIN CONTENT (Jadwal & Tugas) */}
-          {/* Jadwal - Tall Item */}
+          {/* MAIN CONTENT */}
           <div className="dashboard-item col-span-1 h-full lg:col-span-2 lg:row-span-2">
             <div className="border-border/50 bg-card/30 h-full overflow-hidden rounded-2xl border p-1 backdrop-blur-sm">
+              {/* Jadwal Data is static for now, so no loading state needed */}
               <JadwalWidget fullSchedule={jadwalKuliah} />
             </div>
           </div>
 
-          {/* Tugas - Wide Item */}
           <div className="dashboard-item col-span-1 lg:col-span-2">
             <div className="border-border/50 bg-card/30 overflow-hidden rounded-2xl border p-1 backdrop-blur-sm">
-              <TugasWidget tugasList={tugasList} />
+              <TugasWidget tugasList={tugasList} isLoading={tugasLoading} />
             </div>
           </div>
 
-          {/* ROW 3: UTILITIES & EXTRAS */}
           <div className="dashboard-item col-span-1">
             <QuickAccess />
           </div>
