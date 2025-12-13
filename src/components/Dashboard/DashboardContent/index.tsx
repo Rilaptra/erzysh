@@ -1,13 +1,16 @@
 // src/components/Dashboard/DashboardContent/index.tsx
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { toast } from "sonner";
-import { DashboardHeader } from "../Header";
+import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { UploadStatus } from "../UploadStatus";
 import { CategorySidebar } from "../Sidebar";
 import { ChannelView } from "../ChannelView";
+import { useHeaderContext } from "@/context/HeaderContext";
 import type {
   UserPayload,
   ApiDbCategory,
@@ -22,10 +25,7 @@ interface DashboardContentProps {
   user: UserPayload;
 }
 
-export function DashboardContent({
-  initialCategories,
-  user,
-}: DashboardContentProps) {
+export function DashboardContent({ initialCategories }: DashboardContentProps) {
   const container = useRef(null);
   const [categories, setCategories] =
     useState<ApiDbCategory[]>(initialCategories);
@@ -34,6 +34,7 @@ export function DashboardContent({
   );
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { setHeaderConfig, resetHeader } = useHeaderContext();
 
   // --- DATA FETCHING ---
   const fetchData = useCallback(async () => {
@@ -51,8 +52,9 @@ export function DashboardContent({
   }, []);
 
   const handleDataChange = useCallback(() => {
-    // Delay sedikit biar server Discord sempat proses
-    setTimeout(() => fetchData(), 1000);
+    // Delay agar server Discord sempat proses perubahan
+    // Kemudian fetch data baru dari server
+    setTimeout(() => fetchData(), 2000);
   }, [fetchData]);
 
   const handleSelectCategory = (id: string) => {
@@ -171,6 +173,44 @@ export function DashboardContent({
     (cat) => cat.id === activeCategoryId,
   );
 
+  // --- SYNC HEADER ---
+  // Only update header when container name changes
+  const containerName = activeContainer?.name || "Manager";
+
+  useEffect(() => {
+    const title = (
+      <div className="flex items-center gap-3">
+        {/* Mobile Sidebar Toggle inside Header */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 lg:hidden"
+          onClick={() => setIsSidebarOpen((prev) => !prev)}
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground hidden font-medium sm:inline-block">
+            Database
+          </span>
+          <span className="text-border/60 hidden sm:inline-block">/</span>
+          <span className="text-foreground text-base font-bold tracking-tight sm:text-sm">
+            {containerName}
+          </span>
+        </div>
+      </div>
+    );
+
+    setHeaderConfig({
+      content: title,
+      actions: null, // We'll handle upload status separately
+    });
+
+    return () => resetHeader();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerName]);
+
   // --- ANIMASI BACKGROUND ---
   useGSAP(
     () => {
@@ -200,11 +240,10 @@ export function DashboardContent({
       </div>
 
       <div className="relative z-10 flex h-full flex-col">
-        <DashboardHeader
-          user={user}
-          uploadQueue={uploadQueue}
-          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        />
+        {/* Floating Upload Status */}
+        <div className="absolute top-4 right-4 z-30">
+          <UploadStatus queue={uploadQueue} />
+        </div>
 
         <div className="flex flex-1 overflow-hidden">
           <CategorySidebar
@@ -213,6 +252,7 @@ export function DashboardContent({
             onSelectCategory={handleSelectCategory}
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
+            onDataChanged={handleDataChange}
           />
 
           {/* Overlay Mobile */}

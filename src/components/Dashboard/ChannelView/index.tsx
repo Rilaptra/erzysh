@@ -15,6 +15,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Plus,
   Box,
   Search,
@@ -88,42 +98,85 @@ export function ChannelView({
   >(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
 
+  // Delete confirmation state
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const boxToDelete = deleteConfirmId
+    ? boxes.find((b) => b.id === deleteConfirmId)
+    : null;
+
   const filteredBoxes = boxes.filter((b) =>
     b.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   // FIX: Create Box Logic
   const handleCreateBox = async () => {
-    if (!newBoxName || !activeCategoryId) return;
+    const trimmedName = newBoxName.trim();
+    if (!trimmedName || !activeCategoryId) {
+      toast.error("Box name cannot be empty");
+      return;
+    }
+
+    // Discord channel names: 1-100 chars, no spaces (converted to dashes)
+    if (trimmedName.length > 100) {
+      toast.error("Box name must be 100 characters or less");
+      return;
+    }
+
     setIsCreatingBox(true);
     try {
       const res = await fetch(`/api/database/${activeCategoryId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: { name: newBoxName },
+          data: { name: trimmedName },
         } as ApiDbCreateChannelRequest),
       });
 
-      if (!res.ok) throw new Error("Failed to create box");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || errorData.error || "Failed to create box",
+        );
+      }
 
-      toast.success(`Box "${newBoxName}" created!`);
+      toast.success(`Box "${trimmedName}" created!`);
       setAddBoxOpen(false);
       setNewBoxName("");
       onboxCreated(); // Trigger parent refresh
     } catch (e) {
-      toast.error("Error creating box");
+      toast.error(`Error: ${(e as Error).message}`);
     } finally {
       setIsCreatingBox(false);
     }
   };
 
-  const handleDeleteBox = async (id: string) => {
-    if (!activeCategoryId || !confirm("Delete this box?")) return;
-    await fetch(`/api/database/${activeCategoryId}/${id}`, {
-      method: "DELETE",
+  const confirmDeleteBox = async () => {
+    if (!activeCategoryId || !deleteConfirmId) return;
+
+    const boxName = boxToDelete?.name || "box";
+    setDeleteConfirmId(null); // Close dialog immediately
+
+    const promise = fetch(
+      `/api/database/${activeCategoryId}/${deleteConfirmId}`,
+      {
+        method: "DELETE",
+      },
+    ).then(async (res) => {
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete box");
+      }
+      return res;
     });
-    onboxDeleted();
+
+    toast.promise(promise, {
+      loading: `Deleting "${boxName}"...`,
+      success: () => {
+        onboxDeleted();
+        return `"${boxName}" deleted!`;
+      },
+      error: (err) => `Error: ${err.message}`,
+    });
   };
 
   const handleStartUpload = () => {
@@ -282,7 +335,7 @@ export function ChannelView({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => handleDeleteBox(box.id)}
+                        onClick={() => setDeleteConfirmId(box.id)}
                         className="text-red-500 focus:bg-red-50 focus:text-red-600"
                       >
                         <Trash className="mr-2 h-4 w-4" /> Delete Box
@@ -408,6 +461,32 @@ export function ChannelView({
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Box</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <strong>"{boxToDelete?.name}"</strong>? This will permanently
+              remove the box and all its contents.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteBox}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

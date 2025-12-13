@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import Header from "@/components/Layout/Header";
 import Footer from "@/components/Layout/Footer";
 import PWAInit from "@/components/PWAInit";
+import { HeaderProvider } from "@/context/HeaderContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,10 +79,12 @@ export default function RootLayout({
       >
         <PWAInit /> {/* <-- Tambahkan ini */}
         <ThemeProvider>
-          <Header />
-          {children}
-          <Footer />
-          <Toaster position="bottom-right" />
+          <HeaderProvider>
+            <Header />
+            {children}
+            <Footer />
+            <Toaster position="bottom-right" />
+          </HeaderProvider>
         </ThemeProvider>
       </body>
     </html>

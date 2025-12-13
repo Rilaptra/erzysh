@@ -39,6 +39,7 @@ interface CategorySidebarProps {
   onSelectCategory: (id: string) => void;
   isOpen: boolean;
   onClose: () => void;
+  onDataChanged?: () => void; // Callback to refresh data in parent
 }
 
 export function CategorySidebar({
@@ -46,6 +47,7 @@ export function CategorySidebar({
   activeCategoryId,
   onSelectCategory,
   isOpen,
+  onDataChanged,
 }: CategorySidebarProps) {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -62,6 +64,7 @@ export function CategorySidebar({
       toast.success("Container created!");
       setNewCategoryName("");
       setDialogOpen(false);
+      onDataChanged?.(); // Trigger parent to refresh data
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -76,6 +79,7 @@ export function CategorySidebar({
       await updateCategoryAction(id, editingName);
       setEditingId(null);
       toast.success("Renamed!");
+      onDataChanged?.(); // Trigger parent to refresh data
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -89,6 +93,7 @@ export function CategorySidebar({
     try {
       await deleteCategoryAction(id);
       toast.success("Deleted!");
+      onDataChanged?.(); // Trigger parent to refresh data
     } catch (e) {
       toast.error((e as Error).message);
     } finally {

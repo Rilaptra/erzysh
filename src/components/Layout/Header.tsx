@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/ThemeProvider";
 import gsap from "gsap";
 import { cn } from "@/lib/cn";
+import { useHeaderContext } from "@/context/HeaderContext";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard" },
@@ -20,6 +21,7 @@ const navItems = [
 export default function Header() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { headerContent, headerActions } = useHeaderContext();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const headerRef = useRef(null);
@@ -105,11 +107,10 @@ export default function Header() {
     <>
       <header
         ref={headerRef}
-        // Z-Index 50 agar Header selalu di atas Overlay Menu (yang Z-40)
         className="border-border/40 bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur-xl"
       >
         <div className="container mx-auto flex h-16 items-center px-4 sm:px-8">
-          {/* BAGIAN KIRI: LOGO (Flex-1 agar mendorong tengah) */}
+          {/* BAGIAN KIRI: LOGO */}
           <div className="flex flex-1 justify-start">
             <div className="nav-brand flex items-center gap-3">
               <Link
@@ -133,33 +134,48 @@ export default function Header() {
             </div>
           </div>
 
-          {/* BAGIAN TENGAH: NAVIGASI (Absolute Center atau Auto Width) */}
-          <nav className="hidden items-center justify-center gap-1 md:flex">
-            {navItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "nav-item hover:bg-muted/50 relative rounded-full px-4 py-2 text-sm font-medium transition-all",
-                    isActive
-                      ? "text-foreground bg-muted/80 shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {item.name}
-                  {isActive && (
-                    <span className="absolute inset-x-0 -bottom-[19px] mx-auto h-[2px] w-1/2 rounded-t-full bg-teal-500" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* BAGIAN TENGAH: NAVIGASI atau DYNAMIC CONTENT */}
+          <div className="flex flex-1 items-center justify-center">
+            {headerContent ? (
+              <div className="animate-in fade-in zoom-in slide-in-from-top-4 duration-500">
+                {headerContent}
+              </div>
+            ) : (
+              <nav className="hidden items-center justify-center gap-1 md:flex">
+                {navItems.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "nav-item hover:bg-muted/50 relative rounded-full px-4 py-2 text-sm font-medium transition-all",
+                        isActive
+                          ? "text-foreground bg-muted/80 shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {item.name}
+                      {isActive && (
+                        <span className="absolute inset-x-0 -bottom-[19px] mx-auto h-[2px] w-1/2 rounded-t-full bg-teal-500" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
 
-          {/* BAGIAN KANAN: ACTIONS (Flex-1 agar seimbang dengan Kiri) */}
+          {/* BAGIAN KANAN: ACTIONS */}
           <div className="flex flex-1 justify-end">
             <div className="nav-action flex items-center gap-2">
+              {/* Dynamic Action from Page (e.g. UploadStatus) */}
+              {headerActions && (
+                <div className="animate-in fade-in slide-in-from-right-4 mr-2 duration-500">
+                  {headerActions}
+                </div>
+              )}
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -175,7 +191,7 @@ export default function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="z-50 rounded-full transition-transform active:scale-90 md:hidden" // z-50 penting
+                className="z-50 rounded-full transition-transform active:scale-90 md:hidden"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
                 {isMobileMenuOpen ? (
@@ -192,7 +208,6 @@ export default function Header() {
       {/* MOBILE MENU OVERLAY */}
       <div
         ref={mobileMenuRef}
-        // Z-Index 40 (di bawah Header z-50, supaya tombol Close di header tetap bisa diklik)
         className="bg-background/95 fixed inset-0 z-40 hidden flex-col px-6 pt-24 backdrop-blur-2xl"
       >
         {/* Background Decor */}
@@ -215,7 +230,7 @@ export default function Header() {
                     ? "border-l-4 border-l-teal-500 bg-linear-to-r from-teal-500 to-blue-500 bg-clip-text pl-2 text-transparent"
                     : "text-foreground/80 hover:text-foreground hover:pl-2",
                 )}
-                onClick={() => setIsMobileMenuOpen(false)} // Tutup saat diklik
+                onClick={() => setIsMobileMenuOpen(false)}
               >
                 {item.name}
                 <ChevronRight
