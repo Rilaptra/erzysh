@@ -72,6 +72,6 @@ export const tugasSchema = z.object({
   mataKuliah: z.string().min(3),
   kategori: z.enum(["Kuliah", "Tugas Prodi", "Lainnya"]),
   deadline: z.string().datetime(), // Validasi format ISO 8601
-  deskripsi: z.string().optional(),
+  deskripsi: z.string(),
   isCompleted: z.boolean().optional(),
 });

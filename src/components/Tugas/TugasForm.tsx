@@ -160,10 +160,10 @@ export const TugasForm = ({
     // 4. Cek Hasil Validasi
     if (!result.success) {
       // Ambil pesan error pertama untuk ditampilkan di Toast
-      const firstError = result.error.errors[0];
+      const firstError = result.error.message;
 
       toast.error("Data Tidak Valid", {
-        description: firstError.message,
+        description: firstError,
         icon: <AlertCircle className="h-5 w-5 text-red-500" />,
       });
 
