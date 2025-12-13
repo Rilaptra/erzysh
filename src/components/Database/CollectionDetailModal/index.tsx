@@ -74,7 +74,7 @@ export function CollectionDetailsModal({
       if (cached) {
         setData(cached);
         if (fileType === "text")
-          setEditContent(JSON.stringify(cached.data, null, 2));
+          setEditContent(JSON.stringify(JSON.parse(cached.data), null, 2));
         setLoading(false);
         return;
       }
@@ -88,8 +88,7 @@ export function CollectionDetailsModal({
         const json = await res.json();
         setData(json);
         setCachedCollection(collection.id, json);
-        if (fileType === "text")
-          setEditContent(JSON.stringify(json.data, null, 2));
+        if (fileType === "text") setEditContent(json.data);
       } catch (e) {
         toast.error("Error loading data");
       } finally {
@@ -175,7 +174,7 @@ export function CollectionDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-background/95 border-border/50 flex max-h-[90vh] flex-col overflow-hidden backdrop-blur-xl sm:max-w-4xl">
+      <DialogContent className="bg-background/95 border-border/50 flex h-[90vh] flex-col overflow-hidden backdrop-blur-xl sm:max-w-4xl">
         <DialogHeader className="border-border/50 shrink-0 border-b px-6 py-4">
           <DialogTitle className="flex items-center gap-2 truncate text-xl">
             {fileType === "image" ? (
@@ -188,15 +187,14 @@ export function CollectionDetailsModal({
             <span className="truncate">{collection.name}</span>
           </DialogTitle>
         </DialogHeader>
-
         {loading ? (
           <div className="flex min-h-[300px] flex-1 items-center justify-center">
             <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
             {/* === LEFT COLUMN: PREVIEW/EDITOR === */}
-            <div className="bg-muted/20 border-border/50 relative flex flex-1 items-center justify-center overflow-hidden border-b p-4 md:border-r md:border-b-0 md:p-6">
+            <div className="bg-muted/20 border-border/50 relative flex h-[300px] w-full flex-none items-center justify-center overflow-hidden border-b p-4 md:h-auto md:flex-1 md:border-r md:border-b-0 md:p-6">
               {editing ? (
                 <Textarea
                   value={editContent}
@@ -232,7 +230,7 @@ export function CollectionDetailsModal({
             </div>
 
             {/* === RIGHT COLUMN: META & ACTIONS === */}
-            <div className="bg-background flex w-full shrink-0 flex-col gap-6 overflow-y-auto p-6 md:w-80">
+            <div className="bg-background flex w-full flex-1 flex-col gap-6 overflow-y-auto p-6 md:w-80 md:flex-none">
               {/* Metadata */}
               <div className="space-y-4">
                 <h4 className="text-muted-foreground text-sm font-semibold tracking-wider uppercase">

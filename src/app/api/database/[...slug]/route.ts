@@ -546,6 +546,8 @@ async function handleCreateChannel(
     return createApiResponse({ message: "Invalid channel name" }, 400);
   }
 
+  console.log("Step 1 finished");
+
   return handleDiscordApiCall<DiscordChannel>(
     async () => {
       const channel = await discord.post<DiscordChannel>(
@@ -555,11 +557,14 @@ async function handleCreateChannel(
           parent_id: categoryId,
           type: CHANNEL_TYPE.GUILD_TEXT,
         },
-        true,
+        false,
       );
+      console.log("Step 2 finished");
       if (!channel) throw new Error("Failed to create channel.");
+      console.log("Step 3 finished");
       userData.databases[categoryId].push(channel.id);
       updateUserData(userData.userID, userData, userData.message_id);
+      console.log("Step 4 finished");
       return channel;
     },
     "Channel created successfully",

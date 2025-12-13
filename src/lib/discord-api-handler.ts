@@ -138,6 +138,7 @@ export const discord = {
       options.body = JSON.stringify(body);
       options.headers = { "Content-Type": "application/json" };
     }
+    console.log(route, options, isFormData);
     return apiRequest<T>(route, options);
   },
 

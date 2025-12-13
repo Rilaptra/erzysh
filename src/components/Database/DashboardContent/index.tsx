@@ -64,7 +64,6 @@ export function DashboardContent({ initialCategories }: DashboardContentProps) {
     containerName: string,
     boxName: string,
   ) => {
-    // ... (Logic upload sama persis, copy paste aja kalau mau lengkap) ...
     const newQueueItems: UploadQueueItem[] = files.map((file) => ({
       id: `${file.name}-${Date.now()}`,
       file,
@@ -76,8 +75,86 @@ export function DashboardContent({ initialCategories }: DashboardContentProps) {
       boxName,
     }));
     setUploadQueue((prev) => [...prev, ...newQueueItems]);
-    // ... (sisanya sama)
   };
+
+  // --- QUEUE PROCESSING EFFECT ---
+  useEffect(() => {
+    const processQueue = async () => {
+      const activeItemIndex = uploadQueue.findIndex(
+        (item) => item.status === "uploading",
+      );
+      if (activeItemIndex === -1) return;
+
+      const item = uploadQueue[activeItemIndex];
+      const { file, categoryId, channelId } = item;
+
+      try {
+        let content: string | ArrayBuffer | null = null;
+
+        // 1. Read File Content
+        if (file.name.endsWith(".json")) {
+          content = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        } else {
+          // Binary (Image/Video/etc) -> Base64
+          content = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              // Remove Data URI prefix (e.g. "data:image/png;base64,")
+              const result = reader.result as string;
+              const base64 = result.split(",")[1];
+              resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+
+        // 2. Upload to API
+        const res = await fetch(`/api/database/${categoryId}/${channelId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            data: {
+              name: file.name,
+              content,
+              isPublic: file.isPublic,
+            },
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "Upload failed");
+        }
+
+        // 3. Success
+        setUploadQueue((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, status: "success" } : i)),
+        );
+        toast.success(`Uploaded ${file.name}`);
+
+        // Refresh data (delay sedikit biar server sempet proses)
+        handleDataChange();
+      } catch (error) {
+        console.error("Upload error:", error);
+        setUploadQueue((prev) =>
+          prev.map((i) =>
+            i.id === item.id
+              ? { ...i, status: "error", error: (error as Error).message }
+              : i,
+          ),
+        );
+        toast.error(`Failed to upload ${file.name}`);
+      }
+    };
+
+    processQueue();
+  }, [uploadQueue, handleDataChange]);
 
   const simplifiedCategories: DiscordCategory[] = categories.map((cat) => ({
     id: cat.id,

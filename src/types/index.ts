@@ -7,7 +7,7 @@ export * from "./payload";
 // Tipe baru untuk item antrean unggahan
 export interface UploadQueueItem {
   id: string;
-  file: File;
+  file: File & { isPublic?: boolean };
   status: "uploading" | "success" | "error";
   error?: string;
   startTime: number;

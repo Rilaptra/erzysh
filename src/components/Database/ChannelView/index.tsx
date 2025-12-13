@@ -477,9 +477,17 @@ export function ChannelView({
               <div>
                 <Label>Content</Label>
                 <Textarea
-                  value={manualContent}
+                  value={
+                    manualContent ||
+                    JSON.stringify(
+                      {
+                        key: "value",
+                      },
+                      null,
+                      2,
+                    )
+                  }
                   onChange={(e) => setManualContent(e.target.value)}
-                  placeholder="{...}"
                   rows={5}
                 />
               </div>
