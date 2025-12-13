@@ -33,8 +33,10 @@ import {
   Type,
   AlignLeft,
   Save,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { tugasSchema } from "@/lib/validators"; // <-- Import Schema Zod
 
 interface TugasFormProps {
   isOpen: boolean;
@@ -49,13 +51,12 @@ interface TugasFormProps {
 
 const kategoriOptions: TugasKategori[] = ["Kuliah", "Tugas Prodi", "Lainnya"];
 
-// Helper untuk memisahkan ISO string
+// Helper: Pisah ISO String jadi Date & Time buat input HTML
 const splitISOString = (isoString: string) => {
   if (!isoString) return ["", ""];
   const date = new Date(isoString);
-  // Handle timezone offset manually simple way or just use split if stored as ISO
-  // Simplest for input type="date": YYYY-MM-DD
-  const datePart = date.toISOString().split("T")[0];
+  const datePart = date.toISOString().split("T")[0]; // YYYY-MM-DD
+  // Ambil HH:mm lokal
   const timePart = date.toTimeString().slice(0, 5);
   return [datePart, timePart];
 };
@@ -77,6 +78,7 @@ export const TugasForm = ({
 
   const isEditing = !!initialData;
 
+  // --- Effect: Isi form kalau mode Edit ---
   useEffect(() => {
     if (initialData) {
       setJudul(initialData.judul);
@@ -87,7 +89,7 @@ export const TugasForm = ({
       setDeadlineTime(t);
       setDeskripsi(initialData.deskripsi);
     } else {
-      // Reset form
+      // Reset form kalau mode Baru
       setJudul("");
       setMataKuliah("");
       setKategori("Kuliah");
@@ -97,6 +99,7 @@ export const TugasForm = ({
     }
   }, [initialData, isOpen]);
 
+  // --- Handler: AI Generate Title ---
   const handleGenerateTitle = async () => {
     if (!mataKuliah || !deskripsi) {
       toast.warning("Info Kurang", {
@@ -129,27 +132,51 @@ export const TugasForm = ({
     }
   };
 
+  // --- Handler: Submit dengan Zod Validation ---
   const handleSubmit = () => {
-    if (!judul || !mataKuliah || !deadlineDate) {
-      toast.error("Data Belum Lengkap", {
-        description: "Pastikan Judul, Matkul, dan Deadline terisi.",
+    // 1. Konstruksi ulang Deadline ke format ISO 8601
+    let deadlineISO = "";
+    if (deadlineDate) {
+      // Gabungkan tanggal dan jam lokal, lalu buat Date object
+      const localDateTime = new Date(
+        `${deadlineDate}T${deadlineTime || "00:00"}:00`,
+      );
+      // Konversi ke ISO string (UTC) agar konsisten di database
+      deadlineISO = localDateTime.toISOString();
+    }
+
+    // 2. Siapkan Raw Payload
+    const rawPayload = {
+      judul: judul.trim(),
+      mataKuliah,
+      kategori,
+      deadline: deadlineISO,
+      deskripsi: deskripsi.trim(),
+    };
+
+    // 3. Validasi menggunakan Zod (Safe Parse)
+    const result = tugasSchema.safeParse(rawPayload);
+
+    // 4. Cek Hasil Validasi
+    if (!result.success) {
+      // Ambil pesan error pertama untuk ditampilkan di Toast
+      const firstError = result.error.errors[0];
+
+      toast.error("Data Tidak Valid", {
+        description: firstError.message,
+        icon: <AlertCircle className="h-5 w-5 text-red-500" />,
       });
+
+      // Stop proses di sini, jangan lanjut submit
       return;
     }
 
-    // Gabungkan Date & Time
-    const deadlineISO = new Date(
-      `${deadlineDate}T${deadlineTime || "00:00"}:00`,
-    ).toISOString();
-
+    // 5. Jika Valid, Kirim Data Bersih ke Parent
+    // result.data berisi data yang sudah divalidasi dan di-trim oleh Zod (jika ada transform)
     onSubmit(
       {
         id: initialData?.id,
-        judul,
-        mataKuliah,
-        kategori,
-        deadline: deadlineISO,
-        deskripsi,
+        ...result.data,
       },
       initialData || undefined,
     );
@@ -189,7 +216,7 @@ export const TugasForm = ({
                 <BookOpen className="h-3.5 w-3.5" /> Mata Kuliah
               </Label>
               <Select onValueChange={setMataKuliah} value={mataKuliah}>
-                <SelectTrigger className="bg-background/50 border-muted-foreground/20">
+                <SelectTrigger className="bg-background/50 border-muted-foreground/20 focus:ring-indigo-500">
                   <SelectValue placeholder="Pilih Matkul" />
                 </SelectTrigger>
                 <SelectContent>
@@ -209,7 +236,7 @@ export const TugasForm = ({
                 onValueChange={(val: TugasKategori) => setKategori(val)}
                 value={kategori}
               >
-                <SelectTrigger className="bg-background/50 border-muted-foreground/20">
+                <SelectTrigger className="bg-background/50 border-muted-foreground/20 focus:ring-indigo-500">
                   <SelectValue placeholder="Pilih Kategori" />
                 </SelectTrigger>
                 <SelectContent>
@@ -223,7 +250,7 @@ export const TugasForm = ({
             </div>
           </div>
 
-          {/* 2. SECTION: DESKRIPSI (Ditaruh tengah biar flow AI enak) */}
+          {/* 2. SECTION: DESKRIPSI */}
           <div className="flex flex-col gap-2">
             <Label
               htmlFor="deskripsi"
@@ -292,7 +319,7 @@ export const TugasForm = ({
                 type="date"
                 value={deadlineDate}
                 onChange={(e) => setDeadlineDate(e.target.value)}
-                className="bg-background/50 border-muted-foreground/20"
+                className="bg-background/50 border-muted-foreground/20 focus-visible:ring-indigo-500"
               />
             </div>
             <div className="col-span-2 flex flex-col gap-2">
@@ -307,7 +334,7 @@ export const TugasForm = ({
                 type="time"
                 value={deadlineTime}
                 onChange={(e) => setDeadlineTime(e.target.value)}
-                className="bg-background/50 border-muted-foreground/20 text-center"
+                className="bg-background/50 border-muted-foreground/20 text-center focus-visible:ring-indigo-500"
               />
             </div>
           </div>

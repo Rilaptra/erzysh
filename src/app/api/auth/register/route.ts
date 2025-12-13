@@ -8,39 +8,37 @@ import {
   updateUserData,
 } from "../../database/helpers";
 import { UserData } from "@/types";
+import { registerSchema } from "@/lib/validators"; // Import Zod Schema
 
-// Type guard for Node.js errors
 export async function POST(req: NextRequest) {
   try {
-    const { username, password } = await req.json();
+    const body = await req.json();
 
-    if (!username || !password) {
+    // 🔥 ZOD VALIDATION START
+    const validation = registerSchema.safeParse(body);
+
+    if (!validation.success) {
       return NextResponse.json(
-        { message: "Username and password are required" },
+        {
+          message: "Invalid input",
+          errors: validation.error.flatten().fieldErrors,
+        },
         { status: 400 },
       );
     }
 
-    if (typeof username !== "string" || typeof password !== "string") {
-      return NextResponse.json(
-        { message: "Username and password must be strings" },
-        { status: 400 },
-      );
-    }
+    const { username, password } = validation.data;
+    // 🔥 ZOD VALIDATION END
 
     const users = await getUsersData();
-
-    const existingUser = users.has(username);
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // For other users
-    if (existingUser) {
+    if (users.has(username)) {
       return NextResponse.json(
         { message: "Username already exists" },
         { status: 409 },
       );
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser: UserData = {
       userID: uuidv4(),
@@ -50,23 +48,22 @@ export async function POST(req: NextRequest) {
       databases: {},
       message_id: "not",
     };
-    // Add the new user to the users map
+
     users.set(newUser.userID, newUser);
     users.set(newUser.username, newUser);
+
     const message = await addUserData(newUser);
-    newUser.message_id = message!.id;
+    if (!message) throw new Error("Failed to save to Discord");
+
+    newUser.message_id = message.id;
     await updateUserData(newUser.userID, newUser, newUser.message_id);
+
     return NextResponse.json(
       { message: "User registered successfully", userID: newUser.userID },
       { status: 201 },
     );
   } catch (error) {
     console.error("Registration error:", error);
-    // Log the specific error if possible
-    if (error instanceof Error) {
-      console.error(error.message);
-      if (error.stack) console.error(error.stack);
-    }
     return NextResponse.json(
       { message: "Internal server error" },
       { status: 500 },

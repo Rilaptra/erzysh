@@ -289,50 +289,64 @@ export async function GET(
   }
 }
 
+// ... imports existing ...
+import { createChannelSchema, sendMessageSchema } from "@/lib/validators";
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string[] }> },
 ) {
   try {
     const [categoryId, channelId, messageId] = (await params).slug;
-    const data = await loadBodyRequest(req);
+    const body = await req.json(); // Ambil raw body dulu
+
     const { userID } = getAuthInfo(req);
     const users = await getUsersData();
+    const user = users?.get(userID || "");
 
-    if (!data)
-      return createApiResponse({ message: "Invalid request body" }, 400);
-
-    if (!userID) {
-      return createApiResponse({ message: "User ID not found" }, 401);
-    }
-
-    if (!users) {
-      return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
-      );
-    }
-
-    const user = users.get(userID);
     if (!user) {
-      return createApiResponse(
-        { message: "Data not found or internal error" },
-        500,
+      return createApiResponse({ message: "User not found" }, 401);
+    }
+
+    // 1. CREATE CHANNEL SCENARIO
+    if (categoryId && !channelId) {
+      // 🔥 ZOD VALIDATION
+      const validation = createChannelSchema.safeParse(body);
+      if (!validation.success) {
+        return createApiResponse(
+          {
+            message: "Invalid Data",
+            error: JSON.stringify(validation.error.flatten().fieldErrors),
+          },
+          400,
+        );
+      }
+      return handleCreateChannel(categoryId, validation.data.data, user);
+    }
+
+    // 2. SEND MESSAGE SCENARIO
+    if (channelId && !messageId) {
+      // 🔥 ZOD VALIDATION
+      const validation = sendMessageSchema.safeParse(body);
+      if (!validation.success) {
+        return createApiResponse(
+          {
+            message: "Invalid Data",
+            error: JSON.stringify(validation.error.flatten().fieldErrors),
+          },
+          400,
+        );
+      }
+      // Kita cast ke any/RequestData karena structurnya sudah divalidasi Zod
+      return handleSendMessage(
+        categoryId,
+        channelId,
+        validation.data.data as any,
+        userID,
       );
     }
 
-    if (categoryId && !channelId) {
-      return handleCreateChannel(categoryId, data, user);
-    }
-
-    if (channelId && !messageId) {
-      return handleSendMessage(categoryId, channelId, data, userID);
-    }
-
-    return createApiResponse(
-      { message: "Invalid POST request or Message ID must not be provided" },
-      400,
-    );
+    return createApiResponse({ message: "Invalid route parameters" }, 400);
   } catch (error) {
     console.error(chalk.red("Error in POST handler:"), error);
     return createApiResponse({ error: "Internal Server Error" }, 500);
@@ -525,7 +539,7 @@ export async function DELETE(
 
 async function handleCreateChannel(
   categoryId: string,
-  data: RequestData,
+  data: Pick<RequestData, "name">,
   userData: UserData,
 ) {
   if (!data.name || typeof data.name !== "string" || data.name.length > 100) {

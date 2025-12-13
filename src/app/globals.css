@@ -145,9 +145,24 @@
   }
 }
 
-/* Bikin transparan di Chrome, Safari, Edge */
+@layer utilities {
+  /* Hapus highlight biru pas tap di Android/iOS */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* FIX: Mencegah Auto-Zoom di Input Mobile */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Browser mobile gak akan zoom kalo font >= 16px */
+  }
+}
+
+/* Optimasi Scrollbar Mobile biar gak ganggu visual */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 4px; /* Lebih tipis */
+  height: 4px;
 }
 
 /* Bagian jalurnya (track) */

@@ -1,6 +1,6 @@
 // src/app/database/page.tsx
 import { Metadata } from "next";
-import { DatabaseClient } from "@/components/DatabasePage/DatabaseClient";
+import { DatabaseClient } from "@/components/Database/DatabaseClient";
 
 export const metadata: Metadata = {
   title: "Database Manager",

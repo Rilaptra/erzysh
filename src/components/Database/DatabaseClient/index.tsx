@@ -2,8 +2,8 @@
 
 import useSWR from "swr";
 import { useEffect } from "react";
-import { DashboardContent } from "@/components/Dashboard/DashboardContent";
-import { DatabaseSkeleton } from "./DatabaseSkeleton";
+import { DashboardContent } from "@/components/Database/DashboardContent";
+import { DatabaseSkeleton } from "../DatabaseSkeleton";
 import { toast } from "sonner";
 import type { UserPayload, ApiDbGetAllStructuredDataResponse } from "@/types";
 import { CheckCircle2, AlertCircle } from "lucide-react";

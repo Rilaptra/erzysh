@@ -1,15 +1,12 @@
 // src/app/api/user-tasks/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { validateAndGetUser } from "@/lib/authService";
-import {
-  getMessagesFromChannel,
-  sendMessage,
-  editMessage,
-} from "@/lib/utils";
+import { getMessagesFromChannel, sendMessage, editMessage } from "@/lib/utils";
 import { discord } from "@/lib/discord-api-handler";
 import { USER_TASK_COMPLETIONS_BOX_ID } from "@/lib/constants";
 import { sanitizeMessage } from "@/lib/utils";
 import type { DiscordMessage } from "@/types";
+import z from "zod";
 
 // Helper untuk menemukan atau membuat dokumen penyelesaian tugas user
 async function findOrCreateUserCompletionDoc(userId: string) {
@@ -50,12 +47,24 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+// Schema lokal atau import dari lib
+const taskActionSchema = z.object({
+  taskId: z.string().min(1),
+});
 
-// POST: Menandai tugas sebagai selesai
 export async function POST(req: NextRequest) {
   try {
     const user = await validateAndGetUser(req);
-    const { taskId } = (await req.json()) as { taskId: never };
+    const body = await req.json();
+
+    // 🔥 ZOD CHECK
+    const validation = taskActionSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: "Invalid taskId" }, { status: 400 });
+    }
+    const { taskId } = validation.data as { taskId: never };
+
+    // POST: Menandai tugas sebagai selesai
     if (!taskId) {
       return NextResponse.json(
         { error: "taskId is required" },

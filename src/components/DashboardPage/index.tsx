@@ -16,10 +16,8 @@ import { ApiStatusWidget } from "./ApiStatusWidget";
 import { GitHubWidget } from "./GitHubWidget";
 import { TugasWidget } from "./TugasWidget";
 
-// Helper Fetcher
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Helper Greeting
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 11) return "Selamat Pagi";
@@ -28,7 +26,6 @@ const getGreeting = () => {
   return "Selamat Malam";
 };
 
-// ID Container
 const TUGAS_CONTAINER = "1409908765074919585";
 const TUGAS_BOX = "1409908859971309681";
 
@@ -36,18 +33,14 @@ export const DashboardClient = () => {
   const containerRef = useRef(null);
   const [greeting, setGreeting] = useState("");
 
-  // --- SWR DATA FETCHING ---
-  // 1. User Data
   const { data: userData, isLoading: userLoading } = useSWR<UserPayload>(
     "/api/auth/me",
     fetcher,
   );
 
-  // 2. Database Structure
   const { data: dbData, isLoading: dbLoading } =
     useSWR<ApiDbGetAllStructuredDataResponse>("/api/database", fetcher);
 
-  // 3. Tugas
   const { data: tugasResponse, isLoading: tugasLoading } = useSWR(
     `/api/database/${TUGAS_CONTAINER}/${TUGAS_BOX}?full=true`,
     fetcher,
@@ -57,7 +50,6 @@ export const DashboardClient = () => {
     setGreeting(getGreeting());
   }, []);
 
-  // --- LOGIC STATS ---
   const user = userData || { username: "Guest" };
   const categories = dbData?.data ? Object.values(dbData.data) : [];
   const tugasList: Tugas[] = tugasResponse?.data || [];
@@ -77,10 +69,7 @@ export const DashboardClient = () => {
     return { totalContainers, totalBoxes, totalCollections };
   }, [categories]);
 
-  // --- ANIMASI MASUK ---
   useEffect(() => {
-    // Jalankan animasi layout sekalian, biarpun data belum full
-    // Element yang belum ada datanya bakal nampilin skeleton sendiri-sendiri
     const ctx = gsap.context(() => {
       gsap.set(".dashboard-item", { y: 30, autoAlpha: 0 });
       gsap.set(".header-text", { x: -20, autoAlpha: 0 });
@@ -111,7 +100,6 @@ export const DashboardClient = () => {
       ref={containerRef}
       className="bg-background min-h-screen overflow-hidden p-4 sm:p-6 lg:p-8"
     >
-      {/* Background Ambience */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-0 h-[500px] w-[500px] rounded-full bg-teal-500/5 blur-[120px]" />
         <div className="absolute bottom-0 left-0 h-[500px] w-[500px] rounded-full bg-blue-500/5 blur-[120px]" />
@@ -143,40 +131,39 @@ export const DashboardClient = () => {
         </header>
 
         {/* BENTO GRID LAYOUT */}
-        <div className="grid auto-rows-min grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {/* STATS */}
-          <div className="dashboard-item col-span-1 lg:col-span-1">
+        <div className="grid auto-rows-min grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* STATS: Compact di mobile */}
+          <div className="dashboard-item col-span-1 h-28 sm:h-32">
             <StatCard
-              title="Database Containers"
+              title="Containers"
               value={stats.totalContainers}
-              icon={<Database className="h-6 w-6" />}
+              icon={<Database className="h-5 w-5 sm:h-6 sm:w-6" />}
               isLoading={dbLoading}
-              className="h-full border-blue-500/20 bg-linear-to-br from-blue-500/10 to-transparent"
+              className="h-full border-blue-500/20 bg-linear-to-br from-blue-500/10 to-transparent p-4 sm:p-6"
             />
           </div>
-          <div className="dashboard-item col-span-1 lg:col-span-1">
+          <div className="dashboard-item col-span-1 h-28 sm:h-32">
             <StatCard
-              title="Active Boxes"
+              title="Boxes"
               value={stats.totalBoxes}
-              icon={<Box className="h-6 w-6" />}
+              icon={<Box className="h-5 w-5 sm:h-6 sm:w-6" />}
               isLoading={dbLoading}
-              className="h-full border-teal-500/20 bg-linear-to-br from-teal-500/10 to-transparent"
+              className="h-full border-teal-500/20 bg-linear-to-br from-teal-500/10 to-transparent p-4 sm:p-6"
             />
           </div>
-          <div className="dashboard-item col-span-1 lg:col-span-2">
+          <div className="dashboard-item col-span-1 md:col-span-2 lg:col-span-2">
             <StatCard
               title="Total Collections"
               value={stats.totalCollections}
-              icon={<File className="h-6 w-6" />}
+              icon={<File className="h-5 w-5 sm:h-6 sm:w-6" />}
               isLoading={dbLoading}
-              className="h-full border-purple-500/20 bg-linear-to-br from-purple-500/10 to-transparent"
+              className="h-full border-purple-500/20 bg-linear-to-br from-purple-500/10 to-transparent p-4 sm:p-6"
             />
           </div>
 
           {/* MAIN CONTENT */}
-          <div className="dashboard-item col-span-1 h-full lg:col-span-2 lg:row-span-2">
+          <div className="dashboard-item col-span-1 h-[400px] lg:col-span-2 lg:row-span-2 lg:h-full">
             <div className="border-border/50 bg-card/30 h-full overflow-hidden rounded-2xl border p-1 backdrop-blur-sm">
-              {/* Jadwal Data is static for now, so no loading state needed */}
               <JadwalWidget fullSchedule={jadwalKuliah} />
             </div>
           </div>

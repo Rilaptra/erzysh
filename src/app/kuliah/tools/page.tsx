@@ -31,7 +31,6 @@ import {
 import { cn } from "@/lib/cn";
 import { useDevMode } from "@/lib/hooks/useDevMode";
 
-// Definisikan warna untuk setiap kategori
 const categoryColors: Record<string, string> = {
   Survey:
     "text-teal-500 group-hover:text-teal-400 bg-teal-500/10 group-hover:bg-teal-500/20 border-teal-200/20 group-hover:border-teal-500/50",
@@ -115,7 +114,6 @@ export default function ToolsPage() {
   const [search, setSearch] = useState("");
   const { isDevMode, unlockDevMode, lockDevMode } = useDevMode();
 
-  // State untuk Modal Unlock
   const [isUnlockOpen, setIsUnlockOpen] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
 
@@ -128,30 +126,23 @@ export default function ToolsPage() {
     }
   };
 
-  // Logic Filtering: Search + Dev Mode Check
   const filteredTools = tools.filter((t) => {
-    // 1. Filter Admin: Kalau admin=true DAN bukan Dev Mode, hide.
     if (t.admin && !isDevMode) return false;
-
-    // 2. Filter Search
     const matchesSearch =
       t.label.toLowerCase().includes(search.toLowerCase()) ||
       t.desc.toLowerCase().includes(search.toLowerCase()) ||
       t.cat.toLowerCase().includes(search.toLowerCase());
-
     return matchesSearch;
   });
 
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
-      {/* Ambient Background Lights */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute top-0 right-0 h-[500px] w-[500px] rounded-full bg-indigo-500/5 blur-[100px]" />
         <div className="absolute bottom-0 left-0 h-[500px] w-[500px] rounded-full bg-teal-500/5 blur-[100px]" />
       </div>
 
       <div className="container mx-auto px-4 py-8 md:py-12">
-        {/* HEADER */}
         <div className="mb-12 flex flex-col items-center justify-between gap-6 md:flex-row">
           <div className="text-center md:text-left">
             <h1 className="mb-2 text-3xl font-black tracking-tight md:text-4xl">
@@ -179,7 +170,6 @@ export default function ToolsPage() {
           </div>
         </div>
 
-        {/* TOOLS GRID */}
         {filteredTools.length === 0 ? (
           <div className="text-muted-foreground animate-in fade-in zoom-in-95 flex flex-col items-center justify-center py-20 duration-500">
             <div className="bg-muted/50 mb-4 flex h-16 w-16 items-center justify-center rounded-full">
@@ -188,22 +178,24 @@ export default function ToolsPage() {
             <p>Tidak ada tools yang cocok dengan "{search}"</p>
           </div>
         ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-8 grid grid-cols-1 gap-6 duration-700 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="animate-in fade-in slide-in-from-bottom-8 grid grid-cols-1 gap-4 duration-700 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredTools.map((tool, i) => {
               const colorClass =
                 categoryColors[tool.cat] || "text-foreground bg-muted";
 
               return (
-                <Link href={tool.href} key={i} className="group relative">
+                <Link
+                  href={tool.href}
+                  key={i}
+                  className="group relative block touch-manipulation"
+                >
                   <div
                     className={cn(
-                      "relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/50 shadow-sm backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white/80 hover:shadow-xl dark:border-white/5 dark:bg-black/20 dark:hover:bg-black/40",
-                      // Kasih border merah tipis kalo item admin
+                      "relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/50 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-95 md:hover:-translate-y-1 md:hover:shadow-xl dark:border-white/5 dark:bg-black/20",
                       tool.admin &&
                         "border-rose-500/20 dark:border-rose-500/20",
                     )}
                   >
-                    {/* Top Accent Line */}
                     <div
                       className={cn(
                         "absolute top-0 left-0 h-1 w-full bg-linear-to-r opacity-0 transition-opacity group-hover:opacity-100",
@@ -217,16 +209,15 @@ export default function ToolsPage() {
                       )}
                     />
 
-                    <div className="flex h-full flex-col p-6">
+                    <div className="flex h-full flex-col p-5">
                       <div className="mb-4 flex items-start justify-between">
                         <div
                           className={cn(
                             "flex h-12 w-12 items-center justify-center rounded-xl border transition-all duration-500",
                             colorClass,
-                            "group-hover:shadow-[0_0_20px_-5px_currentColor]", // Glow effect on hover
+                            "group-hover:shadow-[0_0_20px_-5px_currentColor]",
                           )}
                         >
-                          {/* IDLE ANIMATION: animate-bounce-slow (custom) or combination */}
                           <div className="animate-[bounce_3s_infinite]">
                             <tool.icon className="h-6 w-6" />
                           </div>
@@ -264,7 +255,6 @@ export default function ToolsPage() {
         )}
       </div>
 
-      {/* --- FOOTER / UNLOCK BUTTON --- */}
       <div className="fixed right-6 bottom-6 z-50">
         {isDevMode ? (
           <Button
@@ -289,7 +279,6 @@ export default function ToolsPage() {
         )}
       </div>
 
-      {/* --- UNLOCK DIALOG --- */}
       <Dialog open={isUnlockOpen} onOpenChange={setIsUnlockOpen}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
