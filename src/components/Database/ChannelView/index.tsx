@@ -29,13 +29,16 @@ import {
   Box,
   Search,
   MoreVertical,
-  FileJson,
+  FileJson, // Icon JSON
   Trash,
   Loader2,
-  FileCode2,
-  Image as ImageIcon,
+  Image as ImageIcon, // Icon Gambar
   Database,
-  PanelLeft, // Import Icon PanelLeft
+  PanelLeft,
+  FileText, // Icon Dokumen (PDF/Doc)
+  Video, // Icon Video
+  FileArchive, // Icon Zip/Rar
+  File as FileIcon, // Icon Default (Generic)
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -66,7 +69,7 @@ interface ChannelViewProps {
     contName: string,
     boxName: string,
   ) => void;
-  onToggleSidebar: () => void; // Tambah Prop Baru
+  onToggleSidebar: () => void;
 }
 
 export function ChannelView({
@@ -77,7 +80,7 @@ export function ChannelView({
   onboxDeleted,
   onDataChanged,
   onAddToQueue,
-  onToggleSidebar, // Terima Prop
+  onToggleSidebar,
 }: ChannelViewProps) {
   const [search, setSearch] = useState("");
   const [newBoxName, setNewBoxName] = useState("");
@@ -111,7 +114,6 @@ export function ChannelView({
     b.name.toLowerCase().includes(search.toLowerCase()),
   );
 
-  // ... (Fungsi handleCreateBox, confirmDeleteBox, handleStartUpload, getIcon SAMA) ...
   const handleCreateBox = async () => {
     const trimmedName = newBoxName.trim();
     if (!trimmedName || !activeCategoryId) {
@@ -205,19 +207,37 @@ export function ChannelView({
     setUploadModalOpen(false);
   };
 
+  // --- 🔥 PERBAIKAN ICON DI SINI ---
   const getIcon = (name: string) => {
-    const ext = name.split(".").pop()?.toLowerCase();
-    if (["jpg", "png", "jpeg", "webp"].includes(ext || ""))
-      return <ImageIcon className="h-3 w-3 text-purple-500" />;
-    if (name.endsWith(".json"))
-      return <FileJson className="h-3 w-3 text-yellow-500" />;
-    return <FileCode2 className="h-3 w-3 text-blue-500" />;
+    const ext = name.split(".").pop()?.toLowerCase() || "";
+
+    // 1. Images
+    if (["jpg", "png", "jpeg", "webp", "gif", "svg"].includes(ext))
+      return <ImageIcon className="h-4 w-4 text-purple-500" />;
+
+    // 2. Data / Code (JSON, JS, TS, etc)
+    if (["json", "js", "ts", "html", "css", "xml"].includes(ext))
+      return <FileJson className="h-4 w-4 text-yellow-500" />;
+
+    // 3. Videos
+    if (["mp4", "webm", "ogg", "mov"].includes(ext))
+      return <Video className="h-4 w-4 text-red-500" />;
+
+    // 4. Documents (PDF, Word, Txt)
+    if (["pdf", "doc", "docx", "txt", "md"].includes(ext))
+      return <FileText className="h-4 w-4 text-blue-500" />;
+
+    // 5. Archives
+    if (["zip", "rar", "7z", "tar", "gz"].includes(ext))
+      return <FileArchive className="h-4 w-4 text-orange-500" />;
+
+    // 6. Default (Generic File) - Warna abu-abu biar netral
+    return <FileIcon className="text-muted-foreground h-4 w-4" />;
   };
 
   if (!activeCategoryId)
     return (
       <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-4">
-        {/* Tombol Toggle Sidebar untuk kondisi empty state (agar user tetap bisa buka sidebar) */}
         <Button
           variant="outline"
           className="lg:hidden"
@@ -237,7 +257,6 @@ export function ChannelView({
       {/* Header Responsif */}
       <div className="border-border/40 bg-background/40 flex flex-col gap-4 border-b p-4 md:flex-row md:items-center md:justify-between md:p-6">
         <div className="flex items-center gap-3">
-          {/* 🔥 TOMBOL TOGGLE SIDEBAR DI SINI 🔥 */}
           <Button
             variant="outline"
             size="icon"
@@ -373,8 +392,18 @@ export function ChannelView({
                           setDetailModalOpen(true);
                         }}
                       >
-                        {getIcon(item.name)}
-                        <span className="truncate">{item.name}</span>
+                        {/* FIX 1: Bungkus icon pake shrink-0 biar ukurannya gak berubah kena gencet teks */}
+                        <div className="flex shrink-0 items-center justify-center">
+                          {getIcon(item.name)}
+                        </div>
+
+                        {/* FIX 2: min-w-0 wajib ada biar truncate jalan di dalam flex, flex-1 biar menuhin sisa ruang */}
+                        <span
+                          className="min-w-0 flex-1 truncate font-medium"
+                          title={item.name}
+                        >
+                          {item.name}
+                        </span>
                       </div>
                     ))
                   ) : (
@@ -382,6 +411,7 @@ export function ChannelView({
                       Empty box
                     </div>
                   )}
+
                   {box.collections.length > 4 && (
                     <div className="text-muted-foreground pt-1 text-center text-[10px]">
                       + {box.collections.length - 4} more
@@ -406,11 +436,11 @@ export function ChannelView({
         )}
       </div>
 
-      {/* Upload Modal & Detail Modal & Alert Dialog (SAMA SEPERTI SEBELUMNYA) */}
+      {/* Upload Modal, Detail Modal, dll SAMA */}
       <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
         {/* ... */}
         <DialogContent>
-          {/* ... sama ... */}
+          {/* ... */}
           <div className="mb-4 grid grid-cols-2 gap-2">
             <Button
               variant={uploadMode === "file" ? "default" : "outline"}
