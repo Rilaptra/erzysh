@@ -42,3 +42,5 @@ next-env.d.ts
 
 # agent files
 .agent/
+
+ghost-agent/target/

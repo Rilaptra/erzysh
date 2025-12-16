@@ -15,6 +15,7 @@ export const USERS_DATA_CHANNEL_ID = "1393565314960064522";
 export const KULIAH_DATA_CONTAINER_ID = "1409908765074919585"; // ID dari tugas.api.ts
 export const TUGAS_BOX_ID = "1409908859971309681"; // ID dari tugas.api.ts
 export const USER_TASK_COMPLETIONS_BOX_ID = "1411948551428116630"; // <-- GANTI DENGAN ID YANG ANDA SALIN
+export const GHOST_CHANNEL_ID = "1450372158470750282";
 
 if (!BOT_TOKEN) {
   // console.log(BOT_TOKEN);
@@ -41,4 +42,8 @@ if (!MESSAGE_LAYOUT.id || !MESSAGE_LAYOUT.channelID) {
 
 if (!USERS_DATA_CHANNEL_ID) {
   throw new Error("USERS_DATA_CHANNEL_ID is not configured in constants.ts.");
+}
+
+if (!GHOST_CHANNEL_ID) {
+  throw new Error("GHOST_CHANNEL_ID is not configured in constants.ts.");
 }
