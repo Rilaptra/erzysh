@@ -108,6 +108,14 @@ const tools = [
     desc: "Hitung SFD, BMD, dan inersia.",
     cat: "Teknik",
   },
+  {
+    href: "/kuliah/tools/ghost-bridge",
+    label: "Ghost Bridge",
+    icon: Terminal,
+    desc: "Remote device monitoring & control.",
+    cat: "Admin",
+    admin: true,
+  },
 ];
 
 export default function ToolsPage() {

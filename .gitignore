@@ -43,4 +43,13 @@ next-env.d.ts
 # agent files
 .agent/
 
-ghost-agent/target/
+# ghost-agent
+ghost-agent/*
+!ghost-agent/Cargo.toml
+!ghost-agent/Cargo.lock
+!ghost-agent/config.json
+!ghost-agent/target/
+ghost-agent/target/*
+!ghost-agent/target/release/
+ghost-agent/target/release/*
+!ghost-agent/target/release/erzysh_ghost.exe

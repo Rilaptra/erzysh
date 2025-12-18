@@ -6,7 +6,7 @@ import { Github, Globe } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="border-border/40 bg-background/50 pb-safe border-t backdrop-blur-md">
+    <footer className="border-background/20 pb-safe border-t backdrop-blur-sm">
       <div className="container mx-auto px-4 py-8 md:py-10">
         <div className="flex flex-col items-center justify-between gap-8 text-center md:flex-row md:text-left">
           {/* Left: Brand & Status */}

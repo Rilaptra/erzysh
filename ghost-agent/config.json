@@ -1,0 +1,7 @@
+{
+  "api_url": "https://erzysh.vercel.app/api/ghost",
+  "device_name": "PC-Kamar-Utama",
+  "heartbeat_interval_ms": 5000,
+  "poll_interval_ms": 2000,
+  "gofile_token": "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy"
+}

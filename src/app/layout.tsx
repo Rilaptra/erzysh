@@ -80,9 +80,11 @@ export default function RootLayout({
         <PWAInit /> {/* <-- Tambahkan ini */}
         <ThemeProvider>
           <HeaderProvider>
-            <Header />
-            {children}
-            <Footer />
+            <div className="relative flex min-h-screen flex-col tracking-tight">
+              <Header />
+              <main className="relative flex flex-1 flex-col">{children}</main>
+              <Footer />
+            </div>
             <Toaster position="bottom-right" />
           </HeaderProvider>
         </ThemeProvider>

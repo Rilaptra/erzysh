@@ -138,8 +138,9 @@ export default function Header() {
     <>
       <header
         ref={headerRef}
-        className="border-border/40 bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur-xl"
+        className="border-border/10 bg-background/60 sticky top-0 z-50 w-full backdrop-blur-md transition-all duration-300"
       >
+        <div className="absolute inset-x-0 -bottom-px h-px bg-linear-to-r from-transparent via-teal-500/20 to-transparent" />
         <div className="relative container mx-auto flex h-16 items-center justify-between px-4 sm:px-8">
           {/* BAGIAN KIRI: LOGO */}
           <div className="flex shrink-0 items-center">

