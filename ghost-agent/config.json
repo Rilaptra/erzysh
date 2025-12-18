@@ -1,7 +1,8 @@
 {
   "api_url": "https://erzysh.vercel.app/api/ghost",
-  "device_name": "PC-Kamar-Utama",
+  "device_name": "ASUS-DESKTOP-70OPJVJ",
   "heartbeat_interval_ms": 5000,
   "poll_interval_ms": 2000,
-  "gofile_token": "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy"
+  "gofile_token": "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy",
+  "device_id": "af04300d-1165-485b-81ac-629e549bd02c"
 }

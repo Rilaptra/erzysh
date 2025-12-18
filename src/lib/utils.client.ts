@@ -1,4 +1,5 @@
-export const getMimeType = (fileName: string): string => {
+export const getMimeType = (fileName?: string): string => {
+  if (!fileName) return "application/octet-stream";
   const extension = fileName.split(".").pop()?.toLowerCase();
   switch (extension) {
     case "png":

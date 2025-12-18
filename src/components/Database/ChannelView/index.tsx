@@ -110,8 +110,8 @@ export function ChannelView({
     ? boxes.find((b) => b.id === deleteConfirmId)
     : null;
 
-  const filteredBoxes = boxes.filter((b) =>
-    b.name.toLowerCase().includes(search.toLowerCase()),
+  const filteredBoxes = (boxes || []).filter((b) =>
+    (b.name || "").toLowerCase().includes((search || "").toLowerCase()),
   );
 
   const handleCreateBox = async () => {
@@ -208,7 +208,8 @@ export function ChannelView({
   };
 
   // --- 🔥 PERBAIKAN ICON DI SINI ---
-  const getIcon = (name: string) => {
+  const getIcon = (name?: string) => {
+    if (!name) return <FileIcon className="text-muted-foreground h-4 w-4" />;
     const ext = name.split(".").pop()?.toLowerCase() || "";
 
     // 1. Images
@@ -380,10 +381,9 @@ export function ChannelView({
                   </DropdownMenu>
                 </div>
 
-                {/* Items Preview List */}
                 <div className="bg-muted/20 border-border/30 mb-4 min-h-[100px] flex-1 space-y-1.5 rounded-lg border p-2">
-                  {box.collections.length > 0 ? (
-                    box.collections.slice(0, 4).map((item) => (
+                  {(box.collections || []).length > 0 ? (
+                    (box.collections || []).slice(0, 4).map((item) => (
                       <div
                         key={item.id}
                         className="text-muted-foreground bg-background/50 flex cursor-pointer items-center gap-2 rounded-md border border-transparent p-1.5 text-xs transition-colors hover:border-teal-500/20 hover:bg-teal-500/10 hover:text-teal-600"
@@ -412,7 +412,7 @@ export function ChannelView({
                     </div>
                   )}
 
-                  {box.collections.length > 4 && (
+                  {(box.collections || []).length > 4 && (
                     <div className="text-muted-foreground pt-1 text-center text-[10px]">
                       + {box.collections.length - 4} more
                     </div>

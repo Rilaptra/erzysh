@@ -56,12 +56,13 @@ export function CollectionDetailsModal({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fileType = useMemo(() => {
+    if (!collection?.name) return "text";
     const ext = collection.name.split(".").pop()?.toLowerCase();
     if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext || ""))
       return "image";
     if (["mp4", "webm"].includes(ext || "")) return "video";
     return "text";
-  }, [collection.name]);
+  }, [collection?.name]);
 
   // Fetch Data
   useEffect(() => {
@@ -105,7 +106,7 @@ export function CollectionDetailsModal({
       const buffer = data.data.data;
       if (buffer) {
         const blob = new Blob([new Uint8Array(buffer)], {
-          type: getMimeType(collection.name),
+          type: getMimeType(collection?.name || ""),
         });
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
@@ -117,7 +118,9 @@ export function CollectionDetailsModal({
   // Actions
   const handleSave = async () => {
     try {
-      const payload = { data: { name: collection.name, content: editContent } };
+      const payload = {
+        data: { name: collection?.name || "unnamed", content: editContent },
+      };
       await fetch(`/api/database/${categoryId}/${channelId}/${collection.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -148,12 +151,12 @@ export function CollectionDetailsModal({
         ? JSON.stringify(data.data, null, 2)
         : new Uint8Array(data.data.data);
     const blob = new Blob([content as any], {
-      type: getMimeType(collection.name),
+      type: getMimeType(collection?.name || ""),
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = collection.name;
+    a.download = collection?.name || "download";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -184,7 +187,9 @@ export function CollectionDetailsModal({
             ) : (
               <FileJson className="h-5 w-5 text-blue-500" />
             )}
-            <span className="truncate">{collection.name}</span>
+            <span className="truncate">
+              {collection?.name || "Unknown File"}
+            </span>
           </DialogTitle>
         </DialogHeader>
         {loading ? (

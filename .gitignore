@@ -45,6 +45,7 @@ next-env.d.ts
 
 # ghost-agent
 ghost-agent/*
+!ghost-agent/src
 !ghost-agent/Cargo.toml
 !ghost-agent/Cargo.lock
 !ghost-agent/config.json

