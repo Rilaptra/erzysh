@@ -16,7 +16,10 @@ interface DeviceStatus {
   name: string;
   ram_usage: number;
   ram_total: number;
+  cpu_usage: number;
+  cpu_brand: string;
   platform: string;
+  os_type: string;
   user: string;
   last_seen: number;
 }
@@ -227,6 +230,7 @@ export async function POST(req: NextRequest) {
 declare global {
   var _ghostRegistry: Record<string, DeviceStatus> | undefined;
   var _ghostResults: Record<string, CommandResult> | undefined;
+  var _ghostCustomNames: Record<string, string> | undefined;
 }
 
 const getRegistry = (): Record<string, DeviceStatus> => {
@@ -239,11 +243,19 @@ const getResultRegistry = (): Record<string, CommandResult> => {
   return global._ghostResults;
 };
 
+const getCustomNames = (): Record<string, string> => {
+  if (!global._ghostCustomNames) global._ghostCustomNames = {};
+  return global._ghostCustomNames;
+};
+
 async function getDeviceRegistry() {
   const cache = getRegistry();
+  const customNames = getCustomNames();
   const now = Date.now();
+
   const activeDevices = Object.values(cache).map((d) => ({
     ...d,
+    name: customNames[d.id] || d.name, // Gunakan custom name jika ada
     is_online: now - d.last_seen < 15000,
   }));
   return activeDevices;
@@ -251,12 +263,17 @@ async function getDeviceRegistry() {
 
 async function updateDeviceRegistry(data: any) {
   const cache = getRegistry();
+  const customNames = getCustomNames();
+
   cache[data.device_id] = {
     id: data.device_id,
-    name: data.device_name,
+    name: customNames[data.device_id] || data.device_name, // Prioritaskan custom name
     ram_usage: data.ram_usage,
     ram_total: data.ram_total,
+    cpu_usage: data.cpu_usage || 0,
+    cpu_brand: data.cpu_brand || "Unknown",
     platform: data.platform,
+    os_type: data.os_type || "Unknown",
     user: data.user,
     last_seen: Date.now(),
   };
@@ -264,11 +281,16 @@ async function updateDeviceRegistry(data: any) {
 
 async function deleteDevice(deviceId: string) {
   const cache = getRegistry();
+  const customNames = getCustomNames();
   delete cache[deviceId];
+  delete customNames[deviceId];
 }
 
 async function renameDevice(deviceId: string, newName: string) {
   const cache = getRegistry();
+  const customNames = getCustomNames();
+
+  customNames[deviceId] = newName; // Simpan permanen di memory custom names
   if (cache[deviceId]) {
     cache[deviceId].name = newName;
   }

@@ -46,6 +46,8 @@
   --color-gunmetal: #31363f;
   --color-teal-muted: #76abae;
   --color-off-white: #eeeeee;
+
+  --animate-spin-slow: spin 8s linear infinite;
 }
 
 :root {
@@ -124,24 +126,24 @@
   body {
     @apply bg-background text-foreground;
   }
-  
-   /* 🔥 FIX: Override Browser Autofill Style */
+
+  /* 🔥 FIX: Override Browser Autofill Style */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
   input:-webkit-autofill:active {
     /* 1. Paksa warna teks jadi warna foreground (putih di dark mode) */
     -webkit-text-fill-color: var(--foreground) !important;
-    
+
     /* 2. Trik Transisi: Menunda browser ngubah background jadi putih selama 99999 detik */
     /* Ini bikin background tetap transparan/sesuai desain awal */
     transition: background-color 99999s ease-in-out 0s;
-    
+
     /* 3. Jaga-jaga: Timpa background dengan shadow transparan ke dalam */
     -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
-    
+
     /* Ganti warna icon mata (show password) bawaan browser biar ga hitam */
-    color-scheme: dark; 
+    color-scheme: dark;
   }
 }
 
@@ -154,7 +156,9 @@
 
 /* FIX: Mencegah Auto-Zoom di Input Mobile */
 @media screen and (max-width: 768px) {
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     font-size: 16px !important; /* Browser mobile gak akan zoom kalo font >= 16px */
   }
 }

