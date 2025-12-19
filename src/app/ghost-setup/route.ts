@@ -3,53 +3,51 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const script = `# Ghost Agent Setup Script (Optimized 2025)
-$url = "https://github.com/Rilaptra/erzysh/raw/main/ghost-agent/target/release/erzysh_ghost.exe"
+  const script = `# --- CONFIGURATION ---
 $destDir = "$env:APPDATA\\Erzysh"
-$destFile = "$destDir\\erzysh_ghost.exe"
-$shortcutPath = "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\ErzyshGhost.lnk"
+$exePath = "$destDir\\erzysh_ghost.exe"
+$startupFolder = "$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"
+$shortcutPath = "$startupFolder\\ErzyshGhost.lnk"
 
-# 1. Prepare Directory
-if (!(Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+Write-Host "🔧 Fixing Ghost Agent Startup..." -ForegroundColor Cyan
 
-Write-Host "👻 Downloading Ghost Agent..." -ForegroundColor Cyan
-
-# 2. Download with Retries (More Robust)
-try {
-    # Menggunakan .NET WebClient untuk footprint memori lebih kecil dibanding Invoke-WebRequest di PowerShell lama,
-    # tapi Invoke-WebRequest di PS 7+ (modern) sudah oke. Kita keep simple.
-    Invoke-WebRequest -Uri $url -OutFile $destFile -ErrorAction Stop
-} catch {
-    Write-Host "❌ Download Failed. Check net/url." -ForegroundColor Red
-    exit
+# 1. BERSIHKAN REGISTRY LAMA (Yang bikin error)
+$regPath = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+$regName = "ErzyshGhostAgent"
+if (Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue) {
+    Remove-ItemProperty -Path $regPath -Name $regName -Force
+    Write-Host "🗑️ Removed broken Registry entry." -ForegroundColor Yellow
 }
 
-# 3. Add to Startup via Shortcut (Fixes Working Directory Issue)
-Write-Host "⚡ Configuring Startup Persistence..." -ForegroundColor Cyan
+# 2. DOWNLOAD ULANG (Just in case file corrupt/missing)
+if (!(Test-Path $exePath)) {
+    Write-Host "📥 File missing. Redownloading..." -ForegroundColor Cyan
+    if (!(Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+    Invoke-WebRequest -Uri "https://github.com/Rilaptra/erzysh/raw/main/ghost-agent/target/release/erzysh_ghost.exe" -OutFile $exePath
+}
+
+# 3. BUAT SHORTCUT DI SHELL:STARTUP (The Reliable Method)
 try {
     $WshShell = New-Object -comObject WScript.Shell
     $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-    $Shortcut.TargetPath = $destFile
-    $Shortcut.WorkingDirectory = $destDir  # <--- INI KUNCI BIAR GAK CRASH
-    $Shortcut.WindowStyle = 7              # 7 = Minimized (Supaya stealthy dikit)
-    $Shortcut.Description = "Eryzsh Ghost Agent"
+    
+    $Shortcut.TargetPath = $exePath
+    $Shortcut.WorkingDirectory = $destDir   # <--- INI KUNCI SUKSESNYA!
+    $Shortcut.WindowStyle = 7               # 7 = Minimized (Stealth mode)
+    $Shortcut.Description = "Erzysh Ghost Agent Auto-Start"
+    
     $Shortcut.Save()
-    Write-Host "🚀 Persistence set: Shortcut Created." -ForegroundColor Green
+    Write-Host "✅ Shortcut created in Startup folder." -ForegroundColor Green
 } catch {
-    Write-Host "⚠️ Failed to create shortcut. Trying Registry fallback..." -ForegroundColor Yellow
-    # Fallback ke Registry kalau COM object gagal (Jarang terjadi)
-    $registryPath = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
-    Set-ItemProperty -Path $registryPath -Name "ErzyshGhostAgent" -Value "\`"$destFile\`"" -Force
+    Write-Host "❌ Failed to create shortcut. Error: $_" -ForegroundColor Red
 }
 
-# 4. Execute
-Write-Host "✨ Summoning Ghost Agent..." -ForegroundColor Green
-if (Get-Process "erzysh_ghost" -ErrorAction SilentlyContinue) {
-    Stop-Process -Name "erzysh_ghost" -Force
-}
-Start-Process -FilePath $destFile -WorkingDirectory $destDir
+# 4. TEST RUN
+Write-Host "🚀 Test Running..." -ForegroundColor Cyan
+Stop-Process -Name "erzysh_ghost" -ErrorAction SilentlyContinue
+Start-Process -FilePath $exePath -WorkingDirectory $destDir
 
-Write-Host "✅ Setup Complete. Happy Ghosting, Qi!" -ForegroundColor Yellow
+Write-Host "✨ Done! Check 'shell:startup' now." -ForegroundColor Yellow
 `;
 
   return new NextResponse(script, {
