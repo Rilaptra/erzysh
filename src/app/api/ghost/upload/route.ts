@@ -38,10 +38,14 @@ export async function POST(req: NextRequest) {
         // Tmpfiles returns: https://tmpfiles.org/XXXX/filename
         // Direct link is: https://tmpfiles.org/dl/XXXX/filename
         const rawUrl = data.data.url;
-        const directUrl = rawUrl.replace(
-          "https://tmpfiles.org/",
-          "https://tmpfiles.org/dl/",
-        );
+        // Robust replace for both http and https, and handle if it already has /dl/ (though unlikely from API)
+        let directUrl = rawUrl;
+        if (
+          directUrl.includes("tmpfiles.org/") &&
+          !directUrl.includes("/dl/")
+        ) {
+          directUrl = directUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+        }
 
         return NextResponse.json({
           success: true,
