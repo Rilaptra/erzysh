@@ -1,4 +1,3 @@
-import { zyLog } from "@/lib/zylog";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -34,30 +33,20 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      zyLog.debug("Data from tmpfiles", responseText);
       const data = JSON.parse(responseText);
       if (data.status === "success") {
         // Tmpfiles returns: https://tmpfiles.org/XXXX/filename
         // Direct link is: https://tmpfiles.org/dl/XXXX/filename
         const rawUrl = data.data.url;
-        zyLog.debug("Raw URL", rawUrl);
         // Robust replace for both http and https, and handle if it already has /dl/ (though unlikely from API)
         let directUrl = rawUrl;
-        zyLog.debug("Direct URL", directUrl);
         if (
           directUrl.includes("tmpfiles.org/") &&
           !directUrl.includes("/dl/")
         ) {
           directUrl = directUrl.replace("tmpfiles.org/", "tmpfiles.org/dl/");
-          zyLog.debug("Direct URL replaced to", directUrl);
         }
 
-        zyLog.debug("Direct URL final", directUrl);
-
-        zyLog.debug("Return response", {
-          success: true,
-          link: directUrl,
-        });
         return NextResponse.json({
           success: true,
           link: directUrl,

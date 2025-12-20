@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useDevMode } from "@/lib/hooks/useDevMode";
 import { DeviceStatus, FileEntry, DeviceCaches } from "../types";
 import { normalizePath, joinPath, urlBase64ToUint8Array } from "../utils";
+import { zyLog } from "@/lib/zylog";
 
 export function useGhostBridge() {
   const { isDevMode, unlockDevMode } = useDevMode();
@@ -382,6 +383,8 @@ export function useGhostBridge() {
 
       const fileUrl = uploadJson.link;
       const destPath = joinPath(currentPath, file.name);
+      zyLog.debug("File URL", fileUrl);
+      zyLog.debug("Destination path", destPath);
 
       const result = await sendCommand(
         "PUT_FILE",
