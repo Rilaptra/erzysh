@@ -92,23 +92,35 @@ graph TD
 
 ### 1. Web (Next.js)
 
-```bash
-# Install dependencies
-bun install
+Jalankan script setup otomatis (Interactive Mode):
 
-# Run development server
-bun dev
+```bash
+bun run setup
 ```
 
-Pastikan file `.env.local` sudah terisi:
+Script ini akan memandu Anda untuk:
+
+1.  Menginstal dependencies (`bun install`).
+2.  Mengisi Environment Variables (`.env.local`).
+3.  Menjalankan Development Server (`bun dev`).
+
+Jika Anda ingin melakukan simulasi setup tanpa perubahan sistem:
+
+```bash
+bun run setup test
+```
+
+### 2. Environment Variables
+
+Pastikan variabel berikut terisi (akan dipandu oleh setup script):
 
 ```env
 DISCORD_BOT_TOKEN=...
-GUILD_ID=...
-CLIENT_ID=...
-JWT_SECRET=...
-NEXT_PUBLIC_GEMINI_API_KEY=...
-GOFILE_TOKEN=... (Opsional di sisi web)
+DISCORD_WEBHOOK_URL=...
+CHECKLIST_CHANNEL_ID=...
+GEMINI_API_KEY=...
+QSTASH_URL=...
+QSTASH_TOKEN=...
 ```
 
 ### 2. Rust Agent (Ghost)
