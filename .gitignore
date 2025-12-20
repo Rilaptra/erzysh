@@ -49,6 +49,7 @@ ghost-agent/*
 !ghost-agent/Cargo.toml
 !ghost-agent/Cargo.lock
 !ghost-agent/config.json
+!ghost-agent/*.md
 !ghost-agent/target/
 ghost-agent/target/*
 !ghost-agent/target/release/
