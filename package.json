@@ -8,7 +8,8 @@
     "lint": "next lint",
     "sync-version": "bun scripts/sync-version.ts",
     "bump-version": "bun scripts/bump-version.ts",
-    "commit": "bun scripts/release.ts"
+    "commit": "bun scripts/release.ts",
+    "setup": "bun scripts/setup.ts"
   },
   "dependencies": {
     "@google/genai": "^1.32.0",
