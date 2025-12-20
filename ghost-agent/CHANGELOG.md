@@ -2,6 +2,11 @@
 
 Semua perubahan tercatat di sini.
 
+## [2.4.1] - 2025-12-20
+
+### Added
+- Auto-generated release.
+
 ## [2.4.0] - 2025-12-20
 
 ### Added

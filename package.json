@@ -2,10 +2,13 @@
   "name": "erzysh",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "bun run sync-version && next dev",
+    "build": "bun run sync-version && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "sync-version": "bun scripts/sync-version.ts",
+    "bump-version": "bun scripts/bump-version.ts",
+    "commit": "bun scripts/release.ts"
   },
   "dependencies": {
     "@google/genai": "^1.32.0",

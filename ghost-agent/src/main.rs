@@ -14,7 +14,7 @@ use uuid::Uuid;
 use base64::{Engine as _, engine::general_purpose}; 
 use whoami;
 
-const VERSION: &str = "2.4";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // --- CONFIGURATION STRUCT ---
 // Fix: Tambahkan 'Serialize' agar bisa disimpan kembali ke JSON
