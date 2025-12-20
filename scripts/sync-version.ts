@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { zyLog } from "../src/lib/zylog";
 
 const cargoPath = join(process.cwd(), "ghost-agent", "Cargo.toml");
 const versionTsPath = join(process.cwd(), "src", "lib", "version.ts");
@@ -15,10 +16,10 @@ export const GHOST_VERSION = "${version}";
 export const BUILD_DATE = "${new Date().toISOString()}";
 `;
     writeFileSync(versionTsPath, content);
-    console.log(`✅ Version synced: ${version}`);
+    zyLog.success(`Version synced: ${version}`);
   } else {
-    console.error("❌ Could not find version in Cargo.toml");
+    zyLog.error("Could not find version in Cargo.toml");
   }
 } catch (error) {
-  console.error("❌ Error syncing version:", error);
+  zyLog.error("Error syncing version:", error);
 }

@@ -660,4 +660,3 @@ fn trigger_update() {
         println!("❌ Failed to trigger update: {}", e);
     }
 }
-```

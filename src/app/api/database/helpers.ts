@@ -10,7 +10,7 @@ import {
   RequestData,
   UserData,
 } from "@/types";
-import chalk from "chalk";
+import { zyLog } from "@/lib/zylog";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache, revalidateTag } from "next/cache";
 
@@ -39,7 +39,7 @@ export interface MessageMetadata {
 
 // --- 🧠 1. CORE FETCHER LOGIC (Reusable) ---
 async function fetchUsersFromDiscord(): Promise<[string, UserData][]> {
-  console.log(chalk.blue("☁️ [DISCORD HIT] Fetching raw user data..."));
+  zyLog.info("☁️ [DISCORD HIT] Fetching raw user data...");
   const usersMap = new Map<string, UserData>();
 
   try {
@@ -61,7 +61,7 @@ async function fetchUsersFromDiscord(): Promise<[string, UserData][]> {
 
     return Array.from(usersMap.entries());
   } catch (error: any) {
-    console.error(chalk.red("Error fetching user data:"), error.message);
+    zyLog.error("Error fetching user data:", error.message);
     return [];
   }
 }
@@ -104,7 +104,7 @@ export const getUsersData = async (): Promise<Map<string, UserData>> => {
       now - globalForCache._usersCacheTime < DEV_CACHE_TTL
     ) {
       // Uncomment ini buat ngecek cache jalan
-      // console.log(chalk.green("🚀 [DEV CACHE] Hit (Global Object)"));
+      // zyLog.success("🚀 [DEV CACHE] Hit (Global Object)");
       return globalForCache._usersCache;
     }
 
@@ -126,10 +126,10 @@ export const getUsersData = async (): Promise<Map<string, UserData>> => {
 // --- 🧠 4. INVALIDATOR ---
 async function invalidateUsersCache() {
   if (IS_DEV) {
-    console.log(chalk.yellow("🧹 [DEV] Clearing Global Object Cache..."));
+    zyLog.warn("🧹 [DEV] Clearing Global Object Cache...");
     globalForCache._usersCache = null;
   } else {
-    console.log(chalk.yellow("🧹 [PROD] Revalidating Next.js Cache Tag..."));
+    zyLog.warn("🧹 [PROD] Revalidating Next.js Cache Tag...");
     revalidateTag("users-data", "max");
   }
 }
@@ -172,8 +172,8 @@ export async function handleDiscordApiCall<
     const errorMessage =
       error.response?.data?.message || error.message || "Discord API Error";
     const errorStatus = error.response?.status || 500;
-    console.error(
-      chalk.red(`Discord API Call Failed (Status: ${errorStatus}):`),
+    zyLog.error(
+      `Discord API Call Failed (Status: ${errorStatus}):`,
       errorMessage,
       error.response?.data?.errors || error.response?.data || "",
     );
@@ -195,7 +195,7 @@ export async function loadBodyRequest(
     const body = await req.json();
     return (body.data as RequestData) || null;
   } catch (error) {
-    console.error(chalk.yellow("Could not parse request body as JSON."), error);
+    zyLog.warn("Could not parse request body as JSON.", error);
     return null;
   }
 }
@@ -219,10 +219,7 @@ export async function updateActivityLog(
     });
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message;
-    console.error(
-      chalk.red("CRITICAL: Failed to post to activity log channel!"),
-      errorMessage,
-    );
+    zyLog.critical("Failed to post to activity log channel!", errorMessage);
   }
 }
 
@@ -231,9 +228,7 @@ export async function addUserData(
   user: UserData,
 ): Promise<DiscordPartialMessageResponse | void> {
   if (!USERS_DATA_CHANNEL_ID) {
-    console.error(
-      chalk.red("USERS_DATA_CHANNEL_ID not set. Cannot save user data."),
-    );
+    zyLog.error("USERS_DATA_CHANNEL_ID not set. Cannot save user data.");
     return;
   }
 
@@ -247,10 +242,7 @@ export async function addUserData(
     await invalidateUsersCache();
     return message;
   } catch (error: any) {
-    console.error(
-      chalk.red("Error saving user data to Discord:"),
-      error.message,
-    );
+    zyLog.error("Error saving user data to Discord:", error.message);
   }
 }
 
@@ -261,9 +253,7 @@ export async function updateUserData(
   messageId: DiscordMessage["id"],
 ): Promise<void> {
   if (!USERS_DATA_CHANNEL_ID) {
-    console.error(
-      chalk.red("USERS_DATA_CHANNEL_ID not set. Cannot update user data."),
-    );
+    zyLog.error("USERS_DATA_CHANNEL_ID not set. Cannot update user data.");
     return;
   }
 
@@ -271,7 +261,7 @@ export async function updateUserData(
     const users = await getUsersData();
     const user = users.get(userID);
     if (!user) {
-      console.error(chalk.red(`User with ID ${userID} not found.`));
+      zyLog.error(`User with ID ${userID} not found.`);
       return;
     }
 
@@ -283,6 +273,6 @@ export async function updateUserData(
 
     await invalidateUsersCache();
   } catch (error: any) {
-    console.error(chalk.red("Error updating user data:"), error.message);
+    zyLog.error("Error updating user data:", error.message);
   }
 }

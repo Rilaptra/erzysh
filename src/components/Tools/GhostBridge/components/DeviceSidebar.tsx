@@ -1,4 +1,15 @@
-import { Monitor, Terminal, Cpu, Info, Pencil, Trash2, X } from "lucide-react";
+import {
+  Monitor,
+  Terminal,
+  Cpu,
+  Info,
+  Pencil,
+  Trash2,
+  X,
+  RefreshCw,
+  Bell,
+  BellOff,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/cn";
@@ -16,6 +27,10 @@ interface DeviceSidebarProps {
   setIsInfoOpen: (val: boolean) => void;
   handleRenameDevice: (e: React.MouseEvent, id: string) => void;
   handleDeleteDevice: (e: React.MouseEvent, id: string) => void;
+  isNotificationEnabled: boolean;
+  isSubscribing: boolean;
+  handleSubscribe: () => void;
+  handleUnsubscribe: () => void;
 }
 
 export const DeviceSidebar = ({
@@ -30,6 +45,10 @@ export const DeviceSidebar = ({
   setIsInfoOpen,
   handleRenameDevice,
   handleDeleteDevice,
+  isNotificationEnabled,
+  isSubscribing,
+  handleSubscribe,
+  handleUnsubscribe,
 }: DeviceSidebarProps) => {
   const filteredDevices = devices.filter(
     (d) =>
@@ -68,6 +87,32 @@ export const DeviceSidebar = ({
               {devices.length} Nodes Online
             </p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8 rounded-lg border border-white/5 bg-white/5 transition-all hover:bg-white/10",
+              isNotificationEnabled &&
+                "border-teal-500/30 bg-teal-500/10 text-teal-500 hover:text-teal-400",
+            )}
+            onClick={
+              isNotificationEnabled ? handleUnsubscribe : handleSubscribe
+            }
+            disabled={isSubscribing}
+            title={
+              isNotificationEnabled
+                ? "Disable Notifications"
+                : "Enable Notifications"
+            }
+          >
+            {isSubscribing ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : isNotificationEnabled ? (
+              <Bell className="h-4 w-4" />
+            ) : (
+              <BellOff className="h-4 w-4 text-neutral-500" />
+            )}
+          </Button>
         </div>
 
         <div className="group relative mb-4">

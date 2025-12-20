@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { useDevMode } from "@/lib/hooks/useDevMode";
 import { DeviceStatus, FileEntry, DeviceCaches } from "../types";
-import { normalizePath, joinPath } from "../utils";
+import { normalizePath, joinPath, urlBase64ToUint8Array } from "../utils";
 
 export function useGhostBridge() {
   const { isDevMode, unlockDevMode } = useDevMode();
@@ -25,8 +25,12 @@ export function useGhostBridge() {
     useState<DeviceStatus | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   const latestRequestedPath = useRef<string>("THIS_PC");
+  const knownOnlineDevicesRef = useRef<Set<string>>(new Set());
+  const isFirstLoadRef = useRef(true);
 
   const [deviceCaches, setDeviceCaches] = useState<DeviceCaches>(() => {
     if (typeof window !== "undefined") {
@@ -45,13 +49,22 @@ export function useGhostBridge() {
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
+    isMounted &&
       localStorage.setItem(
         "ghost_bridge_cache_v2",
         JSON.stringify(deviceCaches),
       );
-    }
   }, [deviceCaches, isMounted]);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          if (sub) setIsNotificationEnabled(true);
+        });
+      });
+    }
+  }, []);
 
   // --- 1. DEVICE POLLING ---
   useEffect(() => {
@@ -61,8 +74,44 @@ export function useGhostBridge() {
       try {
         const res = await fetch("/api/ghost?action=list_devices");
         if (res.ok) {
-          const data = await res.json();
+          const data: DeviceStatus[] = await res.json();
           setDevices(data);
+
+          // Check for new online devices
+          const currentOnline = new Set(
+            data.filter((d) => d.is_online).map((d) => d.id),
+          );
+
+          if (!isFirstLoadRef.current) {
+            for (const device of data) {
+              if (
+                device.is_online &&
+                !knownOnlineDevicesRef.current.has(device.id)
+              ) {
+                // 1. Toast Notification
+                // 1. Toast Notification
+                toast.success(`👻 Node Detected: ${device.name}`, {
+                  description: "Device is now online and ready for uplink.",
+                  duration: 4000,
+                });
+
+                // 2. Trigger Push Notification (Local) if enabled and tab is background/foreground
+                if (isNotificationEnabled && "serviceWorker" in navigator) {
+                  navigator.serviceWorker.ready.then((reg) => {
+                    reg.showNotification(`👻 Node Online: ${device.name}`, {
+                      body: "Device is now online and ready for uplink.",
+                      icon: "/icons/ghost-icon-192.png",
+                      badge: "/icons/ghost-badge.png",
+                      data: { url: window.location.href },
+                    });
+                  });
+                }
+              }
+            }
+          }
+
+          knownOnlineDevicesRef.current = currentOnline;
+          isFirstLoadRef.current = false;
         }
       } catch (e) {
         console.error(e);
@@ -399,6 +448,51 @@ export function useGhostBridge() {
     }
   };
 
+  const handleSubscribe = async () => {
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+      return toast.error("VAPID Key missing");
+    setIsSubscribing(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        ),
+      });
+      await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+
+      setIsNotificationEnabled(true);
+      toast.success("Ghost Notifications Enabled!");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to enable notifications.");
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleUnsubscribe = async () => {
+    setIsSubscribing(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+        setIsNotificationEnabled(false);
+        toast.info("Ghost Notifications Disabled.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
   return {
     isDevMode,
     unlockDevMode,
@@ -434,5 +528,9 @@ export function useGhostBridge() {
     handleDeleteDevice,
     handleRenameDevice,
     sendCommand,
+    isNotificationEnabled,
+    isSubscribing,
+    handleSubscribe,
+    handleUnsubscribe,
   };
 }

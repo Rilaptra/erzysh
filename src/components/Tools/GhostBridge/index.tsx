@@ -51,6 +51,10 @@ export default function GhostBridge() {
     handleUploadFile,
     handleDeleteDevice,
     handleRenameDevice,
+    isNotificationEnabled,
+    isSubscribing,
+    handleSubscribe,
+    handleUnsubscribe,
   } = useGhostBridge();
 
   if (!isMounted) return null;
@@ -80,6 +84,10 @@ export default function GhostBridge() {
           setIsInfoOpen={setIsInfoOpen}
           handleRenameDevice={handleRenameDevice}
           handleDeleteDevice={handleDeleteDevice}
+          isNotificationEnabled={isNotificationEnabled}
+          isSubscribing={isSubscribing}
+          handleSubscribe={handleSubscribe}
+          handleUnsubscribe={handleUnsubscribe}
         />
 
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
