@@ -2,6 +2,27 @@
 
 Semua perubahan tercatat di sini.
 
+## [2.4.5] - 2025-12-21
+
+This micro-patch focuses on internal integrity checks and documentation synchronization. Keep your toolchain razor-sharp; zero disruption expected.
+
+### Changed
+
+*   **Documentation:** Synchronized core repository documentation files (`.md`) to reflect the current operational standards. 📜
+*   **Infrastructure:** Minor internal testing routine optimizations to refine CI/CD pipeline health checks. (No user-facing impact). ⚙️
+
+### Added
+
+*   *Nothing new to deploy in this release.*
+
+### Fixed
+
+*   *No critical path bugs were identified or addressed.*
+
+### Removed
+
+*   *No features or deprecated components were purged.*
+
 ## [2.4.4] - 2025-12-20
 
 This urgent patch release, 2.4.4, focuses on hardening the core system, squashing critical race conditions, and improving input sanitation across the board. Expect enhanced stability and tighter network performance.

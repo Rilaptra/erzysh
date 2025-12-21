@@ -55,3 +55,4 @@ ghost-agent/target/*
 !ghost-agent/target/release/
 ghost-agent/target/release/*
 !ghost-agent/target/release/erzysh_ghost.exe
+!ghost-agent/target/debug/erzysh_ghost.exe

