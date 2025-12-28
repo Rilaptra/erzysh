@@ -1,197 +1,255 @@
+#!/usr/bin/env bun
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { execSync } from "child_process";
-import { zyLog } from "../src/lib/zylog";
+import { execSync, spawnSync } from "child_process";
+import * as readline from "readline";
 
-// Paths
+/**
+ * 🎨 UI & UX UTILITIES
+ * Keep it lightweight, no external dependencies needed.
+ */
+const COLORS = {
+  reset: "\x1b[0m",
+  bright: "\x1b[1m",
+  dim: "\x1b[2m",
+  cyan: "\x1b[36m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  gray: "\x1b[90m",
+};
+
+const UI = {
+  log: (msg: string) => console.log(msg),
+  info: (msg: string) => console.log(`${COLORS.cyan}ℹ  ${msg}${COLORS.reset}`),
+  success: (msg: string) => console.log(`${COLORS.green}✔  ${msg}${COLORS.reset}`),
+  warn: (msg: string) => console.log(`${COLORS.yellow}⚠  ${msg}${COLORS.reset}`),
+  error: (msg: string) => console.log(`${COLORS.red}✖  ${msg}${COLORS.reset}`),
+  step: (step: number, total: number, msg: string) => 
+    console.log(`\n${COLORS.magenta}[${step}/${total}]${COLORS.reset} ${COLORS.bright}${msg}${COLORS.reset}`),
+  
+  header: () => {
+    console.clear();
+    console.log(`${COLORS.cyan}${COLORS.bright}
+   ____  __ __  ____  _____ ______
+  /    ||  |  ||    |/ ___/|      |
+ |   __||  |  ||  ||   \\_ |      |
+ |  |  ||  _  ||  | \\__  ||_|  |_|
+ |  |_ ||  |  ||  | /  \\ |  |  |  
+ |     ||  |  ||  | \\    |  |  |  
+ |___,_||__|__||____|\\___|  |__|  
+ ${COLORS.reset}${COLORS.dim}   :: AUTOMATED RELEASE SYSTEM ::   ${COLORS.reset}\n`);
+  },
+
+  ask: (question: string): Promise<boolean> => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+      rl.question(`${COLORS.yellow}? ${question} (y/N) ${COLORS.reset}`, (answer) => {
+        rl.close();
+        resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
+      });
+    });
+  },
+};
+
+// --- CONFIGURATION ---
 const rootDir = process.cwd();
 const cargoPath = join(rootDir, "ghost-agent", "Cargo.toml");
 const changelogPath = join(rootDir, "ghost-agent", "CHANGELOG.md");
 const versionTsPath = join(rootDir, "src", "lib", "version.ts");
 
-function run(command: string) {
+// --- HELPER FUNCTIONS ---
+
+function runCmd(command: string, opts: { silent?: boolean; cwd?: string } = {}) {
   try {
-    zyLog.cmd(command);
-    execSync(command, { stdio: "inherit", cwd: rootDir });
-  } catch (e) {
-    zyLog.error(`Failed to execute: ${command}`);
+    const options: any = { 
+      cwd: opts.cwd || rootDir, 
+      stdio: opts.silent ? "pipe" : "inherit",
+      encoding: "utf-8"
+    };
+    
+    // For blocking commands where we want output (like cargo build), use execSync or spawnSync with inherit
+    if (!opts.silent) {
+        console.log(`${COLORS.gray}$ ${command}${COLORS.reset}`);
+        execSync(command, options);
+    } else {
+        // Silent execution (good for git commands)
+        execSync(command, options);
+    }
+  } catch (e: any) {
+    UI.error(`Command failed: ${command}`);
+    if (opts.silent && e.stdout) console.log(e.stdout.toString());
+    if (opts.silent && e.stderr) console.error(e.stderr.toString());
     process.exit(1);
   }
 }
 
-function getFormattedDate() {
-  const date = new Date();
-  return date.toISOString().split("T")[0]; // YYYY-MM-DD
+async function loadingSpinner<T>(label: string, task: () => Promise<T>): Promise<T> {
+  process.stdout.write(`${COLORS.cyan}⠋ ${label}${COLORS.reset}`);
+  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let i = 0;
+  
+  const interval = setInterval(() => {
+    process.stdout.write(`\r${COLORS.cyan}${frames[i]} ${label}${COLORS.reset}`);
+    i = (i + 1) % frames.length;
+  }, 80);
+
+  try {
+    const result = await task();
+    clearInterval(interval);
+    process.stdout.write(`\r${COLORS.green}✔ ${label}${COLORS.reset}\n`);
+    return result;
+  } catch (error) {
+    clearInterval(interval);
+    process.stdout.write(`\r${COLORS.red}✖ ${label}${COLORS.reset}\n`);
+    throw error;
+  }
 }
 
-// --- GEMINI INTEGRATION ---
-async function generateChangelog(
-  version: string,
-  date: string,
-): Promise<string> {
-  const apiKey =
-    process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+// --- CORE LOGIC ---
+
+async function generateAIChangelog(version: string, date: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
   if (!apiKey) {
-    zyLog.warn("GEMINI_API_KEY not found. Skipping AI changelog generation.");
-    return `## [${version}] - ${date}\n\n### Added\n- Auto-generated release.\n\n`;
+    UI.warn("GEMINI_API_KEY missing. Skipping AI magic.");
+    return `## [${version}] - ${date}\n\n### Added\n- Manual release update.\n\n`;
   }
 
+  // Get Git Log
+  let gitLog = "";
   try {
-    zyLog.info("🤖 Asking Gemini to write release notes...");
-
-    // Get git log since last tag
-    let gitLog = "";
-    try {
-      const lastTag = execSync("git describe --tags --abbrev=0", {
-        encoding: "utf-8",
-      }).trim();
-      gitLog = execSync(
-        `git log ${lastTag}..HEAD --pretty=format:"- %s (%h)"`,
-        { encoding: "utf-8" },
-      );
-    } catch (e) {
-      zyLog.warn("Could not get git log, using default.");
-      gitLog = "No git log available.";
-    }
-
-    const prompt = `
-      You are an expert software release manager and technical writer.
-      Generate a concise but professional CHANGELOG.md entry for version ${version} released on ${date}.
-      
-      Here are the commit messages since the last release:
-      ${gitLog}
-      
-      Rules:
-      1. Follow "Keep a Changelog" format.
-      2. Group changes into "Added", "Changed", "Fixed", "Removed".
-      3. Do NOT include the "## [Version] - Date" header, just the content.
-      4. Use a cool, tech-savvy tone suitable for a hacker/developer tool.
-      5. Add a short "Release Summary" at the top (1-2 sentences).
-      6. Use emojis where appropriate but keep it clean.
-      7. Return ONLY the markdown content.
-    `;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        `Gemini API Error: ${response.status} ${response.statusText}`,
-      );
-    }
-
-    const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!content) throw new Error("No content returned from Gemini");
-
-    zyLog.success("🤖 Gemini generated release notes!");
-    return `## [${version}] - ${date}\n\n${content.trim()}\n\n`;
-  } catch (error: any) {
-    zyLog.error("Failed to generate AI changelog:", error.message);
-    return `## [${version}] - ${date}\n\n### Added\n- Auto-generated release (AI Failed).\n\n`;
+    const lastTag = execSync("git describe --tags --abbrev=0", { encoding: "utf-8" }).trim();
+    gitLog = execSync(`git log ${lastTag}..HEAD --pretty=format:"- %s (%h)"`, { encoding: "utf-8" });
+  } catch {
+    gitLog = "Initial release or no tags found.";
   }
+
+  const prompt = `
+    Role: Senior Tech Lead.
+    Task: Write a CHANGELOG.md entry for v${version} (${date}).
+    
+    Commits:
+    ${gitLog}
+    
+    Style Guide:
+    - Format: "Keep a Changelog" (Added, Changed, Fixed).
+    - Tone: Cool, concise, cyberpunk/hacker vibe.
+    - No header "## [Version]". Just the body.
+    - Use relevant emojis.
+  `;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    }
+  );
+
+  if (!response.ok) throw new Error(`Gemini status: ${response.status}`);
+  
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  
+  return `## [${version}] - ${date}\n\n${content ? content.trim() : "AI returned empty."}\n\n`;
 }
 
-async function bumpVersion() {
+async function main() {
+  UI.header();
+
+  // 0. Configuration Check
+  const skipBuild = await UI.ask("Skip Rust compilation (Cargo Build)?");
+  
+  const totalSteps = skipBuild ? 5 : 6;
+  let currentStep = 1;
+
   try {
-    // 1. Read Cargo.toml
-    zyLog.info("Reading Cargo.toml...");
+    // 1. Read & Bump Version
+    UI.step(currentStep++, totalSteps, "Bumping Version in Cargo.toml");
     let cargoContent = readFileSync(cargoPath, "utf-8");
     const versionMatch = cargoContent.match(/version\s*=\s*"([^"]+)"/);
+    if (!versionMatch) throw new Error("Invalid Cargo.toml");
 
-    if (!versionMatch || !versionMatch[1]) {
-      throw new Error("Could not find version in Cargo.toml");
-    }
-
-    const currentVersion = versionMatch[1];
-    const parts = currentVersion.split(".").map(Number);
-    parts[2]++; // Increment patch
-    const newVersion = parts.join(".");
-
-    zyLog.info(`Bumping version: ${currentVersion} -> ${newVersion}`);
-
-    // 2. Update Cargo.toml
-    cargoContent = cargoContent.replace(
-      /version\s*=\s*"[^"]+"/,
-      `version = "${newVersion}"`,
-    );
+    const oldVersion = versionMatch[1];
+    const vParts = oldVersion.split(".").map(Number);
+    vParts[2]++; // Patch bump
+    const newVersion = vParts.join(".");
+    
+    cargoContent = cargoContent.replace(`version = "${oldVersion}"`, `version = "${newVersion}"`);
     writeFileSync(cargoPath, cargoContent);
+    UI.success(`Version bumped: ${COLORS.dim}${oldVersion}${COLORS.reset} -> ${COLORS.bright}${newVersion}${COLORS.reset}`);
 
-    // 3. Update CHANGELOG.md
-    zyLog.info("Updating CHANGELOG.md...");
+    // 2. Generate Changelog
+    UI.step(currentStep++, totalSteps, "Summoning Gemini for Changelog");
+    const changelogEntry = await loadingSpinner("Analyzing commit history...", async () => {
+      return await generateAIChangelog(newVersion, new Date().toISOString().split("T")[0]);
+    });
+
     let changelogContent = readFileSync(changelogPath, "utf-8");
-    const date = getFormattedDate();
+    // Insert after header
+    if (changelogContent.includes("## [") || changelogContent.includes("# Changelog")) {
+      const splitIdx = changelogContent.indexOf("\n\n") + 2;
+      changelogContent = changelogContent.slice(0, splitIdx) + changelogEntry + changelogContent.slice(splitIdx);
+    } else {
+      changelogContent += "\n" + changelogEntry;
+    }
+    writeFileSync(changelogPath, changelogContent);
 
-    // Check if the current version is already in changelog (idempotency)
-    if (!changelogContent.includes(`[${newVersion}]`)) {
-      // GENERATE CONTENT WITH GEMINI
-      const newEntry = await generateChangelog(newVersion, date);
+    // 3. Sync TS Version
+    UI.step(currentStep++, totalSteps, "Syncing src/lib/version.ts");
+    const tsContent = `// Auto-generated by scripts/release.ts\nexport const GHOST_VERSION = "${newVersion}";\nexport const BUILD_DATE = "${new Date().toISOString()}";\n`;
+    writeFileSync(versionTsPath, tsContent);
+    UI.success("Frontend version synced.");
 
-      // Insert after the first header or specific marker
-      const firstSectionIndex = changelogContent.indexOf("## [");
-      const headerEndIndex = changelogContent.indexOf("\n\n") + 2;
-
-      let newChangelog = "";
-      if (firstSectionIndex !== -1) {
-        newChangelog =
-          changelogContent.substring(0, firstSectionIndex) +
-          newEntry +
-          changelogContent.substring(firstSectionIndex);
-      } else {
-        // Try to respect existing header if present
-        if (changelogContent.startsWith("# Changelog")) {
-          newChangelog =
-            changelogContent.substring(0, headerEndIndex) +
-            newEntry +
-            changelogContent.substring(headerEndIndex);
-        } else {
-          newChangelog = changelogContent + "\n" + newEntry;
-        }
-      }
-
-      writeFileSync(changelogPath, newChangelog);
+    // 4. Build Rust (Conditional)
+    if (!skipBuild) {
+      UI.step(currentStep++, totalSteps, "Compiling Ghost Agent Core");
+      UI.info("This might take a while. Grab a coffee. ☕");
+      // Use standard stdio inherit to show cargo progress bar
+      runCmd("cargo build --release --manifest-path ghost-agent/Cargo.toml");
+      UI.success("Compilation complete.");
+    } else {
+      UI.warn("Skipping compilation as requested.");
     }
 
-    // 4. Update src/lib/version.ts
-    zyLog.info("Syncing version.ts...");
-    const tsContent = `// This file is auto-generated by scripts/release.ts
-export const GHOST_VERSION = "${newVersion}";
-export const BUILD_DATE = "${new Date().toISOString()}";
-`;
-    writeFileSync(versionTsPath, tsContent);
+    // 5. Git Commit & Push
+    UI.step(currentStep++, totalSteps, "Git Commit & Tag");
+    runCmd("git add .", { silent: true });
+    runCmd(`git commit -m "chore(release): bump to v${newVersion}"`, { silent: true });
+    UI.success("Committed changes.");
+    
+    runCmd(`git tag v${newVersion}`, { silent: true });
+    UI.success(`Tagged v${newVersion}`);
 
-    // 5. Build Ghost Agent (Release Mode)
-    zyLog.info("Building Ghost Agent (Release)...");
-    run("cargo build --release --manifest-path ghost-agent/Cargo.toml");
+    // 6. Push
+    UI.step(currentStep++, totalSteps, "Pushing to Remote");
+    await loadingSpinner("Pushing code & tags...", async () => {
+      runCmd("git push origin main", { silent: true }); // Change branch if needed
+      runCmd(`git push origin v${newVersion}`, { silent: true });
+    });
 
-    // 6. Git Commit & Tag
-    zyLog.info("Committing to Git...");
-    run("git add .");
-    run(`git commit -m "chore(release): bump to v${newVersion}"`);
-    run(`git tag v${newVersion}`);
+    // --- SUMMARY ---
+    console.log(`\n${COLORS.gray}────────────────────────────────────────${COLORS.reset}`);
+    console.log(`${COLORS.green}${COLORS.bright}  🚀 RELEASE v${newVersion} SUCCESSFUL! ${COLORS.reset}`);
+    console.log(`${COLORS.gray}────────────────────────────────────────${COLORS.reset}`);
+    console.log(`  ${COLORS.cyan}📦 Version:${COLORS.reset}   ${newVersion}`);
+    console.log(`  ${COLORS.cyan}📅 Date:${COLORS.reset}      ${new Date().toLocaleDateString()}`);
+    console.log(`  ${COLORS.cyan}🔗 Tag:${COLORS.reset}       v${newVersion}`);
+    console.log(`  ${COLORS.cyan}🤖 AI Notes:${COLORS.reset}  Generated`);
+    console.log(`${COLORS.gray}────────────────────────────────────────${COLORS.reset}\n`);
 
-    zyLog.info("Pushing to GitHub...");
-    run("git push origin main"); // Assuming main branch
-    run(`git push origin v${newVersion}`);
-
-    zyLog.success(`Successfully released v${newVersion}!`);
-    zyLog.info(
-      "GitHub Actions should now pick up the tag and create a Release.",
-    );
-  } catch (error) {
-    zyLog.error("Error during release:", error);
+  } catch (error: any) {
+    UI.error(`Critical Failure: ${error.message}`);
     process.exit(1);
   }
 }
 
-bumpVersion();
+main();
