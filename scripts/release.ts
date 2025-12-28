@@ -1,15 +1,13 @@
 #!/usr/bin/env bun
-import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
-import { execSync } from "child_process";
 import * as readline from "readline";
-
+import Bun, { fetch } from "bun";
 /**
  * 🎨 ERYZSH UI KIT
  * Zero-dependency styling for maximum performance on limited resources.
  */
 const COLORS = {
-  reset: "\x1b[0m",
+  reset: "\x1B[0m",
   bright: "\x1b[1m",
   dim: "\x1b[2m",
   cyan: "\x1b[36m",
@@ -28,7 +26,8 @@ const UI = {
     console.log(`${COLORS.green}✔  ${msg}${COLORS.reset}`),
   warn: (msg: string) =>
     console.log(`${COLORS.yellow}⚠  ${msg}${COLORS.reset}`),
-  error: (msg: string) => console.log(`${COLORS.red}✖  ${msg}${COLORS.reset}`),
+  error: (msg: string) =>
+    console.error(`${COLORS.red}✖  ${msg}${COLORS.reset}`),
   step: (step: number, total: number, msg: string) =>
     console.log(
       `\n${COLORS.magenta}[${step}/${total}]${COLORS.reset} ${COLORS.bright}${msg}${COLORS.reset}`,
@@ -36,8 +35,7 @@ const UI = {
 
   header: () => {
     console.clear();
-    // Escaped backslashes for JS string compatibility
-    console.log(`${COLORS.cyan}${COLORS.bright}
+    console.log(`\n${COLORS.cyan}${COLORS.bright}
  ____  ____  ____  _  _   ____  _  _     ___  __   _  _  _  _  __  ____ 
 (  __)(  _ \\(__  )( \\/ ) / ___)/ )( \\   / __)/  \\ ( \\/ )( \\/ )(  )(_  _)
  ) _)  )   / / _/  )  /_ \\___ \\) __ (  ( (__(  O )/ \\/ \\/ \\/ \\ )(   )(  
@@ -73,29 +71,40 @@ const changelogPath = join(rootDir, "CHANGELOG.md"); // MOVED TO ROOT
 const versionTsPath = join(rootDir, "src", "lib", "version.ts");
 
 // --- HELPER FUNCTIONS ---
-
 function runCmd(
-  command: string,
+  command: string | string[], // Bisa string atau array
   opts: { silent?: boolean; cwd?: string } = {},
 ) {
-  try {
-    const options: any = {
-      cwd: opts.cwd || rootDir,
-      stdio: opts.silent ? "pipe" : "inherit",
-      encoding: "utf-8",
-    };
+  // Jika input string, split manual. Jika array, pakai langsung.
+  const cmdArray = Array.isArray(command) ? command : command.split(" ");
 
+  // Ambil nama command utama untuk logging
+  const cmdDisplay = Array.isArray(command) ? command.join(" ") : command;
+
+  try {
     if (!opts.silent) {
-      console.log(`${COLORS.gray}$ ${command}${COLORS.reset}`);
-      execSync(command, options);
-    } else {
-      execSync(command, options);
+      Bun.stdout.write(`${COLORS.gray}$ ${cmdDisplay}${COLORS.reset}\n`);
     }
+
+    const proc = Bun.spawnSync(cmdArray, {
+      cwd: opts.cwd || rootDir,
+      stdio: ["ignore", "pipe", "pipe"], // Capture stdout/stderr
+    });
+
+    // 🔥 PENTING: Cek Exit Code
+    if (proc.exitCode !== 0) {
+      const stderr = proc.stderr.toString();
+      // Lempar error agar ditangkap oleh catch block utama main()
+      throw new Error(
+        `Command failed with exit code ${proc.exitCode}:\n${stderr}`,
+      );
+    }
+
+    return proc;
   } catch (e: any) {
-    UI.error(`Command failed: ${command}`);
-    if (opts.silent && e.stdout) console.log(e.stdout.toString());
-    if (opts.silent && e.stderr) console.error(e.stderr.toString());
-    process.exit(1);
+    // Error handling untuk spawn itu sendiri (misal command tidak ditemukan)
+    UI.error(`Execution failed: ${cmdDisplay}`);
+    throw e;
   }
 }
 
@@ -103,25 +112,23 @@ async function loadingSpinner<T>(
   label: string,
   task: () => Promise<T>,
 ): Promise<T> {
-  process.stdout.write(`${COLORS.cyan}⠋ ${label}${COLORS.reset}`);
+  Bun.stdout.write(`${COLORS.cyan}⠋ ${label}${COLORS.reset}`);
   const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   let i = 0;
 
   const interval = setInterval(() => {
-    process.stdout.write(
-      `\r${COLORS.cyan}${frames[i]} ${label}${COLORS.reset}`,
-    );
+    Bun.stdout.write(`\r${COLORS.cyan}${frames[i]} ${label}${COLORS.reset}`);
     i = (i + 1) % frames.length;
   }, 80);
 
   try {
     const result = await task();
     clearInterval(interval);
-    process.stdout.write(`\r${COLORS.green}✔ ${label}${COLORS.reset}\n`);
+    Bun.stdout.write(`\r${COLORS.green}✔ ${label}${COLORS.reset}\n`);
     return result;
   } catch (error) {
     clearInterval(interval);
-    process.stdout.write(`\r${COLORS.red}✖ ${label}${COLORS.reset}\n`);
+    Bun.stdout.write(`\r${COLORS.red}✖ ${label}${COLORS.reset}\n`);
     throw error;
   }
 }
@@ -144,12 +151,17 @@ async function generateAIChangelog(
   let gitLog = "";
   try {
     // Get logs across the whole repo since last tag
-    const lastTag = execSync("git describe --tags --abbrev=0", {
-      encoding: "utf-8",
-    }).trim();
-    gitLog = execSync(`git log ${lastTag}..HEAD --pretty=format:"- %s (%h)"`, {
-      encoding: "utf-8",
-    });
+    const lastTag = Bun.spawnSync(["git", "describe", "--tags", "--abbrev=0"])
+      .stdout.toString()
+      .trim();
+    gitLog = Bun.spawnSync([
+      "git",
+      "log",
+      `${lastTag}..HEAD`,
+      '--pretty=format:"- %s (%h)"',
+    ])
+      .stdout.toString()
+      .trim();
   } catch {
     gitLog = "Initial release or no tags found.";
   }
@@ -197,10 +209,15 @@ async function main() {
   const totalSteps = skipBuild ? 5 : 6;
   let currentStep = 1;
 
+  // Save original files
+  const originalChangelog = await Bun.file(changelogPath).text();
+  const originalCargo = await Bun.file(cargoPath).text();
+  const originalVersion = await Bun.file(versionTsPath).text();
+
   try {
     // 1. Read & Bump Version (Using Cargo.toml as master version)
     UI.step(currentStep++, totalSteps, "Bumping Version System");
-    let cargoContent = readFileSync(cargoPath, "utf-8");
+    let cargoContent = await Bun.file(cargoPath).text();
     const versionMatch = cargoContent.match(/version\s*=\s*"([^"]+)"/);
     if (!versionMatch) throw new Error("Invalid Cargo.toml");
 
@@ -213,7 +230,7 @@ async function main() {
       `version = "${oldVersion}"`,
       `version = "${newVersion}"`,
     );
-    writeFileSync(cargoPath, cargoContent);
+    Bun.write(cargoPath, cargoContent);
     UI.success(
       `Version bumped: ${COLORS.dim}${oldVersion}${COLORS.reset} -> ${COLORS.bright}${newVersion}${COLORS.reset}`,
     );
@@ -232,8 +249,8 @@ async function main() {
 
     // Handle Root Changelog Creation/Update
     let changelogContent = "";
-    if (existsSync(changelogPath)) {
-      changelogContent = readFileSync(changelogPath, "utf-8");
+    if (await Bun.file(changelogPath).exists()) {
+      changelogContent = await Bun.file(changelogPath).text();
     } else {
       changelogContent =
         "# Changelog\nAll notable changes to the Eryzsh ecosystem.\n\n";
@@ -252,19 +269,27 @@ async function main() {
     } else {
       changelogContent += "\n" + changelogEntry;
     }
-    writeFileSync(changelogPath, changelogContent);
+    Bun.write(changelogPath, changelogContent);
 
     // 3. Sync TS Version
     UI.step(currentStep++, totalSteps, "Syncing Frontend Version");
     const tsContent = `// Auto-generated by scripts/release.ts\nexport const GHOST_VERSION = "${newVersion}";\nexport const BUILD_DATE = "${new Date().toISOString()}";\n`;
-    writeFileSync(versionTsPath, tsContent);
+    Bun.write(versionTsPath, tsContent);
     UI.success("src/lib/version.ts updated.");
 
     // 4. Build Rust (Conditional)
     if (!skipBuild) {
       UI.step(currentStep++, totalSteps, "Compiling Ghost Agent Core");
+
       UI.info("Building release binary...");
-      runCmd("cargo build --release --manifest-path ghost-agent/Cargo.toml");
+      runCmd([
+        "cargo",
+        "build",
+        "--release",
+        "--manifest-path",
+        "ghost-agent/Cargo.toml",
+      ]); // Array strings
+
       UI.success("Rust binary compiled.");
     } else {
       UI.warn("Skipping Rust compilation.");
@@ -272,44 +297,59 @@ async function main() {
 
     // 5. Git Commit & Tag
     UI.step(currentStep++, totalSteps, "Git Operations");
-    runCmd("git add .", { silent: true });
-    runCmd(`git commit -m "chore(release): bump to v${newVersion}"`, {
+
+    // Gunakan Array strings
+    runCmd(["git", "add", "."], { silent: true });
+
+    // Pesan commit aman dari split spasi
+    runCmd(["git", "commit", "-m", `chore(release): bump to v${newVersion}`], {
       silent: true,
     });
+
     UI.success("Committed changes.");
 
-    runCmd(`git tag v${newVersion}`, { silent: true });
+    runCmd(["git", "tag", `v${newVersion}`], { silent: true });
     UI.success(`Tagged v${newVersion}`);
 
     // 6. Push
     UI.step(currentStep++, totalSteps, "Pushing to Origin");
     await loadingSpinner("Pushing commits & tags...", async () => {
-      runCmd("git push origin main", { silent: true });
-      runCmd(`git push origin v${newVersion}`, { silent: true });
+      runCmd(["git", "push", "origin", "main"], { silent: true });
+      runCmd(["git", "push", "origin", `v${newVersion}`], { silent: true });
     });
 
     // --- SUMMARY ---
-    console.log(
-      `\n${COLORS.gray}────────────────────────────────────────${COLORS.reset}`,
+    Bun.stdout.write(
+      `\n${COLORS.gray}────────────────────────────────────────${COLORS.reset}\n`,
     );
-    console.log(
-      `${COLORS.green}${COLORS.bright}  🚀 ERYZSH v${newVersion} DEPLOYED! ${COLORS.reset}`,
+    Bun.stdout.write(
+      `${COLORS.green}${COLORS.bright}  🚀 ERYZSH v${newVersion} DEPLOYED! ${COLORS.reset}\n`,
     );
-    console.log(
-      `${COLORS.gray}────────────────────────────────────────${COLORS.reset}`,
-    );
-    console.log(
-      `  ${COLORS.cyan}📂 Changelog:${COLORS.reset}   /CHANGELOG.md (Root)`,
-    );
-    console.log(`  ${COLORS.cyan}📦 Version:${COLORS.reset}     ${newVersion}`);
-    console.log(
-      `  ${COLORS.cyan}🧱 Build:${COLORS.reset}       ${skipBuild ? "Skipped" : "Completed"}`,
-    );
-    console.log(
+    Bun.stdout.write(
       `${COLORS.gray}────────────────────────────────────────${COLORS.reset}\n`,
+    );
+    Bun.stdout.write(
+      `  ${COLORS.cyan}📂 Changelog:${COLORS.reset}   /CHANGELOG.md (Root)\n`,
+    );
+    Bun.stdout.write(
+      `  ${COLORS.cyan}📦 Version:${COLORS.reset}     ${newVersion}\n`,
+    );
+    Bun.stdout.write(
+      `  ${COLORS.cyan}🧱 Build:${COLORS.reset}       ${skipBuild ? "Skipped" : "Completed"}\n`,
+    );
+    Bun.stdout.write(
+      `${COLORS.gray}────────────────────────────────────────${COLORS.reset}\n\n`,
     );
   } catch (error: any) {
     UI.error(`Critical Failure: ${error.message}`);
+
+    // Discard changes in changelog, cargo.toml and version.ts
+    UI.log("Discarding changes in changelog, cargo.toml and version.ts");
+    // rewrite with original file
+    await Bun.write(changelogPath, originalChangelog);
+    await Bun.write(cargoPath, originalCargo);
+    await Bun.write(versionTsPath, originalVersion);
+    UI.success("Discarded changes in changelog, cargo.toml and version.ts");
     process.exit(1);
   }
 }
