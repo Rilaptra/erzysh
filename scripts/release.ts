@@ -124,11 +124,11 @@ async function loadingSpinner<T>(
   try {
     const result = await task();
     clearInterval(interval);
-    Bun.stdout.write(`\r${COLORS.green}✔ ${label}${COLORS.reset}\n`);
+    Bun.stdout.write(`\r${COLORS.green}✔  ${label}${COLORS.reset}\n`);
     return result;
   } catch (error) {
     clearInterval(interval);
-    Bun.stdout.write(`\r${COLORS.red}✖ ${label}${COLORS.reset}\n`);
+    Bun.stdout.write(`\r${COLORS.red}✖  ${label}${COLORS.reset}\n`);
     throw error;
   }
 }
