@@ -2,6 +2,15 @@
 
 Semua perubahan tercatat di sini.
 
+## [2.4.6] - 2025-12-28
+
+A precision patch release focusing on optimal system hygiene. This minor increment ensures stability and keeps the engine running smooth while we prep the next major feature drop. 🛠️
+
+### Fixed
+
+*   Resolved a minor, sporadic micro-regression related to dependency parsing that could impact cold boot initialization stability (Commit `29babcd`). 🐛
+*   Applied necessary pipeline hygiene updates to optimize deployment latency.
+
 ## [2.4.5] - 2025-12-21
 
 This micro-patch focuses on internal integrity checks and documentation synchronization. Keep your toolchain razor-sharp; zero disruption expected.
