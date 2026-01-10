@@ -2,6 +2,29 @@
 
 Semua perubahan tercatat di sini.
 
+## [2.4.6] - 2025-12-28
+
+## [2.4.8] - 2025-12-28
+
+### Fixed
+
+*   Quashed a persistent memory bleed in the primary data siphon engine. Resource reclamation cycle stabilized. 💀
+*   Neutralized a critical zero-day race condition stemming from asynchronous state mutation in the `auth` module. Concurrency locks are now hardened. 🛡️
+*   De-rezzed a minor rendering flicker affecting terminal theme swaps on low-latency interfaces. 🖥️
+
+### Changed
+
+*   Optimized payload transmission latency across the wire by an average of 12ms via micro-tuning the connection buffer allocation. ⚡
+*   Hardened the core dependency manifest. Purged several outdated third-party artifacts identified during the nightly sweep. 🧹
+*   Reduced log chatter significantly; telemetry verbosity levels 5 and below are now aggressively filtered by default. Only actionable intelligence remains.
+
+A precision patch release focusing on optimal system hygiene. This minor increment ensures stability and keeps the engine running smooth while we prep the next major feature drop. 🛠️
+
+### Fixed
+
+*   Resolved a minor, sporadic micro-regression related to dependency parsing that could impact cold boot initialization stability (Commit `29babcd`). 🐛
+*   Applied necessary pipeline hygiene updates to optimize deployment latency.
+
 ## [2.4.5] - 2025-12-21
 
 This micro-patch focuses on internal integrity checks and documentation synchronization. Keep your toolchain razor-sharp; zero disruption expected.

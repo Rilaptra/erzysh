@@ -27,8 +27,8 @@ const LOGO_URL =
 
 export const metadata: Metadata = {
   title: {
+    default: "Erzysh | Engineering Toolkit & Discord DBaaS",
     template: "%s | Erzysh",
-    default: "Erzysh",
   },
   description: "Personal dashboard, DBaaS, and university toolkit.",
   openGraph: {
@@ -65,6 +65,8 @@ export const metadata: Metadata = {
     // creator: "@yourtwitterhandle",
     images: [LOGO_URL], // Menggunakan URL logo yang baru
   },
+  authors: [{ name: "Rizqi Lasheva" }],
+  creator: "Rizqi Lasheva",
   manifest: "/manifest.json", // <-- TAMBAHKAN INI
 };
 
