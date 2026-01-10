@@ -1,3 +1,8 @@
+# Changelog
+
+## [0.1.1] - 2026-01-10
+- ✨ Refactored code to use consistent single quotes instead of double quotes throughout the codebase.
+- 🛠️  Minor formatting adjustments were made for improved readability and consistency. These changes do not affect functionality.
 
 ## [2.4.11] - 2025-12-28
 
@@ -68,4 +73,3 @@ Default configuration schemas now strictly enforce TOML parsing for consistency 
 Addressed a significant, intermittent memory retention issue within the ephemeral worker pool of the Data Ingestion Pipeline (DIP). This leak specifically manifested under high-frequency, bursty load conditions, leading to unnecessary resource scaling events. Stability restored.
 
 🐛 Adjusted internal `ghost-agent` timeout logic to correctly differentiate between connection failure and resource contention stalls. This eliminates false-negative disconnection reports during periods of peak internal backpressure.
-

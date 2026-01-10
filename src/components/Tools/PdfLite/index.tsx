@@ -1,5 +1,5 @@
 // src/components/Tools/PdfLite/index.tsx
-"use client";
+'use client'
 
 import {
   Eraser,
@@ -11,14 +11,14 @@ import {
   Upload,
   ZoomIn,
   ZoomOut,
-} from "lucide-react";
-import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/cn";
-import { usePdfLite } from "./usePdfLite";
+} from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/cn'
+import { usePdfLite } from './usePdfLite'
 
 export default function PdfLite() {
   const {
@@ -34,27 +34,27 @@ export default function PdfLite() {
     setMode,
     scale,
     setScale,
-  } = usePdfLite();
+  } = usePdfLite()
 
-  const [textInput, setTextInput] = useState("Sample Text");
-  const imgRef = useRef<HTMLImageElement>(null);
+  const [textInput, setTextInput] = useState('Sample Text')
+  const imgRef = useRef<HTMLImageElement>(null)
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (mode === "view" || !imgRef.current) return;
-    const rect = imgRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (mode === 'view' || !imgRef.current) return
+    const rect = imgRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
 
-    const visualScale = imgRef.current.naturalWidth / imgRef.current.width;
-    const pdfX = x * visualScale * 0.75;
-    const pdfY = y * visualScale * 0.75;
+    const visualScale = imgRef.current.naturalWidth / imgRef.current.width
+    const pdfX = x * visualScale * 0.75
+    const pdfY = y * visualScale * 0.75
 
-    if (mode === "whiteout") {
-      handleApplyEdit(pdfX, pdfY, 100, 20);
-    } else if (mode === "text") {
-      handleApplyEdit(pdfX, pdfY, 0, 0, textInput);
+    if (mode === 'whiteout') {
+      handleApplyEdit(pdfX, pdfY, 100, 20)
+    } else if (mode === 'text') {
+      handleApplyEdit(pdfX, pdfY, 0, 0, textInput)
     }
-  };
+  }
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden bg-background text-foreground">
@@ -75,25 +75,25 @@ export default function PdfLite() {
               <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
                 <ToolBtn
                   icon={MousePointer2}
-                  active={mode === "view"}
-                  onClick={() => setMode("view")}
+                  active={mode === 'view'}
+                  onClick={() => setMode('view')}
                   label="Select"
                 />
                 <ToolBtn
                   icon={Eraser}
-                  active={mode === "whiteout"}
-                  onClick={() => setMode("whiteout")}
+                  active={mode === 'whiteout'}
+                  onClick={() => setMode('whiteout')}
                   label="Whiteout"
                 />
                 <ToolBtn
                   icon={Type}
-                  active={mode === "text"}
-                  onClick={() => setMode("text")}
+                  active={mode === 'text'}
+                  onClick={() => setMode('text')}
                   label="Text"
                 />
               </div>
 
-              {mode === "text" && (
+              {mode === 'text' && (
                 <Input
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
@@ -171,10 +171,10 @@ export default function PdfLite() {
                     key={idx}
                     onClick={() => handlePageChange(idx)}
                     className={cn(
-                      "group relative cursor-pointer overflow-hidden rounded-lg border-2 transition-all hover:ring-2 hover:ring-primary/20",
+                      'group relative cursor-pointer overflow-hidden rounded-lg border-2 transition-all hover:ring-2 hover:ring-primary/20',
                       currentPage === idx
-                        ? "border-primary shadow-md"
-                        : "border-transparent opacity-60 hover:opacity-100",
+                        ? 'border-primary shadow-md'
+                        : 'border-transparent opacity-60 hover:opacity-100',
                     )}
                   >
                     {thumb ? (
@@ -184,7 +184,7 @@ export default function PdfLite() {
                         className="w-full object-cover"
                       />
                     ) : (
-                      <div className="flex aspect-[3/4] items-center justify-center bg-muted animate-pulse">
+                      <div className="flex aspect-3/4 items-center justify-center bg-muted animate-pulse">
                         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                       </div>
                     )}
@@ -214,8 +214,8 @@ export default function PdfLite() {
           {fileUrl ? (
             <div
               className={cn(
-                "relative origin-top bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-out dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]",
-                mode === "view" ? "cursor-default" : "cursor-crosshair",
+                'relative origin-top bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-out dark:shadow-[0_20px_50px_rgba(0,0,0,0.3)]',
+                mode === 'view' ? 'cursor-default' : 'cursor-crosshair',
               )}
               style={{ transform: `scale(${scale})` }}
               onClick={handleCanvasClick}
@@ -225,7 +225,7 @@ export default function PdfLite() {
                 src={fileUrl}
                 alt="Current Page"
                 className="max-w-none rounded-sm"
-                style={{ minHeight: "800px" }}
+                style={{ minHeight: '800px' }}
               />
             </div>
           ) : (
@@ -241,7 +241,7 @@ export default function PdfLite() {
         </div>
       </main>
     </div>
-  );
+  )
 }
 
 const ToolBtn = ({
@@ -250,21 +250,21 @@ const ToolBtn = ({
   onClick,
   label,
 }: {
-  icon: any;
-  active: boolean;
-  onClick: () => void;
-  label: string;
+  icon: any
+  active: boolean
+  onClick: () => void
+  label: string
 }) => (
   <Button
     size="icon"
-    variant={active ? "default" : "ghost"}
+    variant={active ? 'default' : 'ghost'}
     className={cn(
-      "h-8 w-8 transition-all",
-      active ? "shadow-sm" : "text-muted-foreground",
+      'h-8 w-8 transition-all',
+      active ? 'shadow-sm' : 'text-muted-foreground',
     )}
     onClick={onClick}
     title={label}
   >
     <Icon className="h-4 w-4" />
   </Button>
-);
+)
