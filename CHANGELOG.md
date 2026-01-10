@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.0.0] - 2026-01-10
+- ✨ Bumped version to 2.4.13.
+- 🛠️ Updated build date in `src/lib/version.ts` to reflect the current timestamp.
+- 🔄 Synchronized version in `src/lib/version.ts` with `package.json`.
+
 ## [0.1.2] - 2026-01-10
 - ✨ Updated dependencies to their latest versions.
 - This commit updates a large number of dependencies, including:

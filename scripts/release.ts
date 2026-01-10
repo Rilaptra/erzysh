@@ -85,6 +85,15 @@ async function main() {
     } else {
       UI.warn('Skipping Rust compilation.')
     }
+    const versionFile = await Bun.file(
+      join(rootDir, 'src/lib/version.ts'),
+    ).text()
+    const NEW_BUILD_DATE = new Date().toISOString()
+    const newVersionFile = versionFile.replace(
+      /BUILD_DATE = .+/,
+      `BUILD_DATE = '${NEW_BUILD_DATE}'`,
+    )
+    await Bun.write(join(rootDir, 'src/lib/version.ts'), newVersionFile)
 
     UI.step(currentStep++, totalSteps, 'Delegating to Digest CLI')
     UI.info(
