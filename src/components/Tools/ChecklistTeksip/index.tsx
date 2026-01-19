@@ -1,20 +1,16 @@
 // src/components/Tools/ChecklistTeksip/index.tsx
-"use client";
+/** biome-ignore-all lint/a11y/useButtonType: <explanation: Button should be used for interactive elements> */
+'use client'
 
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import {
-  ChevronDown,
-  Undo2,
-  ArrowUpToLine,
   ArrowDownToLine,
+  ArrowUpToLine,
+  ChevronDown,
   Trash2,
-} from "lucide-react";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { cn } from "@/lib/cn";
-import daftarNama from "@/lib/data/mahasiswa.json";
+  Undo2,
+} from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,129 +21,134 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/cn'
+import daftarNama from '@/lib/data/mahasiswa.json'
 
 // --- TYPES ---
-type Student = (typeof daftarNama)[0];
-type GroupedStudents = Record<string, Student[]>;
+type Student = (typeof daftarNama)[0]
+type GroupedStudents = Record<string, Student[]>
 
 // --- DATA ---
-const STORAGE_KEY = "checkedTeksipStudents";
-const ROMBELS = [1, 2, 3, 4];
+const STORAGE_KEY = 'checkedTeksipStudents'
+const ROMBELS = [1, 2, 3, 4]
 
 // --- HOOKS ---
 const useStudentChecklist = () => {
   const [checkedItems, setCheckedItems] = useState<Map<number, boolean>>(
     new Map(),
-  );
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [rombelFilter, setRombelFilter] = useState<number | "all">("all");
+  )
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [rombelFilter, setRombelFilter] = useState<number | 'all'>('all')
 
   useEffect(() => {
     try {
-      const storedData = localStorage.getItem(STORAGE_KEY);
+      const storedData = localStorage.getItem(STORAGE_KEY)
       if (storedData) {
-        setCheckedItems(new Map(JSON.parse(storedData)));
+        setCheckedItems(new Map(JSON.parse(storedData)))
       }
     } catch (error) {
-      console.error("Gagal memuat data dari localStorage:", error);
+      console.error('Gagal memuat data dari localStorage:', error)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     try {
-      const dataToStore = JSON.stringify(Array.from(checkedItems.entries()));
-      localStorage.setItem(STORAGE_KEY, dataToStore);
+      const dataToStore = JSON.stringify(Array.from(checkedItems.entries()))
+      localStorage.setItem(STORAGE_KEY, dataToStore)
     } catch (error) {
-      console.error("Gagal menyimpan data ke localStorage:", error);
+      console.error('Gagal menyimpan data ke localStorage:', error)
     }
-  }, [checkedItems]);
+  }, [checkedItems])
 
   const handleUndo = useCallback(
     (actionToUndo: {
-      id: number;
-      name: string;
-      type: "checked" | "unchecked";
+      id: number
+      name: string
+      type: 'checked' | 'unchecked'
     }) => {
       setCheckedItems((prev) => {
-        const newItems = new Map(prev);
-        if (actionToUndo.type === "checked") {
-          newItems.delete(actionToUndo.id);
+        const newItems = new Map(prev)
+        if (actionToUndo.type === 'checked') {
+          newItems.delete(actionToUndo.id)
         } else {
-          newItems.set(actionToUndo.id, true);
+          newItems.set(actionToUndo.id, true)
         }
-        return newItems;
-      });
-      toast.success(`Aksi untuk "${actionToUndo.name}" dibatalkan.`);
+        return newItems
+      })
+      toast.success(`Aksi untuk "${actionToUndo.name}" dibatalkan.`)
     },
     [],
-  );
+  )
 
   const handleCheck = useCallback(
     (id: number, isChecked: boolean, name: string) => {
-      const type = isChecked ? "checked" : "unchecked";
+      const type = isChecked ? 'checked' : 'unchecked'
 
       setCheckedItems((prev) => {
-        const newItems = new Map(prev);
+        const newItems = new Map(prev)
         if (isChecked) {
-          newItems.set(id, true);
+          newItems.set(id, true)
         } else {
-          newItems.delete(id);
+          newItems.delete(id)
         }
-        return newItems;
-      });
+        return newItems
+      })
       toast.info(
-        `"${name}" ditandai ${isChecked ? "sudah" : "belum"} selesai.`,
+        `"${name}" ditandai ${isChecked ? 'sudah' : 'belum'} selesai.`,
         {
           action: {
-            label: "Undo",
+            label: 'Undo',
             onClick: () => handleUndo({ id, name, type }),
           },
           icon: <Undo2 className="size-4" />,
           duration: 5000,
         },
-      );
+      )
     },
     [handleUndo],
-  );
+  )
 
   const handleClearAll = useCallback(() => {
-    setCheckedItems(new Map());
-    toast.success("Daftar 'Sudah Foto' telah dibersihkan.");
-  }, []);
+    setCheckedItems(new Map())
+    toast.success("Daftar 'Sudah Foto' telah dibersihkan.")
+  }, [])
 
   const { checkedStudents, uncheckedStudents } = useMemo(() => {
     const groupStudents = (list: Student[]): GroupedStudents =>
       list.reduce((acc, student) => {
-        const key = String(student.Rombel);
+        const key = String(student.Rombel)
         if (!acc[key]) {
-          acc[key] = [];
+          acc[key] = []
         }
-        acc[key].push(student);
-        return acc;
-      }, {} as GroupedStudents);
+        acc[key].push(student)
+        return acc
+      }, {} as GroupedStudents)
 
     const filtered = daftarNama.filter(
       (item) =>
-        (rombelFilter === "all" || item.Rombel === rombelFilter) &&
+        (rombelFilter === 'all' || item.Rombel === rombelFilter) &&
         (item.Nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
           String(item.NPM).includes(searchTerm)),
-    );
+    )
 
-    const checked: Student[] = [];
-    const unchecked: Student[] = [];
+    const checked: Student[] = []
+    const unchecked: Student[] = []
     for (const student of filtered) {
       if (checkedItems.has(student.No)) {
-        checked.push(student);
+        checked.push(student)
       } else {
-        unchecked.push(student);
+        unchecked.push(student)
       }
     }
     return {
       checkedStudents: groupStudents(checked),
       uncheckedStudents: groupStudents(unchecked),
-    };
-  }, [searchTerm, rombelFilter, checkedItems]);
+    }
+  }, [searchTerm, rombelFilter, checkedItems])
 
   return {
     searchTerm,
@@ -158,22 +159,22 @@ const useStudentChecklist = () => {
     uncheckedStudents,
     handleCheck,
     handleClearAll,
-  };
-};
+  }
+}
 
 // --- COMPONENTS ---
 
 const StudentListItem: React.FC<{
-  student: Student;
-  isChecked: boolean;
-  onCheck: (id: number, isChecked: boolean, name: string) => void;
+  student: Student
+  isChecked: boolean
+  onCheck: (id: number, isChecked: boolean, name: string) => void
 }> = ({ student, isChecked, onCheck }) => (
   <li
     className={cn(
-      "flex items-center gap-3 rounded-md p-3 shadow-sm transition-all duration-200",
+      'flex items-center gap-3 rounded-md p-3 shadow-sm transition-all duration-200',
       isChecked
-        ? "bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50"
-        : "bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-700 dark:hover:bg-neutral-600",
+        ? 'bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50'
+        : 'bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-700 dark:hover:bg-neutral-600',
     )}
   >
     <Checkbox
@@ -187,8 +188,8 @@ const StudentListItem: React.FC<{
     <label
       htmlFor={`checkbox-${student.No}`}
       className={cn(
-        "flex-1 cursor-pointer font-medium text-neutral-800 dark:text-neutral-300",
-        isChecked && "dark:line-through-neutral-500 line-through",
+        'flex-1 cursor-pointer font-medium text-neutral-800 dark:text-neutral-300',
+        isChecked && 'dark:line-through-neutral-500 line-through',
       )}
     >
       <span className="mr-2 font-bold text-neutral-500 dark:text-neutral-400">
@@ -200,17 +201,17 @@ const StudentListItem: React.FC<{
       </span>
     </label>
   </li>
-);
+)
 
 const RombelGroup: React.FC<{
-  rombel: string;
-  students: Student[];
-  isChecked: boolean;
-  onCheck: (id: number, isChecked: boolean, name: string) => void;
+  rombel: string
+  students: Student[]
+  isChecked: boolean
+  onCheck: (id: number, isChecked: boolean, name: string) => void
 }> = ({ rombel, students, isChecked, onCheck }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
-  if (!students || students.length === 0) return null;
+  if (!students || students.length === 0) return null
 
   return (
     <div className="mt-4 rounded-md border border-neutral-200 p-3 dark:border-neutral-700">
@@ -223,8 +224,8 @@ const RombelGroup: React.FC<{
         </h3>
         <ChevronDown
           className={cn(
-            "transform transition-transform duration-200",
-            isCollapsed && "-rotate-180",
+            'transform transition-transform duration-200',
+            isCollapsed && '-rotate-180',
           )}
         />
       </button>
@@ -241,16 +242,16 @@ const RombelGroup: React.FC<{
         </ul>
       )}
     </div>
-  );
-};
+  )
+}
 
 const CollapsibleStudentList: React.FC<{
-  title: string;
-  groupedStudents: GroupedStudents;
-  checkedState: "checked" | "unchecked";
-  onCheck: (id: number, isChecked: boolean, name: string) => void;
-  onClearAll?: () => void;
-  headerId: string;
+  title: string
+  groupedStudents: GroupedStudents
+  checkedState: 'checked' | 'unchecked'
+  onCheck: (id: number, isChecked: boolean, name: string) => void
+  onClearAll?: () => void
+  headerId: string
 }> = ({
   title,
   groupedStudents,
@@ -259,11 +260,11 @@ const CollapsibleStudentList: React.FC<{
   onClearAll,
   headerId,
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const totalStudents = Object.values(groupedStudents).reduce(
     (sum, list) => sum + list.length,
     0,
-  );
+  )
 
   return (
     <div
@@ -277,18 +278,18 @@ const CollapsibleStudentList: React.FC<{
         >
           <h2
             className={cn(
-              "text-lg font-semibold",
-              checkedState === "checked"
-                ? "text-green-700 dark:text-green-300"
-                : "text-neutral-700 dark:text-neutral-200",
+              'text-lg font-semibold',
+              checkedState === 'checked'
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-neutral-700 dark:text-neutral-200',
             )}
           >
             {title} ({totalStudents})
           </h2>
           <ChevronDown
             className={cn(
-              "transform transition-transform duration-200",
-              isCollapsed && "-rotate-180",
+              'transform transition-transform duration-200',
+              isCollapsed && '-rotate-180',
             )}
           />
         </button>
@@ -332,41 +333,41 @@ const CollapsibleStudentList: React.FC<{
                   key={rombel}
                   rombel={rombel}
                   students={groupedStudents[rombel]}
-                  isChecked={checkedState === "checked"}
+                  isChecked={checkedState === 'checked'}
                   onCheck={onCheck}
                 />
               ))
           ) : (
             <p className="pt-4 text-center text-neutral-500 italic dark:text-neutral-400">
-              {checkedState === "checked" ? "Belum ada." : "Semua sudah foto!"}
+              {checkedState === 'checked' ? 'Belum ada.' : 'Semua sudah foto!'}
             </p>
           )}
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 const ScrollButtons = () => {
-  const [showButton, setShowButton] = useState(false);
+  const [showButton, setShowButton] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => setShowButton(window.scrollY > 300);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    const handleScroll = () => setShowButton(window.scrollY > 300)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
 
-  if (!showButton) return null;
+  if (!showButton) return null
 
   return (
     <div className="fixed right-6 bottom-6 z-50 flex flex-col gap-2">
       <Button
         size="icon"
-        onClick={() => scrollTo("unchecked-header")}
+        onClick={() => scrollTo('unchecked-header')}
         className="rounded-full shadow-lg"
         aria-label="Scroll to Unchecked List"
       >
@@ -374,15 +375,15 @@ const ScrollButtons = () => {
       </Button>
       <Button
         size="icon"
-        onClick={() => scrollTo("checked-header")}
+        onClick={() => scrollTo('checked-header')}
         className="rounded-full shadow-lg"
         aria-label="Scroll to Checked List"
       >
         <ArrowDownToLine />
       </Button>
     </div>
-  );
-};
+  )
+}
 
 // --- MAIN PAGE COMPONENT ---
 export default function ChecklistTeksipPage() {
@@ -395,7 +396,7 @@ export default function ChecklistTeksipPage() {
     uncheckedStudents,
     handleCheck,
     handleClearAll,
-  } = useStudentChecklist();
+  } = useStudentChecklist()
 
   return (
     <>
@@ -416,15 +417,15 @@ export default function ChecklistTeksipPage() {
           </div>
           <div className="mb-6 flex flex-wrap justify-center gap-2">
             <Button
-              variant={rombelFilter === "all" ? "default" : "outline"}
-              onClick={() => setRombelFilter("all")}
+              variant={rombelFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setRombelFilter('all')}
             >
               Semua Rombel
             </Button>
             {ROMBELS.map((r) => (
               <Button
                 key={r}
-                variant={rombelFilter === r ? "default" : "outline"}
+                variant={rombelFilter === r ? 'default' : 'outline'}
                 onClick={() => setRombelFilter(r)}
               >
                 Rombel {r}
@@ -453,5 +454,5 @@ export default function ChecklistTeksipPage() {
       </div>
       <ScrollButtons />
     </>
-  );
+  )
 }

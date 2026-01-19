@@ -1,3 +1,15 @@
+# Changelog
+
+## [0.1.0] - 2026-01-19
+- ✨ Upgraded dependencies to latest versions.
+- 🛠️ Added BiomeJS for code formatting and linting, replacing Prettier and ESLint.
+- 📦 Updated `bun.lock` with new dependency versions.
+- ⚙️ Configured `biome.json` with formatting and linting rules.
+- 🚀 Added a new script `setwebh` to set telegram webhook.
+- 📝 Added TELEGRAM_SECRET_TOKEN to env variables.
+- 🧹 Removed unused imports and code.
+- 📜 Updated `eslint.config.mjs` to use modern import syntax.
+- 📦 Added prompter config to ignore more files.
 
 ## [2.4.11] - 2025-12-28
 
@@ -68,4 +80,3 @@ Default configuration schemas now strictly enforce TOML parsing for consistency 
 Addressed a significant, intermittent memory retention issue within the ephemeral worker pool of the Data Ingestion Pipeline (DIP). This leak specifically manifested under high-frequency, bursty load conditions, leading to unnecessary resource scaling events. Stability restored.
 
 🐛 Adjusted internal `ghost-agent` timeout logic to correctly differentiate between connection failure and resource contention stalls. This eliminates false-negative disconnection reports during periods of peak internal backpressure.
-
