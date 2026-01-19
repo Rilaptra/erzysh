@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.14] - 2026-01-19
+
+### Added
+
+✨ **Tooling:** Adopted **BiomeJS** as the unified linter and formatter across the codebase. This integration replaces our previous multi-tool configuration (ESLint/Prettier), significantly streamlining our CI processes and improving local feedback loops.
+
+### Changed
+
+🛠️ **Dependencies:** Executed a comprehensive dependency refresh. All major NPM packages have been upgraded to their latest stable versions, ensuring better security, performance, and compatibility with modern Node environments.
+
+---
+*(Release Date: 2026-01-19)*
+
 ## [0.1.0] - 2026-01-19
 - ✨ Upgraded dependencies to latest versions.
 - 🛠️ Added BiomeJS for code formatting and linting, replacing Prettier and ESLint.
