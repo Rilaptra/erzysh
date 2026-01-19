@@ -1,4 +1,23 @@
 # Changelog
+
+## [3.0.0] - 2026-01-10
+- ✨ Bumped version to 2.4.13.
+- 🛠️ Updated build date in `src/lib/version.ts` to reflect the current timestamp.
+- 🔄 Synchronized version in `src/lib/version.ts` with `package.json`.
+
+## [0.1.2] - 2026-01-10
+- ✨ Updated dependencies to their latest versions.
+- This commit updates a large number of dependencies, including:
+- `bun.lock` file updated with new versions of packages.
+- `@img/sharp` and related packages updated for various architectures.
+- `@next/swc` updated for different platforms.
+- `@napi-rs/canvas` and related packages updated for various platforms.
+- Many other dependencies updated to ensure compatibility and security.
+
+## [0.1.1] - 2026-01-10
+- ✨ Refactored code to use consistent single quotes instead of double quotes throughout the codebase.
+- 🛠️  Minor formatting adjustments were made for improved readability and consistency. These changes do not affect functionality.
+
 ## [2.4.11] - 2025-12-28
 
 ## [2.4.13] - 2025-12-28
