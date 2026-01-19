@@ -95,10 +95,5 @@
   "overrides": {
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2"
-  },
-<<<<<<< HEAD
-  "version": "0.1.0"
-=======
-  "version": "3.0.0"
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
+  }
 }

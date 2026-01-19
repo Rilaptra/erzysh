@@ -1,19 +1,12 @@
 #!/usr/bin/env bun
-<<<<<<< HEAD
-import { join } from 'node:path'
-import * as readline from 'node:readline'
 import Bun, { fetch } from 'bun'
+import { join } from 'path'
+import * as readline from 'readline'
 
 /**
  * 🎨 ERYZSH UI KIT
  * Zero-dependency styling for maximum performance on limited resources.
  */
-=======
-import Bun from 'bun'
-import { join } from 'path'
-import * as readline from 'readline'
-
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
 const COLORS = {
   reset: '\x1B[0m',
   bright: '\x1b[1m',
@@ -22,10 +15,7 @@ const COLORS = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   red: '\x1b[31m',
-<<<<<<< HEAD
   blue: '\x1b[34m',
-=======
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
   magenta: '\x1b[35m',
   gray: '\x1b[90m',
 }
@@ -50,21 +40,14 @@ const UI = {
 (  __)(  _ \\(__  )( \\/ ) / ___)/ )( \\   / __)/  \\ ( \\/ )( \\/ )(  )(_  _)
  ) _)  )   / / _/  )  /_ \\___ \\) __ (  ( (__(  O )/ \\/ \\/ \\/ \\ )(   )(  
 (____)(__\\_)(____)(__/(_)(____/\\_)(_/   \\___)\\__/ \\_)(_/\\_)(_/(__) (__) 
-<<<<<<< HEAD
 ${COLORS.reset}${COLORS.dim}   :: AUTOMATED RELEASE SYSTEM ::   ${COLORS.reset}\n`)
-=======
-${COLORS.reset}${COLORS.dim}   :: AUTOMATED BUILD & RELEASE ::   ${COLORS.reset}\n`)
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
   },
   ask: (question: string): Promise<boolean> => {
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     })
-<<<<<<< HEAD
 
-=======
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
     return new Promise((resolve) => {
       rl.question(
         `${COLORS.yellow}? ${question} (y/N) ${COLORS.reset}`,
@@ -77,7 +60,6 @@ ${COLORS.reset}${COLORS.dim}   :: AUTOMATED BUILD & RELEASE ::   ${COLORS.reset}
       )
     })
   },
-<<<<<<< HEAD
 }
 
 // --- PATHS CONFIGURATION ---
@@ -118,7 +100,7 @@ function runCmd(
     }
 
     return proc
-  } catch (e) {
+  } catch (e: any) {
     // Error handling untuk spawn itu sendiri (misal command tidak ditemukan)
     UI.error(`Execution failed: ${cmdDisplay}`)
     throw e
@@ -284,7 +266,7 @@ async function main() {
         changelogEntry +
         changelogContent.slice(splitIdx)
     } else {
-      changelogContent += `\n${changelogEntry}`
+      changelogContent += '\n' + changelogEntry
     }
     await Bun.write(changelogPath, changelogContent)
 
@@ -307,50 +289,11 @@ async function main() {
         'ghost-agent/Cargo.toml',
       ]) // Array strings
 
-=======
-}
-
-const rootDir = process.cwd()
-const cargoPath = join(rootDir, 'ghost-agent', 'Cargo.toml')
-
-function runCmd(command: string[], cwd: string = rootDir) {
-  const proc = Bun.spawnSync(command, {
-    cwd,
-    stdio: ['inherit', 'inherit', 'inherit'],
-  })
-  if (proc.exitCode !== 0) {
-    throw new Error(`Command failed: ${command.join(' ')}`)
-  }
-}
-
-async function main() {
-  UI.header()
-
-  const skipBuild = await UI.ask('Skip Ghost Agent build (Rust)?')
-  const totalSteps = skipBuild ? 1 : 2
-  let currentStep = 1
-
-  try {
-    if (!skipBuild) {
-      UI.step(currentStep++, totalSteps, 'Compiling Ghost Agent Core')
-      UI.info('Building release binary...')
-      runCmd(['cargo', 'build', '--release', '--manifest-path', cargoPath])
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
       UI.success('Rust binary compiled.')
     } else {
       UI.warn('Skipping Rust compilation.')
     }
-    const versionFile = await Bun.file(
-      join(rootDir, 'src/lib/version.ts'),
-    ).text()
-    const NEW_BUILD_DATE = new Date().toISOString()
-    const newVersionFile = versionFile.replace(
-      /BUILD_DATE = .+/,
-      `BUILD_DATE = '${NEW_BUILD_DATE}'`,
-    )
-    await Bun.write(join(rootDir, 'src/lib/version.ts'), newVersionFile)
 
-<<<<<<< HEAD
     // 5. Git Commit & Tag
     UI.step(currentStep++, totalSteps, 'Git Operations')
 
@@ -396,8 +339,8 @@ async function main() {
     Bun.stdout.write(
       `${COLORS.gray}────────────────────────────────────────${COLORS.reset}\n\n`,
     )
-  } catch (error) {
-    UI.error(`Critical Failure: ${(error as Error).message}`)
+  } catch (error: any) {
+    UI.error(`Critical Failure: ${error.message}`)
 
     // Discard changes in changelog, cargo.toml and version.ts
     UI.log('Discarding changes in changelog, cargo.toml and version.ts')
@@ -406,17 +349,6 @@ async function main() {
     await Bun.write(cargoPath, originalCargo)
     await Bun.write(versionTsPath, originalVersion)
     UI.success('Discarded changes in changelog, cargo.toml and version.ts')
-=======
-    UI.step(currentStep++, totalSteps, 'Delegating to Digest CLI')
-    UI.info(
-      "Launching 'digest commit this' for versioning and git operations...",
-    )
-
-    // Hand over to digest
-    runCmd(['digest', 'commit', 'this'])
-  } catch (error: any) {
-    UI.error(`Critical Failure: ${error.message}`)
->>>>>>> 3c75ad6140cc308c7b1c587461fc22735e018656
     process.exit(1)
   }
 }
