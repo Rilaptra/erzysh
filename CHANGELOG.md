@@ -1,29 +1,4 @@
 # Changelog
-
-## [2.4.14] - 2026-01-19
-
-### Added
-
-✨ **Tooling:** Adopted **BiomeJS** as the unified linter and formatter across the codebase. This integration replaces our previous multi-tool configuration (ESLint/Prettier), significantly streamlining our CI processes and improving local feedback loops.
-
-### Changed
-
-🛠️ **Dependencies:** Executed a comprehensive dependency refresh. All major NPM packages have been upgraded to their latest stable versions, ensuring better security, performance, and compatibility with modern Node environments.
-
----
-*(Release Date: 2026-01-19)*
-
-## [0.1.0] - 2026-01-19
-- ✨ Upgraded dependencies to latest versions.
-- 🛠️ Added BiomeJS for code formatting and linting, replacing Prettier and ESLint.
-- 📦 Updated `bun.lock` with new dependency versions.
-- ⚙️ Configured `biome.json` with formatting and linting rules.
-- 🚀 Added a new script `setwebh` to set telegram webhook.
-- 📝 Added TELEGRAM_SECRET_TOKEN to env variables.
-- 🧹 Removed unused imports and code.
-- 📜 Updated `eslint.config.mjs` to use modern import syntax.
-- 📦 Added prompter config to ignore more files.
-
 ## [2.4.11] - 2025-12-28
 
 ## [2.4.13] - 2025-12-28
