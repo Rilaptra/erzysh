@@ -141,7 +141,6 @@ export class ZyLog {
       logBody = `Processing ${chalk.yellow(title)} ${bar} ${color(percent)} ${chalk.cyan(`[${h}:${m}:${s}]`)}`
 
       // Kalo progress bar, kita pake \r biar 1 baris (kalau support TTY)
-      // Tapi karena lo pake Bun.write, kita append \n aja biar aman di log Vercel
     } else {
       // Join message cuma kalo array > 1 biar irit RAM
       logBody =
@@ -158,7 +157,7 @@ export class ZyLog {
       ? `${prefix} ${contextStr} ${logBody}\n`
       : `${prefix} ${logBody}\n`
 
-    Bun.write(Bun.stdout, output)
+    console.log(output)
   }
 
   // --- PUBLIC API ---
