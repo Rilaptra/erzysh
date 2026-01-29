@@ -1,5 +1,27 @@
 ### [2.4.16] - 2026-01-29
 
+## [2.4.17] - 2026-01-29
+
+## [v2.4.17] - 2026-01-29
+
+### ✨ Added
+
+*   Implemented a dedicated `/health/liveness` endpoint strictly conforming to container orchestration standards, improving pod readiness detection reliability.
+*   New verbose logging configuration added to the data synchronization layer, accessible via `ERYZSH_DEBUG_SYNC=true`.
+
+### ♻️ Changed
+
+*   **Performance:** Achieved a significant reduction in median p95 latency across the internal state serialization routines (~15% overall improvement via smarter buffer pooling).
+*   Adjusted default throttling limits for all public API endpoints to better accommodate high-frequency bursts from core client applications.
+*   Deprecated the use of SHA-1 hashing in favor of SHA-256 for internal signature validation contexts.
+
+### 🛠️ Fixed
+
+*   Patched a critical memory saturation issue within the primary data ingestion service that manifested after 72 hours of sustained uptime under maximum load.
+*   Resolved an intermittent race condition that caused non-graceful shutdown failures when processing high-volume transactional queue backlogs.
+*   Fixed a bug where service registration failed silently if the local configuration file contained trailing whitespace.
+*   Ensured API key revocation procedures are now atomic, resolving an edge case where concurrency could lead to temporary validation bypasses.
+
 ### v2.4.16 (2026-01-29)
 
 🌟 **Added**
