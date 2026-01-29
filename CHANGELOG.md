@@ -1,5 +1,30 @@
 ### [2.4.16] - 2026-01-29
 
+## [2.4.18] - 2026-01-29
+
+## Eryzsh v2.4.18 (2026-01-29)
+
+This build is primarily focused on hardening system stability and delivering performance improvements derived from our latest profiling cycle. Enjoy the lower latency.
+
+### Added 🚀
+
+*   Implemented the `ConfigMap` client for runtime parameter injection, allowing operators to push configuration updates to `Eryzsh-Core` without requiring a service restart. Hello, zero-downtime configuration.
+*   New diagnostic endpoint `/system/vitals` added to the `Observer` service, providing granular visibility into queue backpressure and current thread pooling metrics.
+*   Introduced comprehensive audit logging for all successful and failed operations against the `ACL Broker`.
+
+### Changed ⚙️
+
+*   **Vectorization Engine Optimization:** Applied significant low-level optimization to the Vectorization Engine (`VE-v4`). This change leverages explicit SIMD instruction sets, resulting in an observed 12% reduction in median processing latency across standard data sets.
+*   Upgraded core system dependencies (gRPC, OpenTelemetry) to their latest stable releases, ensuring compatibility with upcoming infrastructure patches.
+*   Refactored the internal payload deserialization pipeline to utilize synchronous processing where appropriate, reducing heap pressure during high-throughput ingestion spikes.
+
+### Fixed 🐛
+
+*   Resolved an insidious Scheduler deadlock that occurred intermittently when the global event queue exceeded 50,000 pending items during synchronized commit phases.
+*   Patched a minor, non-critical memory leak discovered within the telemetry reporting module that would only manifest after 72+ hours of continuous operation.
+*   Corrected an edge case where API tokens cached by the `Auth Gateway` would occasionally fail revocation checks if the initial token length was below 32 characters.
+*   Fixed rendering issues in the internal Dashboard UI component when viewed on Safari (v17+). Apologies to the macOS crew.
+
 ## [2.4.17] - 2026-01-29
 
 ## [v2.4.17] - 2026-01-29
