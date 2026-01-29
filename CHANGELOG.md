@@ -1,4 +1,21 @@
-# Changelog
+### [2.4.14] - 2026-01-29
+
+### Added
+
+🛠️ **Infrastructure Refinement.**
+We integrated **BiomeJS** (d1b09bd) into the build pipeline for uncompromising code quality, stricter formatting, and next-generation linting. This lays the groundwork for improved developer velocity and cleaner PRs going forward.
+
+### Changed
+
+⬆️ **Dependency Refresh.**
+Updated various core and development dependencies across the Eryzsh stack (d1b09bd). This ensures we remain patched against known vulnerabilities and leverage the latest performance improvements from the ecosystem.
+
+### Fixed
+
+🐛 **Subtle Stabilizations.**
+Addressed several minor operational glitches and internal resource handling issues discovered during recent integration testing (ffaac6b, 93d4ba4). These fixes contribute to overall system reliability, especially under persistent load.
+
+ Changelog
 
 ## [3.0.0] - 2026-01-10
 - ✨ Bumped version to 2.4.13.
