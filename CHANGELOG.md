@@ -1,19 +1,14 @@
-### [2.4.14] - 2026-01-29
+### [2.4.16] - 2026-01-29
 
-### Added
+### v2.4.16 (2026-01-29)
 
-🛠️ **Infrastructure Refinement.**
-We integrated **BiomeJS** (d1b09bd) into the build pipeline for uncompromising code quality, stricter formatting, and next-generation linting. This lays the groundwork for improved developer velocity and cleaner PRs going forward.
+🌟 **Added**
 
-### Changed
+*   **Tooling Migration (BiomeJS):** Introduced BiomeJS as the standard for code formatting and linting across the entire codebase. This move drastically simplifies our development setup and ensures stricter, high-performance consistency checks.
 
-⬆️ **Dependency Refresh.**
-Updated various core and development dependencies across the Eryzsh stack (d1b09bd). This ensures we remain patched against known vulnerabilities and leverage the latest performance improvements from the ecosystem.
+⬆️ **Changed**
 
-### Fixed
-
-🐛 **Subtle Stabilizations.**
-Addressed several minor operational glitches and internal resource handling issues discovered during recent integration testing (ffaac6b, 93d4ba4). These fixes contribute to overall system reliability, especially under persistent load.
+*   **Dependency Overhaul:** Executed a major update of core development and runtime dependencies. This addresses several minor upstream security vulnerabilities and prepares Eryzsh for upcoming platform shifts in the Node.js ecosystem.
 
  Changelog
 
