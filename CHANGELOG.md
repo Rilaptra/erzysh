@@ -1,22 +1,20 @@
-### [2.4.19] - 2026-02-01
+### [2.4.20] - 2026-02-01
 
-## v2.4.19 (2026-02-01)
+```markdown
+### [2.4.20] - 2026-02-01
 
 ### 🛠️ Changed
 
-*   **Development Environment:** Significant overhaul and standardization of the code quality tooling via Biome configuration updates. These changes enforce strict consistency across the codebase:
-    *   The standard line width limit has been increased from 80 to 120 characters, allowing for cleaner expression syntax.
-    *   Formatting mandates are now set to use double quotes and enforce semicolons universally.
-    *   Enabled automatic import organization globally (`assist.actions.source.organizeImports`), streamlining PR reviews and minimizing merge conflicts.
-    *   Adjusted JSX/TSX formatting to use same-line brackets for improved visual hierarchy.
-*   **Core Dependencies:** Executed a deep refresh of the dependency tree via the `bun.lock` file, updating numerous minor and major packages for improved stability and access to new features. Key updates include:
-    *   Bumped the core Bun runtime to `v1.3.8`.
-    *   Updated Google Generative AI SDK to `v1.39.0`.
-    *   Refreshed Next.js internal tooling to `v16.1.6`.
+*   **Development Environment (DX overhaul):** Completed a standardization sweep of the codebase via significant updates to the `biome.json` configuration. These changes are now enforced across the repository to maximize developer velocity and minimize style conflicts:
+    *   Increased the standard line width limit from 80 characters to 120, accommodating complex expressions and modern monitor resolutions.
+    *   Enforced universal formatting mandates: double quotes (`"`) are now required for strings, and semicolons (`;`) must be used consistently.
+    *   Activated aggressive automatic import organization (`assist.actions.source.organizeImports`) globally.
+    *   Adjusted JSX/TSX component formatting to enforce same-line brackets for improved visual hierarchy.
 
-### 🛡️ Security
+*   **Dependency Management:** Executed a full refresh and synchronization of the project's third-party libraries, resulting in a wholesale replacement of the `bun.lock` file. This sweep validates all transitive dependencies, ensuring the latest stable patches are applied and eliminating potential version skew vulnerabilities.
 
-*   **Dependency Audit:** The extensive dependency update sweep resolved several underlying CVEs and minor vulnerability flags reported across third-party libraries.
+*   **Build Tooling:** Updated the bundled `@biomejs/biome` toolchain to `v2.3.13` to utilize the latest parsing and formatting capabilities.
+```
 
 ## [2.4.16] - 2026-01-29
 

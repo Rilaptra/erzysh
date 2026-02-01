@@ -1,7 +1,7 @@
 {
   "name": "erzysh",
   "private": true,
-  "version": "2.4.18",
+  "version": "2.4.19",
   "scripts": {
     "dev": "bun run scripts/sync-version && next dev",
     "build": "bun run sync-version && next build",
