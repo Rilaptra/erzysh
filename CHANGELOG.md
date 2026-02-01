@@ -1,4 +1,24 @@
-### [2.4.16] - 2026-01-29
+### [2.4.19] - 2026-02-01
+
+## v2.4.19 (2026-02-01)
+
+### 🛠️ Changed
+
+*   **Development Environment:** Significant overhaul and standardization of the code quality tooling via Biome configuration updates. These changes enforce strict consistency across the codebase:
+    *   The standard line width limit has been increased from 80 to 120 characters, allowing for cleaner expression syntax.
+    *   Formatting mandates are now set to use double quotes and enforce semicolons universally.
+    *   Enabled automatic import organization globally (`assist.actions.source.organizeImports`), streamlining PR reviews and minimizing merge conflicts.
+    *   Adjusted JSX/TSX formatting to use same-line brackets for improved visual hierarchy.
+*   **Core Dependencies:** Executed a deep refresh of the dependency tree via the `bun.lock` file, updating numerous minor and major packages for improved stability and access to new features. Key updates include:
+    *   Bumped the core Bun runtime to `v1.3.8`.
+    *   Updated Google Generative AI SDK to `v1.39.0`.
+    *   Refreshed Next.js internal tooling to `v16.1.6`.
+
+### 🛡️ Security
+
+*   **Dependency Audit:** The extensive dependency update sweep resolved several underlying CVEs and minor vulnerability flags reported across third-party libraries.
+
+## [2.4.16] - 2026-01-29
 
 ## [2.4.17] - 2026-02-01
 
