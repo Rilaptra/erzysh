@@ -1,5 +1,26 @@
 ### [2.4.16] - 2026-01-29
 
+## [2.4.17] - 2026-02-01
+
+## v2.4.17 (2026-02-01)
+
+### ✨ Added
+
+*   **Observability:** Integrated high-granularity P99 latency tracking for all Data Plane ingress points. This metric is now available via the `/metrics/v2` Prometheus endpoint.
+*   **Infrastructure:** New environment variable (`ERZ_MAX_CONCURRENCY`) introduced to allow explicit thread pool sizing for the core computation engine, easing deployment on constrained hardware profiles.
+
+### 🛠️ Changed
+
+*   **Performance:** Refactored the underlying `VectorMesh` indexing logic. This optimization yields a measured 18-25% reduction in lookup time for cold-start queries, significantly improving overall latency P50.
+*   **Architecture:** The legacy `v1/state-sync` protocol has been officially deprecated. All internal services have been migrated to the more robust, idempotent `v2/sync-stream` implementation. Please update any external consumers relying on `v1/state-sync` immediately.
+*   **Dependencies:** Updated core runtime to Node 22.1.0, resolving several minor vulnerability flags reported against the previous LTS package set.
+
+### 🐛 Fixed
+
+*   **Stability:** Resolved a critical race condition within the `Scheduler.async_queue` that could intermittently cause non-responsive states (deadlocks) when processing large bursts of high-priority jobs.
+*   **API:** Corrected an issue where certain edge-case input parameters were bypassed during schema validation on the `/config/update` endpoint, potentially leading to malformed system configurations.
+*   **Logging:** Fixed minor log spam that occurred when the service failed to connect to the secondary failover artifact store. The retry attempts are now silent unless the primary store is also unreachable.
+
 ## [2.4.19] - 2026-01-29
 
 ### Added ➕
