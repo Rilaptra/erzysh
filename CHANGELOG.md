@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.25] - 2026-02-03
+
+```
+✨ Bumped version to 2.4.25.
+
+🐛 Fixed release notes extraction by adjusting the `changelog_file` path in `.github/workflows/release.yml`.
+🛠️ Added `fetch-depth: 0` to checkout step in `.github/workflows/release.yml` to ensure full git history is available for diffs.
+```
+
 ## [2.4.24] - 2026-02-03
 
 ✨ Updated dependencies to v2.4.24.

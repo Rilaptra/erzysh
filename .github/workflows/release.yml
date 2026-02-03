@@ -14,12 +14,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Penting biar history diff kebaca bener
 
       - name: Extract Release Notes
         id: extract_release_notes
         uses: ffurrer2/extract-release-notes@v1
         with:
-          changelog_file: ghost-agent/CHANGELOG.md
+          # 👇 UBAH INI (Hapus 'ghost-agent/')
+          changelog_file: CHANGELOG.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
