@@ -1,24 +1,22 @@
 ### [2.4.20] - 2026-02-01
 
-## [2.4.20] - 2026-02-03
+## [2.4.21] - 2026-02-03
 
-### Fixed 🐛
-
-*   Resolved a critical race condition during core service initialization that occasionally caused the primary RPC scheduler loop to stall under high-concurrency cold starts.
-*   Squashed an intermittent bug where large file upload tasks would incorrectly report success before the final consistency checks were completed.
-*   Patched a low-priority security vulnerability related to input sanitization within the internal configuration API endpoints.
-*   Fixed a persistent connection leak that manifested when the database connection pool hit its maximum capacity and immediately faced a restart command.
-
-### Changed ⚙️
-
-*   Upgraded several core dependencies (`protobuf` serialization library and internal networking utilities) to mitigate recently disclosed transitive vulnerabilities.
-*   Refactored the internal logging context implementation across the Data Ingestion pipeline, standardizing timestamps to UTC-Z for improved multi-region analysis.
-*   Slightly tuned the connection timeout threshold for outbound Ghost Agent requests, improving responsiveness during brief network brownouts.
+## [2.4.21] - 2026-02-03
 
 ### Added ✨
 
-*   Introduced structured logging context to fatal API gateway errors, now including client IP and payload identifiers for faster triaging.
-*   Added a new optional telemetry metric tracking the cold-start time differential between configuration loading and module bootstrapping.
+*   **KRS Simulator (Schedule Conflict Checker):** Introduced a major new student productivity tool accessible via `/kuliah/tools/check-jadwal-tabrakan`. This tool features:
+    *   Automatic detection and visualization of time conflicts between selected courses.
+    *   Real-time SKS calculation and limit tracking.
+    *   An interactive weekly schedule visualizer (grid view).
+    *   Draft persistence using local storage to save selected courses across sessions.
+
+### Changed ⚙️
+
+*   **Core Data Update:** Completed a major refresh of the internal `daftar-matkul-dosen.json` dataset, updating course schedules, room assignments, and quotas for the upcoming semester/term.
+*   **Dependency Management:** Introduced the `framer-motion` library to enhance UI interactivity and transitions, specifically within the new KRS Simulator components.
+*   **Minor Dependencies:** Updated several bundled internal dependencies, including a security and performance bump for `tslib`.
 
 ```markdown
 ### [2.4.20] - 2026-02-01
