@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.4.24] - 2026-02-03
+
+✨ Updated dependencies to v2.4.24.
+🚀 Switched AI model to `gemma-3-27b-it` for changelog generation.
+🐛 Fixed AI changelog generation failure handling; now prompts for manual changelog if AI fails.
+🛠️ Improved git cleanliness checks with auto-stashing of uncommitted changes.
+🛠️ Enhanced `smartPush` and `smartPushTag` with more robust error handling and auto-rebase.
+
+# Changelog
+
 ## [2.4.22]
 - Release generated (AI failed).### [2.4.20] - 2026-02-01
 

@@ -1,24 +1,22 @@
 import { join } from "node:path";
 import { spawnSync } from "bun";
-import chalk from "chalk"; // Reuse chalk from zylog dependencies
+import chalk from "chalk";
 import { ZyLog, zyLog } from "../src/lib/zylog";
 
 // --- 🛠️ UTILS ---
 
 class Shell {
-  // Return object biar bisa dianalisis error-nya
   static exec(cmd: string | string[], opts: { cwd?: string; silent?: boolean } = {}) {
     const cmdArr = Array.isArray(cmd) ? cmd : cmd.split(" ");
     const cmdStr = Array.isArray(cmd) ? cmd.join(" ") : cmd;
 
     if (!opts.silent) {
-      // Gunakan zyLog.cmd untuk log command
       zyLog.cmd(cmdStr);
     }
 
     const proc = spawnSync(cmdArr, {
       cwd: opts.cwd || process.cwd(),
-      stdio: ["ignore", "pipe", "pipe"], // Pipe stderr to read errors
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
     const output = proc.stdout.toString().trim();
@@ -32,7 +30,6 @@ class Shell {
     };
   }
 
-  // Wrapper standar yang throw error
   static run(cmd: string | string[], opts: { cwd?: string; silent?: boolean } = {}) {
     const res = this.exec(cmd, opts);
     if (!res.success) {
@@ -47,7 +44,6 @@ class Spinner {
     const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
     let i = 0;
 
-    // Tulis manual ke stdout biar animasi jalan (ZyLog nge-log per baris)
     process.stdout.write(`${chalk.cyan("⠋")} ${label}`);
 
     const timer = setInterval(() => {
@@ -57,9 +53,7 @@ class Spinner {
     try {
       const result = await task();
       clearInterval(timer);
-      // Clear baris spinner manual
       process.stdout.write(`\r\x1B[2K`);
-      // Log success pake ZyLog biar formatnya konsisten (ada timestamp dll)
       zyLog.success(label);
       return result;
     } catch (e) {
@@ -84,14 +78,14 @@ class Prompt {
 // --- 🤖 AI MANAGER ---
 class AIManager {
   private static API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  private static MODEL = "gemini-1.5-flash";
+  private static MODEL = "gemma-3-27b-it";
 
   static async generateChangelog(version: string, diff: string): Promise<string> {
-    const log = ZyLog.withScope("AI"); // Scoped Log
+    const log = ZyLog.withScope("AI");
 
     if (!this.API_KEY) {
       log.warn("No API Key found. Skipping AI generation.");
-      return `## [${version}] - ${new Date().toISOString().split("T")[0]}\n- Manual release.\n`;
+      return `## [${version}] - ${new Date().toISOString().split("T")[0]}\n- Manual release (No API Key).\n`;
     }
 
     const cleanDiff = diff.length > 30000 ? diff.substring(0, 30000) + "\n... (truncated)" : diff;
@@ -120,11 +114,13 @@ class AIManager {
 
       const data = (await res.json()) as any;
       if (data.error) throw new Error(data.error.message);
+
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (!text) throw new Error("Empty response from AI");
+
       return `## [${version}] - ${new Date().toISOString().split("T")[0]}\n\n${text.trim()}\n\n`;
     } catch (error: any) {
-      log.error(`AI Error: ${error.message}`);
-      return `## [${version}]\n- Release generated (AI failed).`;
+      throw new Error(error.message);
     }
   }
 }
@@ -140,7 +136,6 @@ class ReleaseManager {
 
   private backups: Record<string, string> = {};
 
-  // Helper untuk log Step
   private logStep(step: number, total: number, msg: string) {
     ZyLog.withScope(`STEP ${step}/${total}`).info(chalk.bold(msg));
   }
@@ -155,10 +150,9 @@ class ReleaseManager {
 
   async init() {
     this.printHeader();
+    const log = zyLog;
 
-    const log = zyLog; // Base logger
-
-    // 0. Pre-flight Integrity Check
+    // 0. Pre-flight Integrity Check (Sekarang Auto-Stash support!)
     await this.ensureGitCleanliness();
 
     if (!(await Bun.file(this.paths.cargo).exists())) {
@@ -166,7 +160,6 @@ class ReleaseManager {
       process.exit(1);
     }
 
-    // 1. Backup
     await this.backup();
 
     try {
@@ -182,9 +175,25 @@ class ReleaseManager {
       // STEP 2: Changelog
       this.logStep(step++, totalSteps, "Generating Changelog");
       const diff = Shell.run("git diff HEAD", { silent: true });
-      const changelog = await Spinner.run("Consulting Gemini...", async () => {
-        return await AIManager.generateChangelog(newVer, diff);
-      });
+      let changelog = "";
+
+      try {
+        changelog = await Spinner.run("Consulting Gemini...", async () => {
+          return await AIManager.generateChangelog(newVer, diff);
+        });
+      } catch (e: any) {
+        log.error(`AI Generation Failed: ${chalk.red(e.message)}`);
+
+        const proceed = await Prompt.confirm("AI failed. Continue with MANUAL/EMPTY changelog?");
+
+        if (!proceed) {
+          throw new Error("Aborted by user due to AI failure.");
+        }
+
+        log.warn("Using generic changelog template.");
+        changelog = `## [${newVer}] - ${new Date().toISOString().split("T")[0]}\n- Manual release (AI Failed).\n`;
+      }
+
       await this.updateChangelog(changelog);
 
       // STEP 3: Frontend Sync
@@ -213,7 +222,7 @@ class ReleaseManager {
       Shell.run(["git", "tag", `v${newVer}`], { silent: true });
       log.success("Tagged & Committed.");
 
-      // STEP 6: Smart Deploy (Auto-Fixing)
+      // STEP 6: Smart Deploy
       this.logStep(step++, totalSteps, "Smart Deploy");
       await Spinner.run("Pushing to Origin...", async () => {
         await this.smartPush("main");
@@ -228,71 +237,90 @@ class ReleaseManager {
     }
   }
 
-  // --- SMART GIT OPERATIONS ---
+  // --- SMART GIT OPERATIONS (Updated with Stash Logic) ---
 
   private async ensureGitCleanliness() {
     zyLog.info("Checking git status...");
-    // Update remote refs first
     Shell.run("git fetch origin", { silent: true });
 
-    // Check if behind
-    const status = Shell.exec("git status -uno");
-    if (status.output.includes("Your branch is behind")) {
-      zyLog.warn("Local branch is behind remote. Auto-pulling...");
-      Shell.run("git pull --rebase origin main");
+    // 1. Cek apakah ada uncommitted changes?
+    const statusRaw = Shell.exec("git status --porcelain").output;
+    const hasChanges = statusRaw.length > 0;
+    let stashed = false;
+
+    if (hasChanges) {
+      zyLog.warn("Uncommitted changes detected. Stashing temporary...");
+      Shell.run("git stash", { silent: true });
+      stashed = true;
+    }
+
+    // 2. Cek apakah behind?
+    try {
+      const status = Shell.exec("git status -uno");
+      if (status.output.includes("Your branch is behind")) {
+        zyLog.warn("Local branch is behind remote. Auto-pulling...");
+        const pull = Shell.exec("git pull --rebase origin main");
+
+        if (!pull.success) {
+          throw new Error(`Auto-pull failed: ${pull.error}`);
+        }
+        zyLog.success("Repo updated via Rebase.");
+      }
+    } catch (error) {
+      // Jika error, kita harus pastikan stash dikembalikan sebelum throw (di finally blocks susah handle rollback logic disini, jadi rethrow)
+      if (stashed) {
+        zyLog.info("Restoring stash before exiting...");
+        Shell.run("git stash pop", { silent: true });
+      }
+      throw error;
+    }
+
+    // 3. Restore Changes jika tadi di-stash
+    if (stashed) {
+      zyLog.info("Restoring stashed changes...");
+      const pop = Shell.exec("git stash pop");
+      if (!pop.success) {
+        zyLog.warn("⚠️ Stash pop had conflicts or failed. Please check 'git stash list' manually.");
+        // Kita tidak throw error disini agar release process bisa lanjut (karena changes akan ter-add di step berikutnya)
+      } else {
+        zyLog.success("Stash popped successfully.");
+      }
     }
   }
 
-  /**
-   * Pushes commits with Auto-Rebase fallback.
-   */
   private async smartPush(branch: string) {
     const push = Shell.exec(["git", "push", "origin", branch]);
-
     if (push.success) return;
 
-    // Error Handling Logic
     const err = push.error;
-
-    // Case 1: Remote changes need to be pulled (fetch first / non-fast-forward)
     if (err.includes("fetch first") || err.includes("non-fast-forward") || err.includes("rejected")) {
       zyLog.warn("Remote is ahead. Attempting Auto-Rebase...");
 
+      // Pull rebase
       const pull = Shell.exec(["git", "pull", "--rebase", "origin", branch]);
-
       if (!pull.success) {
-        // Rebase failed (Conflict)
-        Shell.run("git rebase --abort", { silent: true }); // Cleanup mess
+        Shell.run("git rebase --abort", { silent: true });
         throw new Error(`Auto-Rebase failed due to conflicts. Please resolve manually.`);
       }
 
       zyLog.success("Rebase successful. Retrying push...");
-      Shell.run(["git", "push", "origin", branch]); // Retry push
+      Shell.run(["git", "push", "origin", branch]);
       return;
     }
-
-    // Unknown error
     throw new Error(`Push failed: ${err}`);
   }
 
-  /**
-   * Pushes tags with "Force Update" option.
-   */
   private async smartPushTag(tagName: string) {
     const push = Shell.exec(["git", "push", "origin", tagName]);
-
     if (push.success) return;
 
     const err = push.error;
-
-    // Case 1: Tag exists on remote
     if (err.includes("already exists")) {
       zyLog.warn(`Tag ${tagName} exists on remote!`);
       zyLog.warn("Force updating remote tag to match new commit...");
       Shell.run(["git", "push", "--force", "origin", tagName]);
       return;
     }
-
     throw new Error(`Tag push failed: ${err}`);
   }
 
@@ -313,8 +341,11 @@ class ReleaseManager {
     await Bun.write(this.paths.cargo, this.backups["cargo"]);
     await Bun.write(this.paths.changelog, this.backups["changelog"]);
     await Bun.write(this.paths.versionTs, this.backups["versionTs"]);
+
+    // Reset staged files
     Shell.run("git reset --hard HEAD", { silent: true });
 
+    // Remove local tag if created
     try {
       const currentTag = Shell.exec("git tag --points-at HEAD").output.trim();
       if (currentTag) Shell.run(["git", "tag", "-d", currentTag], { silent: true });
