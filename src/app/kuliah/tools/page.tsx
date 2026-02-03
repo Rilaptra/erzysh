@@ -1,24 +1,24 @@
 // src/app/kuliah/tools/page.tsx
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import {
-  Calculator,
-  ClipboardCheck,
-  FileInput,
-  Camera,
-  GraduationCap,
   BetweenHorizontalStart,
-  Map,
+  Calculator,
+  CalendarCheck2,
+  Camera,
+  ClipboardCheck,
   Construction,
+  FileInput,
+  GraduationCap,
+  Lock,
+  Map,
   Ruler,
   Search,
-  Lock,
-  Unlock,
   Terminal,
+  Unlock,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { useDevMode } from "@/lib/hooks/useDevMode";
 
@@ -116,6 +117,13 @@ const tools = [
     cat: "Admin",
     admin: true,
   },
+  {
+    href: "/kuliah/tools/check-jadwal-tabrakan",
+    label: "Cek Tabrakan Jadwal",
+    icon: CalendarCheck2,
+    desc: "Simulasi KRS & deteksi bentrok jadwal otomatis.",
+    cat: "Teknik",
+  },
 ];
 
 export default function ToolsPage() {
@@ -155,13 +163,9 @@ export default function ToolsPage() {
           <div className="text-center md:text-left">
             <h1 className="mb-2 text-3xl font-black tracking-tight md:text-4xl">
               Engineering{" "}
-              <span className="bg-linear-to-r from-teal-400 to-indigo-500 bg-clip-text text-transparent">
-                Toolkit
-              </span>
+              <span className="bg-linear-to-r from-teal-400 to-indigo-500 bg-clip-text text-transparent">Toolkit</span>
             </h1>
-            <p className="text-muted-foreground">
-              Kumpulan alat bantu produktivitas kuliah.
-            </p>
+            <p className="text-muted-foreground">Kumpulan alat bantu produktivitas kuliah.</p>
           </div>
 
           <div className="group relative w-full md:w-72">
@@ -188,22 +192,15 @@ export default function ToolsPage() {
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-8 grid grid-cols-1 gap-4 duration-700 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredTools.map((tool, i) => {
-              const colorClass =
-                categoryColors[tool.cat] || "text-foreground bg-muted";
+              const colorClass = categoryColors[tool.cat] || "text-foreground bg-muted";
 
               return (
-                <Link
-                  href={tool.href}
-                  key={i}
-                  className="group relative block touch-manipulation"
-                >
+                <Link href={tool.href} key={i} className="group relative block touch-manipulation">
                   <div
                     className={cn(
                       "relative h-full overflow-hidden rounded-2xl border border-white/10 bg-white/50 shadow-sm backdrop-blur-md transition-all duration-300 active:scale-95 md:hover:-translate-y-1 md:hover:shadow-xl dark:border-white/5 dark:bg-black/20",
-                      tool.admin &&
-                        "border-rose-500/20 dark:border-rose-500/20",
-                    )}
-                  >
+                      tool.admin && "border-rose-500/20 dark:border-rose-500/20",
+                    )}>
                     <div
                       className={cn(
                         "absolute top-0 left-0 h-1 w-full bg-linear-to-r opacity-0 transition-opacity group-hover:opacity-100",
@@ -224,8 +221,7 @@ export default function ToolsPage() {
                             "flex h-12 w-12 items-center justify-center rounded-xl border transition-all duration-500",
                             colorClass,
                             "group-hover:shadow-[0_0_20px_-5px_currentColor]",
-                          )}
-                        >
+                          )}>
                           <div className="animate-[bounce_3s_infinite]">
                             <tool.icon className="h-6 w-6" />
                           </div>
@@ -236,8 +232,7 @@ export default function ToolsPage() {
                             tool.admin
                               ? "border-rose-200 text-rose-500 dark:border-rose-900"
                               : "border-border text-muted-foreground",
-                          )}
-                        >
+                          )}>
                           {tool.admin ? (
                             <span className="flex items-center gap-1">
                               <Lock className="h-3 w-3" /> Admin
@@ -251,9 +246,7 @@ export default function ToolsPage() {
                       <h3 className="group-hover:text-primary mb-2 text-lg font-bold transition-colors">
                         {tool.label}
                       </h3>
-                      <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed">
-                        {tool.desc}
-                      </p>
+                      <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed">{tool.desc}</p>
                     </div>
                   </div>
                 </Link>
@@ -270,8 +263,7 @@ export default function ToolsPage() {
             size="icon"
             onClick={lockDevMode}
             className="rounded-full border-rose-500/50 text-rose-500 shadow-lg hover:bg-rose-500/10 hover:text-rose-600"
-            title="Lock Developer Mode"
-          >
+            title="Lock Developer Mode">
             <Lock className="h-4 w-4" />
           </Button>
         ) : (
@@ -279,8 +271,7 @@ export default function ToolsPage() {
             variant="ghost"
             size="sm"
             onClick={() => setIsUnlockOpen(true)}
-            className="text-muted-foreground/30 hover:text-foreground/50 text-xs"
-          >
+            className="text-muted-foreground/30 hover:text-foreground/50 text-xs">
             <Terminal className="mr-2 h-3 w-3" />
             v2.0.0
           </Button>
@@ -293,9 +284,7 @@ export default function ToolsPage() {
             <DialogTitle className="flex items-center gap-2">
               <Unlock className="h-5 w-5 text-indigo-500" /> Unlock Dev Mode
             </DialogTitle>
-            <DialogDescription>
-              Masukan sandi untuk mengakses fitur experimental & admin.
-            </DialogDescription>
+            <DialogDescription>Masukan sandi untuk mengakses fitur experimental & admin.</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleUnlockSubmit} className="space-y-4 py-2">
@@ -308,10 +297,7 @@ export default function ToolsPage() {
               autoFocus
             />
             <DialogFooter>
-              <Button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700"
-              >
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700">
                 Unlock
               </Button>
             </DialogFooter>

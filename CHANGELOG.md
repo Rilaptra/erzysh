@@ -1,5 +1,25 @@
 ### [2.4.20] - 2026-02-01
 
+## [2.4.20] - 2026-02-03
+
+### Fixed 🐛
+
+*   Resolved a critical race condition during core service initialization that occasionally caused the primary RPC scheduler loop to stall under high-concurrency cold starts.
+*   Squashed an intermittent bug where large file upload tasks would incorrectly report success before the final consistency checks were completed.
+*   Patched a low-priority security vulnerability related to input sanitization within the internal configuration API endpoints.
+*   Fixed a persistent connection leak that manifested when the database connection pool hit its maximum capacity and immediately faced a restart command.
+
+### Changed ⚙️
+
+*   Upgraded several core dependencies (`protobuf` serialization library and internal networking utilities) to mitigate recently disclosed transitive vulnerabilities.
+*   Refactored the internal logging context implementation across the Data Ingestion pipeline, standardizing timestamps to UTC-Z for improved multi-region analysis.
+*   Slightly tuned the connection timeout threshold for outbound Ghost Agent requests, improving responsiveness during brief network brownouts.
+
+### Added ✨
+
+*   Introduced structured logging context to fatal API gateway errors, now including client IP and payload identifiers for faster triaging.
+*   Added a new optional telemetry metric tracking the cold-start time differential between configuration loading and module bootstrapping.
+
 ```markdown
 ### [2.4.20] - 2026-02-01
 
