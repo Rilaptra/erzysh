@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { spawnSync } from "bun";
 import chalk from "chalk";
+import pkg from "../package.json";
 import { ZyLog, zyLog } from "../src/lib/zylog";
 
 // --- 🛠️ UTILS ---
@@ -143,7 +144,7 @@ class ReleaseManager {
   private printHeader() {
     console.clear();
     console.log(
-      chalk.cyan(`  ERZY.SH v${process.env.npm_package_version || "DEV"} :: Automated Pipeline
+      chalk.cyan(`  ERZY.SH v${pkg.version} :: Automated Pipeline
 `),
     );
   }

@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.5.1] - 2026-02-03
+
+```
+✨ Bumped version to v2.5.1
+🚀 Updated package version in `package.json` to v2.5.0.
+🛠️ Synchronized versioning in release scripts.
+🐛 Fixed version display in release pipeline logs.
+```
+
+# Changelog
+
 ## [2.4.25] - 2026-02-03
 
 ```
